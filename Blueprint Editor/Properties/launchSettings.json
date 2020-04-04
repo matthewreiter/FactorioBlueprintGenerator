@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Blueprint Editor": {
+      "commandName": "Project",
+      "commandLineArgs": "--InputBlueprint=\"$(ProjectDir)/Test/blueprint.txt\" --InputSpreadsheet=\"C:/Users/Matthew Reiter/Documents/Office Documents/Factorio.xlsx\" --OutputBlueprint=\"$(ProjectDir)/Test/blueprintUpdated.txt\" --OutputJson=\"$(ProjectDir)/Test/blueprint.json\" --OutputUpdatedJson=\"$(ProjectDir)/Test/blueprintUpdated.json\" --OutputCommands=\"$(ProjectDir)/Test/blueprintCommands.txt\" --OutputUpdatedCommands=\"$(ProjectDir)/Test/blueprintUpdatedCommands.txt\" --BaseAddress=128 --SpreadsheetTab=\"Imagine\" --DefaultBeatsPerMinute=72"
+    },
+    "Verify updated blueprint": {
+      "commandName": "Project",
+      "commandLineArgs": "--InputBlueprint=\"$(ProjectDir)/Test/blueprintUpdated.txt\" --OutputJson=\"$(ProjectDir)/Test/blueprintUpdated2.json\" --OutputCommands=\"$(ProjectDir)/Test/blueprintUpdatedCommands2.txt\""
+    }
+  }
+}
