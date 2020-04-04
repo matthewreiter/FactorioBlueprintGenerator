@@ -210,6 +210,9 @@ namespace BlueprintEditor
 
                             memoryCells[noteGroup.Address].Control_behavior = new ControlBehavior { Filters = filters };
                         }
+
+                        // Jump back to the beginning
+                        memoryCells[currentAddress++].Control_behavior = new ControlBehavior { Filters = new List<Filter> { CreateFilter('U', -currentAddress - 1) } };
                     }
                 }
                 finally
@@ -374,9 +377,9 @@ namespace BlueprintEditor
             return string.IsNullOrWhiteSpace(value) ? new string[] { } : value.Split(separator);
         }
 
-        private static Filter CreateFilter(char signal, int count)
+        private static Filter CreateFilter(char signal, int count, int index = 1)
         {
-            return new Filter { Signal = new SignalID { Name = $"signal-{signal}", Type = "virtual" }, Count = count };
+            return new Filter { Signal = new SignalID { Name = $"signal-{signal}", Type = "virtual" }, Count = count, Index = index };
         }
 
         private class Note
