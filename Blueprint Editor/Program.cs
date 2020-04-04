@@ -42,7 +42,6 @@ namespace BlueprintEditor
             var outputUpdatedCommandsFile = configuration["OutputUpdatedCommands"];
             var baseAddress = int.TryParse(configuration["BaseAddress"], out var baseAddressValue) ? baseAddressValue : 0;
             var spreadsheetTab = configuration["SpreadsheetTab"];
-            var defaultBeatsPerMinute = int.TryParse(configuration["DefaultBeatsPerMinute"], out var defaultBeatsPerMinuteValue) ? defaultBeatsPerMinuteValue : 60;
 
             var json = ReadBlueprintFileAsJson(inputBlueprintFile);
             var jsonObj = JsonSerializer.Deserialize<object>(json);
@@ -137,13 +136,14 @@ namespace BlueprintEditor
                                             .Select(line => line.ElementAtOrDefault(columnIndex) ?? new List<List<Note>>())
                                             .SelectMany(noteLists => noteLists)
                                             .SelectMany(noteList => noteList)
-                                            .Where(note => note != null)
+                                            .Where(note => note != null && note.Number != 0)
                                             .ToList();
                                         var length = allNotesInColumn.Count > 0 ? allNotesInColumn.Max(note => note.EffectiveLength) : 0;
 
                                         for (int noteListIndex = 0; noteListIndex < noteListCount; noteListIndex++, currentAddress++)
                                         {
                                             var notes = new List<Note>();
+                                            int? beatsPerMinute = null;
 
                                             foreach (var line in currentLines)
                                             {
@@ -151,12 +151,19 @@ namespace BlueprintEditor
                                                 {
                                                     if (note != null)
                                                     {
-                                                        notes.Add(note);
+                                                        if (note.Name == "Tempo")
+                                                        {
+                                                            beatsPerMinute = note.EffectiveLength;
+                                                        }
+                                                        else
+                                                        {
+                                                            notes.Add(note);
+                                                        }
                                                     }
                                                 }
                                             }
 
-                                            noteGroups.Add(new NoteGroup { Address = currentAddress, Notes = notes, Length = length });
+                                            noteGroups.Add(new NoteGroup { Address = currentAddress, Notes = notes, Length = length, BeatsPerMinute = beatsPerMinute });
                                         }
                                     }
 
@@ -190,10 +197,10 @@ namespace BlueprintEditor
                                 currentLength = noteGroup.Length;
                             }
 
-                            if (defaultBeatsPerMinute != currentBeatsPerMinute)
+                            if (noteGroup.BeatsPerMinute.HasValue && noteGroup.BeatsPerMinute != currentBeatsPerMinute)
                             {
-                                filters.Add(CreateFilter('Y', defaultBeatsPerMinute));
-                                currentBeatsPerMinute = defaultBeatsPerMinute;
+                                filters.Add(CreateFilter('Y', noteGroup.BeatsPerMinute.Value));
+                                currentBeatsPerMinute = noteGroup.BeatsPerMinute;
                             }
 
                             for (int index = 0; index < filters.Count; index++)
@@ -386,6 +393,7 @@ namespace BlueprintEditor
             public int Address { get; set; }
             public List<Note> Notes { get; set; }
             public int Length { get; set; }
+            public int? BeatsPerMinute { get; set; }
         }
     }
 }
