@@ -41,7 +41,7 @@ namespace BlueprintEditor
             var outputCommandsFile = configuration["OutputCommands"];
             var outputUpdatedCommandsFile = configuration["OutputUpdatedCommands"];
             var baseAddress = int.TryParse(configuration["BaseAddress"], out var baseAddressValue) ? baseAddressValue : 0;
-            var spreadsheetTab = configuration["SpreadsheetTab"];
+            var spreadsheetTabs = SplitString(configuration["SpreadsheetTabs"], ',');
 
             var json = ReadBlueprintFileAsJson(inputBlueprintFile);
             var jsonObj = JsonSerializer.Deserialize<object>(json);
@@ -55,6 +55,19 @@ namespace BlueprintEditor
             WriteOutJson(outputJsonFile, jsonObj);
             WriteOutCommands(outputCommandsFile, memoryCells);
 
+            var songs = ReadSongsFromSpreadsheet(inputSpreadsheetFile, spreadsheetTabs);
+
+            UpdateMemoryCellsFromSongs(memoryCells, songs, baseAddress);
+
+            WriteOutBlueprint(outputBlueprintFile, blueprintWrapper);
+            WriteOutJson(outputUpdatedJsonFile, blueprintWrapper);
+            WriteOutCommands(outputUpdatedCommandsFile, memoryCells);
+        }
+
+        private static List<List<NoteGroup>> ReadSongsFromSpreadsheet(string inputSpreadsheetFile, string[] spreadsheetTabs)
+        {
+            var songs = new List<List<NoteGroup>>();
+
             if (inputSpreadsheetFile != null)
             {
                 var tempFile = Path.GetTempFileName();
@@ -64,120 +77,164 @@ namespace BlueprintEditor
                     using var spreadsheetInputStream = File.OpenRead(tempFile);
                     using var reader = ExcelReaderFactory.CreateReader(spreadsheetInputStream);
 
-                    var notFound = false;
-                    while (reader.Name != spreadsheetTab)
+                    while (reader.NextResult())
                     {
-                        if (!reader.NextResult())
+                        if (spreadsheetTabs.Contains(reader.Name))
                         {
-                            notFound = true;
-                            break;
+                            songs.Add(ReadSongFromSpreadsheet(reader));
                         }
                     }
+                }
+                finally
+                {
+                    File.Delete(tempFile);
+                }
+            }
 
-                    if (!notFound)
-                    {
-                        var currentLines = new List<List<List<List<Note>>>>();
-                        var currentAddress = baseAddress;
-                        var noteGroups = new List<NoteGroup>();
+            return songs;
+        }
 
-                        while (reader.Read())
-                        {
-                            if (!reader.IsDBNull(0) && reader.GetFieldType(0) == typeof(double))
-                            {
-                                var noteNumber = (int)reader.GetDouble(0);
-                                var noteName = reader.GetString(1);
-                                var isDrum = SpreadsheetDrums.Contains(noteName);
+        private static List<NoteGroup> ReadSongFromSpreadsheet(IExcelDataReader reader)
+        {
+            var currentLines = new List<List<List<List<Note>>>>();
+            var noteGroups = new List<NoteGroup>();
 
-                                var notes = Enumerable.Range(2, reader.FieldCount - 2)
-                                    .Select(column => SplitString(Convert.ToString(reader.GetValue(column)), '_')
-                                        .Select(rawNotes => rawNotes.Split(", ")
-                                            .Select(rawNote =>
-                                            {
-                                                var noteMatch = SpreadsheetNoteRegex.Match(rawNote);
-                                                if (noteMatch.Success)
-                                                {
-                                                    var length = double.Parse(noteMatch.Groups[1].Value);
-                                                    var sharpOrFlat = noteMatch.Groups[2].Value;
-                                                    var instrumentIndicator = noteMatch.Groups[3].Value;
+            while (reader.Read())
+            {
+                if (!reader.IsDBNull(0) && reader.GetFieldType(0) == typeof(double))
+                {
+                    var noteNumber = (int)reader.GetDouble(0);
+                    var noteName = reader.GetString(1);
+                    var isDrum = SpreadsheetDrums.Contains(noteName);
 
-                                                    var instrument = isDrum ? "drum" : instrumentIndicator switch { "L" => "lead", "B" => "bass", "R" => "recorder", _ => "piano" };
-                                                    var effectiveNoteNumber = sharpOrFlat switch { "#" => noteNumber + 1, "b" => noteNumber - 1, _ => noteNumber };
-                                                    var effectiveLength = (int)Math.Ceiling(length);
-
-                                                    return new Note
-                                                    {
-                                                        Instrument = instrument,
-                                                        Number = effectiveNoteNumber,
-                                                        Name = isDrum ? noteName : $"{noteName[0]}{sharpOrFlat}{noteName.Substring(1)}",
-                                                        Length = length,
-                                                        EffectiveLength = effectiveLength
-                                                    };
-                                                }
-                                                else
-                                                {
-                                                    return null;
-                                                }
-                                            }).ToList()
-                                        ).ToList()
-                                    ).ToList();
-
-                                currentLines.Add(notes);
-                            }
-                            else
-                            {
-                                if (currentLines.Count > 0)
+                    var notes = Enumerable.Range(2, reader.FieldCount - 2)
+                        .Select(column => SplitString(Convert.ToString(reader.GetValue(column)), '_')
+                            .Select(rawNotes => rawNotes.Split(", ")
+                                .Select(rawNote =>
                                 {
-                                    var columnCount = currentLines.Max(line => line.Count);
-
-                                    for (int columnIndex = 0; columnIndex < columnCount; columnIndex++)
+                                    var noteMatch = SpreadsheetNoteRegex.Match(rawNote);
+                                    if (noteMatch.Success)
                                     {
-                                        var noteListCount = currentLines.Max(line => line.ElementAtOrDefault(columnIndex)?.Count ?? 0);
-                                        var allNotesInColumn = currentLines
-                                            .Select(line => line.ElementAtOrDefault(columnIndex) ?? new List<List<Note>>())
-                                            .SelectMany(noteLists => noteLists)
-                                            .SelectMany(noteList => noteList)
-                                            .Where(note => note != null && note.Number != 0)
-                                            .ToList();
-                                        var length = allNotesInColumn.Count > 0 ? allNotesInColumn.Max(note => note.EffectiveLength) : 0;
+                                        var length = double.Parse(noteMatch.Groups[1].Value);
+                                        var sharpOrFlat = noteMatch.Groups[2].Value;
+                                        var instrumentIndicator = noteMatch.Groups[3].Value;
 
-                                        for (int noteListIndex = 0; noteListIndex < noteListCount; noteListIndex++, currentAddress++)
+                                        var instrument = isDrum ? "drum" : instrumentIndicator switch { "L" => "lead", "B" => "bass", "R" => "recorder", _ => "piano" };
+                                        var effectiveNoteNumber = sharpOrFlat switch { "#" => noteNumber + 1, "b" => noteNumber - 1, _ => noteNumber };
+                                        var effectiveLength = (int)Math.Ceiling(length);
+
+                                        return new Note
                                         {
-                                            var notes = new List<Note>();
-                                            int? beatsPerMinute = null;
-
-                                            foreach (var line in currentLines)
-                                            {
-                                                foreach (var note in line.ElementAtOrDefault(columnIndex)?.ElementAtOrDefault(noteListIndex) ?? new List<Note>())
-                                                {
-                                                    if (note != null)
-                                                    {
-                                                        if (note.Name == "Tempo")
-                                                        {
-                                                            beatsPerMinute = note.EffectiveLength;
-                                                        }
-                                                        else
-                                                        {
-                                                            notes.Add(note);
-                                                        }
-                                                    }
-                                                }
-                                            }
-
-                                            noteGroups.Add(new NoteGroup { Address = currentAddress, Notes = notes, Length = length, BeatsPerMinute = beatsPerMinute });
-                                        }
+                                            Instrument = instrument,
+                                            Number = effectiveNoteNumber,
+                                            Name = isDrum ? noteName : $"{noteName[0]}{sharpOrFlat}{noteName.Substring(1)}",
+                                            Length = length,
+                                            EffectiveLength = effectiveLength
+                                        };
                                     }
+                                    else
+                                    {
+                                        return null;
+                                    }
+                                }).ToList()
+                            ).ToList()
+                        ).ToList();
 
-                                    currentLines.Clear();
+                    currentLines.Add(notes);
+                }
+                else
+                {
+                    ProcessSpreadsheetLines(currentLines, noteGroups);
+                }
+            }
+
+            // Process any remaining lines
+            ProcessSpreadsheetLines(currentLines, noteGroups);
+
+            return noteGroups;
+        }
+
+        private static void ProcessSpreadsheetLines(List<List<List<List<Note>>>> currentLines, List<NoteGroup> noteGroups)
+        {
+            if (currentLines.Count > 0)
+            {
+                var columnCount = currentLines.Max(line => line.Count);
+
+                for (int columnIndex = 0; columnIndex < columnCount; columnIndex++)
+                {
+                    var noteListCount = currentLines.Max(line => line.ElementAtOrDefault(columnIndex)?.Count ?? 0);
+                    var allNotesInColumn = currentLines
+                        .Select(line => line.ElementAtOrDefault(columnIndex) ?? new List<List<Note>>())
+                        .SelectMany(noteLists => noteLists)
+                        .SelectMany(noteList => noteList)
+                        .Where(note => note != null && note.Number != 0)
+                        .ToList();
+                    var length = allNotesInColumn.Count > 0 ? allNotesInColumn.Max(note => note.EffectiveLength) : 0;
+
+                    for (int noteListIndex = 0; noteListIndex < noteListCount; noteListIndex++)
+                    {
+                        var notes = new List<Note>();
+                        int? beatsPerMinute = null;
+
+                        foreach (var line in currentLines)
+                        {
+                            foreach (var note in line.ElementAtOrDefault(columnIndex)?.ElementAtOrDefault(noteListIndex) ?? new List<Note>())
+                            {
+                                if (note != null)
+                                {
+                                    if (note.Name == "Tempo")
+                                    {
+                                        beatsPerMinute = note.EffectiveLength;
+                                    }
+                                    else
+                                    {
+                                        notes.Add(note);
+                                    }
                                 }
                             }
                         }
 
-                        int? currentLength = null;
-                        int? currentBeatsPerMinute = null;
+                        noteGroups.Add(new NoteGroup { Notes = notes, Length = length, BeatsPerMinute = beatsPerMinute });
+                    }
+                }
 
-                        foreach (var noteGroup in noteGroups)
-                        {
-                            var currentSignals = new Dictionary<string, char>
+                currentLines.Clear();
+            }
+        }
+
+        private static void UpdateMemoryCellsFromSongs(List<Entity> memoryCells, List<List<NoteGroup>> songs, int baseAddress)
+        {
+            var currentAddress = baseAddress;
+
+            Filter CreateJumpFilter(int targetAddress)
+            {
+                return CreateFilter('U', targetAddress - (currentAddress + 1));
+            }
+
+            void UpdateMemoryCell(List<Filter> filters, bool isEnabled = true)
+            {
+                for (int index = 0; index < filters.Count; index++)
+                {
+                    filters[index].Index = index + 1;
+                }
+
+                memoryCells[currentAddress++].Control_behavior = new ControlBehavior { Filters = filters, Is_on = isEnabled ? (bool?)null : false };
+            }
+
+            void ClearMemoryCell()
+            {
+                memoryCells[currentAddress++].Control_behavior = null;
+            }
+
+            foreach (var noteGroups in songs)
+            {
+                var songAddress = currentAddress;
+                int? currentLength = null;
+                int? currentBeatsPerMinute = null;
+
+                foreach (var noteGroup in noteGroups)
+                {
+                    var currentSignals = new Dictionary<string, char>
                             {
                                 { "piano", '0' },
                                 { "lead", 'A' },
@@ -186,44 +243,47 @@ namespace BlueprintEditor
                                 { "recorder", 'N' }
                             };
 
-                            var filters = noteGroup.Notes
-                                .OrderBy(note => InstrumentOrder[note.Instrument] * 100 + note.Number)
-                                .Select(note => CreateFilter(currentSignals[note.Instrument]++, note.Number))
-                                .ToList();
+                    var filters = noteGroup.Notes
+                        .OrderBy(note => InstrumentOrder[note.Instrument] * 100 + note.Number)
+                        .Select(note => CreateFilter(currentSignals[note.Instrument]++, note.Number))
+                        .ToList();
 
-                            if (noteGroup.Length != currentLength)
-                            {
-                                filters.Add(CreateFilter('Z', noteGroup.Length));
-                                currentLength = noteGroup.Length;
-                            }
-
-                            if (noteGroup.BeatsPerMinute.HasValue && noteGroup.BeatsPerMinute != currentBeatsPerMinute)
-                            {
-                                filters.Add(CreateFilter('Y', noteGroup.BeatsPerMinute.Value));
-                                currentBeatsPerMinute = noteGroup.BeatsPerMinute;
-                            }
-
-                            for (int index = 0; index < filters.Count; index++)
-                            {
-                                filters[index].Index = index + 1;
-                            }
-
-                            memoryCells[noteGroup.Address].Control_behavior = new ControlBehavior { Filters = filters };
-                        }
-
-                        // Jump back to the beginning
-                        memoryCells[currentAddress++].Control_behavior = new ControlBehavior { Filters = new List<Filter> { CreateFilter('U', -currentAddress - 1) } };
+                    if (noteGroup.Length != currentLength)
+                    {
+                        filters.Add(CreateFilter('Z', noteGroup.Length));
+                        currentLength = noteGroup.Length;
                     }
-                }
-                finally
-                {
-                    File.Delete(tempFile);
+
+                    if (noteGroup.BeatsPerMinute.HasValue && noteGroup.BeatsPerMinute != currentBeatsPerMinute)
+                    {
+                        filters.Add(CreateFilter('Y', noteGroup.BeatsPerMinute.Value));
+                        currentBeatsPerMinute = noteGroup.BeatsPerMinute;
+                    }
+
+                    for (int index = 0; index < filters.Count; index++)
+                    {
+                        filters[index].Index = index + 1;
+                    }
+
+                    UpdateMemoryCell(filters);
                 }
 
-                WriteOutBlueprint(outputBlueprintFile, blueprintWrapper);
-                WriteOutJson(outputUpdatedJsonFile, blueprintWrapper);
-                WriteOutCommands(outputUpdatedCommandsFile, memoryCells);
+                // Create a disabled jump back to the beginning of the song
+                UpdateMemoryCell(new List<Filter> { CreateJumpFilter(songAddress) }, isEnabled: false);
+
+                // Jump to the next song, which starts at the beginning of the next line of memory
+                var nextSongAddress = (currentAddress / 64 + 1) * 64;
+                UpdateMemoryCell(new List<Filter> { CreateJumpFilter(nextSongAddress) });
+
+                // Blank all memory up to the next song
+                while (currentAddress < nextSongAddress)
+                {
+                    ClearMemoryCell();
+                }
             }
+
+            // Jump back to the beginning
+            UpdateMemoryCell(new List<Filter> { CreateJumpFilter(0) });
         }
 
         private static string ReadBlueprintFileAsJson(string blueprintFile)
@@ -377,9 +437,9 @@ namespace BlueprintEditor
             return string.IsNullOrWhiteSpace(value) ? new string[] { } : value.Split(separator);
         }
 
-        private static Filter CreateFilter(char signal, int count, int index = 1)
+        private static Filter CreateFilter(char signal, int count)
         {
-            return new Filter { Signal = new SignalID { Name = $"signal-{signal}", Type = "virtual" }, Count = count, Index = index };
+            return new Filter { Signal = new SignalID { Name = $"signal-{signal}", Type = "virtual" }, Count = count };
         }
 
         private class Note
@@ -393,7 +453,6 @@ namespace BlueprintEditor
 
         private class NoteGroup
         {
-            public int Address { get; set; }
             public List<Note> Notes { get; set; }
             public int Length { get; set; }
             public int? BeatsPerMinute { get; set; }
