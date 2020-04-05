@@ -1,7 +1,11 @@
 ﻿using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace BlueprintEditor.Models
 {
+    /// <summary>
+    /// Additional documentation: https://wiki.factorio.com/Blueprint_string_format
+    /// </summary>
     public class Blueprint
     {
         /// <summary>
@@ -109,8 +113,9 @@ namespace BlueprintEditor.Models
 
         /// <summary>
         /// Item requests by this entity, this is what defines the item-request-proxy when the blueprint is placed, optional.
+        /// 1 or more instances of key/value pairs. Key is the name of the item, string. Value is the amount of items to be requested.
         /// </summary>
-        public ItemRequest Items { get; set; }
+        public Dictionary<string, uint> Items { get; set; }
 
         /// <summary>
         /// Name of the recipe prototype this assembling machine is set to, optional.
@@ -120,7 +125,7 @@ namespace BlueprintEditor.Models
         /// <summary>
         /// Used by Prototype/Container, optional. The index of the first inaccessible item slot due to limiting with the red "bar". 0-based.
         /// </summary>
-        public int? Bar { get; set; }
+        public ushort? Bar { get; set; }
 
         /// <summary>
         /// Cargo wagon inventory configuration, optional.
@@ -136,31 +141,162 @@ namespace BlueprintEditor.Models
         /// Type of the underground belt or loader, optional. Either "input" or "output".
         /// </summary>
         public string Type { get; set; }
+
+        /// <summary>
+        /// Input priority of the splitter, optional. Either "right" or "left", "none" is omitted.
+        /// </summary>
+        public string Input_priority { get; set; }
+
+        /// <summary>
+        /// Output priority of the splitter, optional. Either "right" or "left", "none" is omitted.
+        /// </summary>
+        public string Output_priority { get; set; }
+
+        /// <summary>
+        /// Filter of the splitter, optional. Name of the item prototype the filter is set to.
+        /// </summary>
+        public string Filter { get; set; }
+
+        /// <summary>
+        /// Filters of the filter inserter or loader, optional.
+        /// </summary>
+        public List<ItemFilter> Filters { get; set; }
+
+        /// <summary>
+        /// Filter mode of the filter inserter, optional. Either "whitelist" or "blacklist".
+        /// </summary>
+        public string Filter_mode { get; set; }
+
+        /// <summary>
+        /// The stack size the inserter is set to, optional.
+        /// </summary>
+        public byte? Override_stack_size { get; set; }
+
+        /// <summary>
+        /// The drop position the inserter is set to, optional.
+        /// </summary>
+        public Position Drop_position { get; set; }
+
+        /// <summary>
+        /// The pickup position the inserter is set to, optional.
+        /// </summary>
+        public Position Pickup_position { get; set; }
+
+        /// <summary>
+        /// Used by Prototype/LogisticContainer, optional.
+        /// </summary>
+        public List<LogisticFilter> Request_filters { get; set; }
+
+        /// <summary>
+        /// Whether this requester chest can request from buffer chests.
+        /// </summary>
+        public bool? Request_from_buffers { get; set; }
+
+        /// <summary>
+        /// Used by Programmable speaker, optional.
+        /// </summary>
+        public SpeakerParameter Parameters { get; set; }
+
+        /// <summary>
+        /// Used by Programmable speaker, optional.
+        /// </summary>
+        public SpeakerAlertParameter Alert_parameters { get; set; }
+
+        /// <summary>
+        /// Used by the rocket silo, optional. Whether auto-launch is enabled.
+        /// </summary>
+        public bool? Auto_launch { get; set; }
+
+        /// <summary>
+        /// Used by Prototype/SimpleEntityWithForce or Prototype/SimpleEntityWithOwner, optional.
+        /// </summary>
+        public byte? Variation { get; set; }
+
+        /// <summary>
+        /// Color of the Prototype/SimpleEntityWithForce, Prototype/SimpleEntityWithOwner, or train station, optional.
+        /// </summary>
+        public Color Color { get; set; }
+
+        /// <summary>
+        /// The name of the train station, optional.
+        /// </summary>
+        public string Station { get; set; }
     }
 
     public class Inventory
     {
+        /// <summary>
+        /// Array of #Item filter objects.
+        /// </summary>
+        public List<ItemFilter> Filters { get; set; }
 
+        /// <summary>
+        /// The index of the first inaccessible item slot due to limiting with the red "bar". 0-based, optional.
+        /// </summary>
+        public ushort Bar { get; set; }
     }
 
     public class Schedule
     {
+        /// <summary>
+        /// Array of #Schedule Record objects.
+        /// </summary>
+        [JsonPropertyName("schedule")]
+        public List<ScheduleRecord> ScheduleRecords { get; set; }
 
+        /// <summary>
+        /// Entity numbers of locomotives using this schedule.
+        /// </summary>
+        public List<int> Locomotives { get; set; }
     }
 
     public class ScheduleRecord
     {
+        /// <summary>
+        /// The name of the stop for this schedule record.
+        /// </summary>
+        public string Station { get; set; }
 
+        /// <summary>
+        /// Array of #Wait Condition objects.
+        /// </summary>
+        public List<WaitCondition> Wait_conditions { get; set; }
     }
 
     public class WaitCondition
     {
+        /// <summary>
+        /// One of "time", "inactivity", "full", "empty", "item_count", "circuit", "robots_inactive", "fluid_count", "passenger_present", "passenger_not_present".
+        /// </summary>
+        public string Type { get; set; }
 
+        /// <summary>
+        /// Either "and", or "or". Tells how this condition is to be compared with the preceding conditions in the corresponding wait_conditions array.
+        /// </summary>
+        public string Compare_type { get; set; }
+
+        /// <summary>
+        /// Number of ticks to wait or of inactivity. Only present when type is "time" or "inactivity". Optional.
+        /// </summary>
+        public uint? Ticks { get; set; }
+
+        /// <summary>
+        /// CircuitCondition Object, only present when type is "item_count", "circuit" or "fluid_count".
+        /// </summary>
+        public CircuitCondition Condition { get; set; }
     }
 
     public class Tile
     {
+        /// <summary>
+        /// Prototype name of the tile (e.g. "concrete").
+        /// </summary>
+        public string Name { get; set; }
 
+        /// <summary>
+        /// Position of the entity within the blueprint.
+        /// </summary>
+        public Position Position { get; set; }
     }
 
     public class Position
@@ -208,44 +344,135 @@ namespace BlueprintEditor.Models
         public int? Circuit_id { get; set; }
     }
 
-    public class ItemRequest
-    {
-
-    }
-
     public class ItemFilter
     {
+        /// <summary>
+        /// Name of the item prototype this filter is set to.
+        /// </summary>
+        public string Name { get; set; }
 
+        /// <summary>
+        /// Index of the filter, 1-based.
+        /// </summary>
+        public int Index { get; set; }
     }
 
     public class InfinitySettings
     {
+        /// <summary>
+        /// Whether the "remove unfiltered items" checkbox is checked.
+        /// </summary>
+        public bool Remove_unfiltered_items { get; set; }
 
+        /// <summary>
+        /// Filters of the infinity container, optional.
+        /// </summary>
+        public List<InfinityFilter> Filters { get; set; }
     }
 
     public class InfinityFilter
     {
+        /// <summary>
+        /// Name of the item prototype the filter is set to.
+        /// </summary>
+        public string Name { get; set; }
 
+        /// <summary>
+        /// Number the filter is set to.
+        /// </summary>
+        public uint Count { get; set; }
+
+        /// <summary>
+        /// Mode of the filter. Either "at-least", "at-most", or "exactly".
+        /// </summary>
+        public string Mode { get; set; }
+
+        /// <summary>
+        /// Index of the filter, 1-based.
+        /// </summary>
+        public int Index { get; set; }
     }
 
     public class LogisticFilter
     {
+        /// <summary>
+        /// Name of the item prototype the filter is set to.
+        /// </summary>
+        public string Name { get; set; }
 
+        /// <summary>
+        /// Number the filter is set to. Is 0 for storage chests.
+        /// </summary>
+        public uint Count { get; set; }
+
+        /// <summary>
+        /// Index of the filter, 1-based.
+        /// </summary>
+        public int Index { get; set; }
     }
 
     public class SpeakerParameter
     {
+        /// <summary>
+        /// Volume of the speaker.
+        /// </summary>
+        public double Playback_volume { get; set; }
 
+        /// <summary>
+        /// Whether global playback is enabled.
+        /// </summary>
+        public bool Playback_globally { get; set; }
+
+        /// <summary>
+        /// Boolean, whether polyphony is allowed.
+        /// </summary>
+        public bool Allow_polyphony { get; set; }
     }
 
     public class SpeakerAlertParameter
     {
+        /// <summary>
+        /// Whether an alert is shown.
+        /// </summary>
+        public bool Show_alert { get; set; }
 
+        /// <summary>
+        /// Whether an alert icon is shown on the map.
+        /// </summary>
+        public bool Show_on_map { get; set; }
+
+        /// <summary>
+        /// The icon that is displayed with the alert.
+        /// </summary>
+        public SignalID Icon_signal_id { get; set; }
+
+        /// <summary>
+        /// Message of the alert.
+        /// </summary>
+        public string Alert_message { get; set; }
     }
 
     public class Color
     {
+        /// <summary>
+        /// Red, number from 0 to 1.
+        /// </summary>
+        public double R { get; set; }
 
+        /// <summary>
+        /// Green, number from 0 to 1.
+        /// </summary>
+        public double G { get; set; }
+
+        /// <summary>
+        /// Blue, number from 0 to 1.
+        /// </summary>
+        public double B { get; set; }
+
+        /// <summary>
+        /// Transparency, number from 0 to 1.
+        /// </summary>
+        public double A { get; set; }
     }
 
     public class ControlBehavior
