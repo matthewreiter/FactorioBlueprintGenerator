@@ -16,9 +16,10 @@ namespace BlueprintEditor
     {
         private static readonly List<string> Notes = new List<string> { "F", "F#", "G", "G#", "A", "A#", "B", "C", "C#", "D", "D#", "E" };
         private static readonly List<string> Drums = new List<string> { "Kick 1", "Kick 2", "Snare 1", "Snare 2", "Snare 3", "High Hat 1", "High Hat 2" };
-        private static readonly Regex NoteSignalRegex = new Regex(@"^signal-(\d|[A-JN])$");
+        private static readonly Regex NoteSignalRegex = new Regex(@"^signal-(\d|[A-JN-R])$");
         private static readonly Regex DrumSignalRegex = new Regex(@"^signal-([K-M])$");
         private static readonly Regex SpreadsheetNoteRegex = new Regex(@"^((?:\d|[.])+)([#b]?)([BR]?)$");
+        private static readonly Regex InstrumentMappingRegex = new Regex(@"^(.*?): (\d+)-(\d+)$");
 
         private static readonly Dictionary<Instrument, int> InstrumentOrder = new List<Instrument> { Instrument.Drum, Instrument.BassGuitar, Instrument.LeadGuitar, Instrument.Piano, Instrument.Celesta, Instrument.SteelDrum }
             .Select((instrument, index) => new { instrument, index })
@@ -97,6 +98,7 @@ namespace BlueprintEditor
         {
             var currentLines = new List<List<List<List<Note>>>>();
             var noteGroups = new List<NoteGroup>();
+            var instrumentMappings = new List<InstrumentMapping>();
 
             while (reader.Read())
             {
@@ -118,9 +120,19 @@ namespace BlueprintEditor
                                         var sharpOrFlat = noteMatch.Groups[2].Value;
                                         var instrumentIndicator = noteMatch.Groups[3].Value;
 
-                                        var instrument = isDrum ? Instrument.Drum : instrumentIndicator switch { "L" => Instrument.LeadGuitar, "B" => Instrument.BassGuitar, "R" => Instrument.Celesta, "S" => Instrument.SteelDrum, _ => Instrument.Piano };
                                         var effectiveNoteNumber = sharpOrFlat switch { "#" => noteNumber + 1, "b" => noteNumber - 1, _ => noteNumber };
                                         var effectiveLength = (int)Math.Ceiling(length);
+                                        var instrument = isDrum
+                                            ? Instrument.Drum
+                                            : instrumentIndicator switch
+                                            {
+                                                "L" => Instrument.LeadGuitar,
+                                                "B" => Instrument.BassGuitar,
+                                                "R" => Instrument.Celesta,
+                                                "S" => Instrument.SteelDrum,
+                                                "P" => Instrument.Piano,
+                                                _ => instrumentMappings.FirstOrDefault(mapping => mapping.RangeStart <= effectiveNoteNumber && effectiveNoteNumber <= mapping.RangeEnd)?.Instrument ?? Instrument.Piano
+                                            };
 
                                         return new Note
                                         {
@@ -144,6 +156,30 @@ namespace BlueprintEditor
                 else
                 {
                     ProcessSpreadsheetLines(currentLines, noteGroups);
+
+                    if (!reader.IsDBNull(0) && reader.GetFieldType(0) == typeof(string) && reader.GetString(0) == "Instrument Mapping")
+                    {
+                        instrumentMappings.AddRange(Enumerable.Range(2, reader.FieldCount - 2)
+                            .Select(column =>
+                            {
+                                var value = Convert.ToString(reader.GetValue(column));
+                                var match = InstrumentMappingRegex.Match(value);
+
+                                if (match.Success)
+                                {
+                                    var instrument = Enum.TryParse(typeof(Instrument), match.Groups[1].Value.Replace(" ", ""), true, out var instrumentValue) ? (Instrument)instrumentValue : Instrument.Unknown;
+                                    var rangeStart = int.Parse(match.Groups[2].Value);
+                                    var rangeEnd = int.Parse(match.Groups[3].Value);
+
+                                    return new InstrumentMapping { Instrument = instrument, RangeStart = rangeStart, RangeEnd = rangeEnd };
+                                }
+                                else
+                                {
+                                    return null;
+                                }
+                            })
+                            .Where(mapping => mapping != null));
+                    }
                 }
             }
 
@@ -390,6 +426,10 @@ namespace BlueprintEditor
                                 {
                                     instrument = Instrument.Celesta;
                                 }
+                                else if (signal >= 'O' && signal <= 'R')
+                                {
+                                    instrument = Instrument.SteelDrum;
+                                }
                                 else
                                 {
                                     instrument = Instrument.Unknown;
@@ -458,15 +498,22 @@ namespace BlueprintEditor
             public int? BeatsPerMinute { get; set; }
         }
 
+        private class InstrumentMapping
+        {
+            public Instrument Instrument { get; set; }
+            public int RangeStart { get; set; }
+            public int RangeEnd { get; set; }
+        }
+
         private enum Instrument
         {
+            Unknown,
             Piano,
             LeadGuitar,
             BassGuitar,
             Drum,
             SteelDrum,
-            Celesta,
-            Unknown
+            Celesta
         }
     }
 }
