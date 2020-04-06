@@ -15,13 +15,12 @@ namespace BlueprintEditor
     public class Program
     {
         private static readonly List<string> Notes = new List<string> { "F", "F#", "G", "G#", "A", "A#", "B", "C", "C#", "D", "D#", "E" };
-        private static readonly List<string> Drums = new List<string> { "kick-1", "kick-2", "snare-1", "snare-2", "snare-3", "high-hat-1", "high-hat-2" };
-        private static readonly List<string> SpreadsheetDrums = new List<string> { "Kick 1", "Kick 2", "Snare 1", "Snare 2", "Snare 3", "High Hat 1", "High Hat 2" };
+        private static readonly List<string> Drums = new List<string> { "Kick 1", "Kick 2", "Snare 1", "Snare 2", "Snare 3", "High Hat 1", "High Hat 2" };
         private static readonly Regex NoteSignalRegex = new Regex(@"^signal-(\d|[A-JN])$");
         private static readonly Regex DrumSignalRegex = new Regex(@"^signal-([K-M])$");
         private static readonly Regex SpreadsheetNoteRegex = new Regex(@"^((?:\d|[.])+)([#b]?)([BR]?)$");
 
-        private static readonly Dictionary<string, int> InstrumentOrder = new List<string> { "drum", "bass", "piano", "recorder" }
+        private static readonly Dictionary<Instrument, int> InstrumentOrder = new List<Instrument> { Instrument.Drum, Instrument.BassGuitar, Instrument.LeadGuitar, Instrument.Piano, Instrument.Celesta, Instrument.SteelDrum }
             .Select((instrument, index) => new { instrument, index })
             .ToDictionary(instrumentWithIndex => instrumentWithIndex.instrument, instrumentWithIndex => instrumentWithIndex.index);
 
@@ -105,7 +104,7 @@ namespace BlueprintEditor
                 {
                     var noteNumber = (int)reader.GetDouble(0);
                     var noteName = reader.GetString(1);
-                    var isDrum = SpreadsheetDrums.Contains(noteName);
+                    var isDrum = Drums.Contains(noteName);
 
                     var notes = Enumerable.Range(2, reader.FieldCount - 2)
                         .Select(column => SplitString(Convert.ToString(reader.GetValue(column)), '_')
@@ -119,7 +118,7 @@ namespace BlueprintEditor
                                         var sharpOrFlat = noteMatch.Groups[2].Value;
                                         var instrumentIndicator = noteMatch.Groups[3].Value;
 
-                                        var instrument = isDrum ? "drum" : instrumentIndicator switch { "L" => "lead", "B" => "bass", "R" => "recorder", _ => "piano" };
+                                        var instrument = isDrum ? Instrument.Drum : instrumentIndicator switch { "L" => Instrument.LeadGuitar, "B" => Instrument.BassGuitar, "R" => Instrument.Celesta, "S" => Instrument.SteelDrum, _ => Instrument.Piano };
                                         var effectiveNoteNumber = sharpOrFlat switch { "#" => noteNumber + 1, "b" => noteNumber - 1, _ => noteNumber };
                                         var effectiveLength = (int)Math.Ceiling(length);
 
@@ -234,13 +233,14 @@ namespace BlueprintEditor
 
                 foreach (var noteGroup in noteGroups)
                 {
-                    var currentSignals = new Dictionary<string, char>
+                    var currentSignals = new Dictionary<Instrument, char>
                             {
-                                { "piano", '0' },
-                                { "lead", 'A' },
-                                { "bass", 'G' },
-                                { "drum", 'K' },
-                                { "recorder", 'N' }
+                                { Instrument.Piano, '0' },
+                                { Instrument.LeadGuitar, 'A' },
+                                { Instrument.BassGuitar, 'G' },
+                                { Instrument.Drum, 'K' },
+                                { Instrument.Celesta, 'N' },
+                                { Instrument.SteelDrum, 'O' }
                             };
 
                     var filters = noteGroup.Notes
@@ -373,26 +373,26 @@ namespace BlueprintEditor
                             {
                                 var signal = match.Groups[1].Value[0];
 
-                                string instrument;
+                                Instrument instrument;
                                 if (signal >= '0' && signal <= '9')
                                 {
-                                    instrument = "piano";
+                                    instrument = Instrument.Piano;
                                 }
                                 else if (signal >= 'A' && signal <= 'F')
                                 {
-                                    instrument = "lead";
+                                    instrument = Instrument.LeadGuitar;
                                 }
                                 else if (signal >= 'G' && signal <= 'J')
                                 {
-                                    instrument = "bass";
+                                    instrument = Instrument.BassGuitar;
                                 }
                                 else if (signal == 'N')
                                 {
-                                    instrument = "celesta";
+                                    instrument = Instrument.Celesta;
                                 }
                                 else
                                 {
-                                    instrument = "unknown";
+                                    instrument = Instrument.Unknown;
                                 }
 
                                 var note = (int)(filter.Count - 1);
@@ -444,7 +444,7 @@ namespace BlueprintEditor
 
         private class Note
         {
-            public string Instrument { get; set; }
+            public Instrument Instrument { get; set; }
             public int Number { get; set; }
             public string Name { get; set; }
             public double Length { get; set; }
@@ -456,6 +456,17 @@ namespace BlueprintEditor
             public List<Note> Notes { get; set; }
             public int Length { get; set; }
             public int? BeatsPerMinute { get; set; }
+        }
+
+        private enum Instrument
+        {
+            Piano,
+            LeadGuitar,
+            BassGuitar,
+            Drum,
+            SteelDrum,
+            Celesta,
+            Unknown
         }
     }
 }
