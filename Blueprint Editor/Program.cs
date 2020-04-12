@@ -41,6 +41,7 @@ namespace BlueprintEditor
             var outputCommandsFile = configuration["OutputCommands"];
             var outputUpdatedCommandsFile = configuration["OutputUpdatedCommands"];
             var baseAddress = int.TryParse(configuration["BaseAddress"], out var baseAddressValue) ? baseAddressValue : 0;
+            var songAlignment = int.TryParse(configuration["SongAlignment"], out var songAlignmentValue) ? songAlignmentValue : 1;
             var spreadsheetTabs = SplitString(configuration["SpreadsheetTabs"], ',');
 
             var json = ReadBlueprintFileAsJson(inputBlueprintFile);
@@ -57,7 +58,7 @@ namespace BlueprintEditor
 
             var songs = ReadSongsFromSpreadsheet(inputSpreadsheetFile, spreadsheetTabs);
 
-            UpdateMemoryCellsFromSongs(memoryCells, songs, baseAddress);
+            UpdateMemoryCellsFromSongs(memoryCells, songs, baseAddress, songAlignment);
 
             WriteOutBlueprint(outputBlueprintFile, blueprintWrapper);
             WriteOutJson(outputUpdatedJsonFile, blueprintWrapper);
@@ -237,7 +238,7 @@ namespace BlueprintEditor
             }
         }
 
-        private static void UpdateMemoryCellsFromSongs(List<Entity> memoryCells, List<List<NoteGroup>> songs, int baseAddress)
+        private static void UpdateMemoryCellsFromSongs(List<Entity> memoryCells, List<List<NoteGroup>> songs, int baseAddress, int songAlignment)
         {
             var currentAddress = baseAddress;
 
@@ -308,7 +309,7 @@ namespace BlueprintEditor
                 UpdateMemoryCell(new List<Filter> { CreateJumpFilter(songAddress) }, isEnabled: false);
 
                 // Jump to the next song, which starts at the beginning of the next line of memory
-                var nextSongAddress = (currentAddress / 64 + 1) * 64;
+                var nextSongAddress = (currentAddress / songAlignment + 1) * songAlignment;
                 UpdateMemoryCell(new List<Filter> { CreateJumpFilter(nextSongAddress) });
 
                 // Blank all memory up to the next song
