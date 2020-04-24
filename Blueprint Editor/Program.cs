@@ -144,6 +144,7 @@ namespace BlueprintEditor
                                         {
                                             Instrument = instrument,
                                             Number = effectiveNoteNumber + noteOffset,
+                                            Pitch = isDrum ? effectiveNoteNumber * 5 : effectiveNoteNumber,
                                             Name = isDrum ? noteName : $"{noteName[0]}{sharpOrFlat}{noteName.Substring(1)}",
                                             Length = length
                                         };
@@ -325,7 +326,8 @@ namespace BlueprintEditor
                     var filters = noteGroup.Notes
                         .OrderBy(note => InstrumentOrder[note.Instrument] * 100 + note.Number)
                         .Select(note => CreateFilter(currentSignals[note.Instrument]++, note.Number))
-                        .Append(CreateFilter('Z', (int)(14400 / currentBeatsPerMinute / noteGroup.Length)))
+                        .Append(CreateFilter('Z', (long)(14400 / currentBeatsPerMinute / noteGroup.Length)))
+                        .Append(CreateFilter('Y', GetHistogram(noteGroup.Notes)))
                         .ToList();
 
                     UpdateMemoryCell(filters);
@@ -347,6 +349,14 @@ namespace BlueprintEditor
 
             // Jump back to the beginning
             UpdateMemoryCell(new List<Filter> { CreateJumpFilter(0) });
+        }
+
+        private static long GetHistogram(List<Note> notes)
+        {
+            return notes
+                .GroupBy(note => note.Pitch / 5)
+                .Select(group => Math.Min(group.Count(), 3) << (group.Key * 2))
+                .Sum();
         }
 
         private static string ReadBlueprintFileAsJson(string blueprintFile)
@@ -474,6 +484,10 @@ namespace BlueprintEditor
                             {
                                 return $"jump by {filter.Count} to {address + 1 + filter.Count}";
                             }
+                            else if (signalName == "signal-Y")
+                            {
+                                return $"histogram {filter.Count:X}";
+                            }
                             else if (signalName == "signal-Z")
                             {
                                 return $"duration {filter.Count / 60f}";
@@ -500,7 +514,7 @@ namespace BlueprintEditor
             return string.IsNullOrWhiteSpace(value) ? new string[] { } : value.Split(separator);
         }
 
-        private static Filter CreateFilter(char signal, int count)
+        private static Filter CreateFilter(char signal, long count)
         {
             return new Filter { Signal = new SignalID { Name = $"signal-{signal}", Type = "virtual" }, Count = count };
         }
@@ -514,6 +528,7 @@ namespace BlueprintEditor
         {
             public Instrument Instrument { get; set; }
             public int Number { get; set; }
+            public int Pitch { get; set; }
             public string Name { get; set; }
             public double Length { get; set; }
         }
