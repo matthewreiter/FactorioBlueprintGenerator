@@ -20,6 +20,7 @@ namespace BlueprintEditor
         private static readonly Regex DrumSignalRegex = new Regex(@"^signal-([K-M])$");
         private static readonly Regex SpreadsheetNoteRegex = new Regex(@"^((?:\d|[.])+)([#b]?)([BR]?)$");
         private static readonly Regex InstrumentMappingRegex = new Regex(@"^(.*?): (\d+)-(\d+)$");
+        private static readonly Regex InstrumentOffsetRegex = new Regex(@"^(.*?): (-?\d+)$");
 
         private static readonly Dictionary<Instrument, int> InstrumentOrder = new List<Instrument> { Instrument.Drum, Instrument.BassGuitar, Instrument.LeadGuitar, Instrument.Piano, Instrument.Celesta, Instrument.SteelDrum }
             .Select((instrument, index) => new { instrument, index })
@@ -97,12 +98,16 @@ namespace BlueprintEditor
 
         private static List<NoteGroup> ReadSongFromSpreadsheet(IExcelDataReader reader)
         {
+            var row = 0;
             var currentLines = new List<List<List<List<Note>>>>();
             var noteGroups = new List<NoteGroup>();
             var instrumentMappings = new List<InstrumentMapping>();
+            var instrumentOffsets = new Dictionary<Instrument, int>();
 
             while (reader.Read())
             {
+                row++;
+
                 if (!reader.IsDBNull(0) && reader.GetFieldType(0) == typeof(double))
                 {
                     var noteNumber = (int)reader.GetDouble(0);
@@ -122,7 +127,6 @@ namespace BlueprintEditor
                                         var instrumentIndicator = noteMatch.Groups[3].Value;
 
                                         var effectiveNoteNumber = sharpOrFlat switch { "#" => noteNumber + 1, "b" => noteNumber - 1, _ => noteNumber };
-                                        var effectiveLength = (int)Math.Ceiling(length);
                                         var instrument = isDrum
                                             ? Instrument.Drum
                                             : instrumentIndicator switch
@@ -134,14 +138,14 @@ namespace BlueprintEditor
                                                 "P" => Instrument.Piano,
                                                 _ => instrumentMappings.FirstOrDefault(mapping => mapping.RangeStart <= effectiveNoteNumber && effectiveNoteNumber <= mapping.RangeEnd)?.Instrument ?? Instrument.Piano
                                             };
+                                        var noteOffset = instrumentOffsets.TryGetValue(instrument, out var offsetValue) ? offsetValue : 0;
 
                                         return new Note
                                         {
                                             Instrument = instrument,
-                                            Number = effectiveNoteNumber,
+                                            Number = effectiveNoteNumber + noteOffset,
                                             Name = isDrum ? noteName : $"{noteName[0]}{sharpOrFlat}{noteName.Substring(1)}",
-                                            Length = length,
-                                            EffectiveLength = effectiveLength
+                                            Length = length
                                         };
                                     }
                                     else
@@ -158,28 +162,62 @@ namespace BlueprintEditor
                 {
                     ProcessSpreadsheetLines(currentLines, noteGroups);
 
-                    if (!reader.IsDBNull(0) && reader.GetFieldType(0) == typeof(string) && reader.GetString(0) == "Instrument Mapping")
+                    if (!reader.IsDBNull(0) && reader.GetFieldType(0) == typeof(string))
                     {
-                        instrumentMappings.AddRange(Enumerable.Range(2, reader.FieldCount - 2)
-                            .Select(column =>
-                            {
-                                var value = Convert.ToString(reader.GetValue(column));
-                                var match = InstrumentMappingRegex.Match(value);
-
-                                if (match.Success)
+                        switch (reader.GetString(0))
+                        {
+                            case "Instrument Mappings":
+                                foreach (var column in Enumerable.Range(2, reader.FieldCount - 2))
                                 {
-                                    var instrument = Enum.TryParse(typeof(Instrument), match.Groups[1].Value.Replace(" ", ""), true, out var instrumentValue) ? (Instrument)instrumentValue : Instrument.Unknown;
-                                    var rangeStart = int.Parse(match.Groups[2].Value);
-                                    var rangeEnd = int.Parse(match.Groups[3].Value);
+                                    var value = reader.GetValue(column);
+                                    if (value == null)
+                                    {
+                                        continue;
+                                    }
 
-                                    return new InstrumentMapping { Instrument = instrument, RangeStart = rangeStart, RangeEnd = rangeEnd };
+                                    var match = InstrumentMappingRegex.Match(Convert.ToString(value));
+
+                                    if (match.Success)
+                                    {
+                                        var instrument = ParseInstrument(match.Groups[1].Value);
+                                        var rangeStart = int.Parse(match.Groups[2].Value);
+                                        var rangeEnd = int.Parse(match.Groups[3].Value);
+
+                                        instrumentMappings.Add(new InstrumentMapping { Instrument = instrument, RangeStart = rangeStart, RangeEnd = rangeEnd });
+                                    }
+                                    else
+                                    {
+                                        Console.Error.WriteLine($"Unable to parse instrument mapping on sheet {reader.Name} row {row} column {column}");
+                                    }
                                 }
-                                else
+
+                                break;
+                            case "Instrument Offsets":
+                                foreach (var column in Enumerable.Range(2, reader.FieldCount - 2))
                                 {
-                                    return null;
+                                    var value = reader.GetValue(column);
+                                    if (value == null)
+                                    {
+                                        continue;
+                                    }
+
+                                    var match = InstrumentOffsetRegex.Match(Convert.ToString(value));
+                                    
+                                    if (match.Success)
+                                    {
+                                        var instrument = ParseInstrument(match.Groups[1].Value);
+                                        var offset = int.Parse(match.Groups[2].Value);
+
+                                        instrumentOffsets[instrument] = offset;
+                                    }
+                                    else
+                                    {
+                                        Console.Error.WriteLine($"Unable to parse instrument offset on sheet {reader.Name} row {row} column {column}");
+                                    }
                                 }
-                            })
-                            .Where(mapping => mapping != null));
+
+                                break;
+                        }
                     }
                 }
             }
@@ -205,7 +243,7 @@ namespace BlueprintEditor
                         .SelectMany(noteList => noteList)
                         .Where(note => note != null && note.Number != 0)
                         .ToList();
-                    var length = allNotesInColumn.Count > 0 ? allNotesInColumn.Max(note => note.EffectiveLength) : 0;
+                    var length = allNotesInColumn.Count > 0 ? allNotesInColumn.Max(note => note.Length) : 0;
 
                     for (int noteListIndex = 0; noteListIndex < noteListCount; noteListIndex++)
                     {
@@ -220,7 +258,7 @@ namespace BlueprintEditor
                                 {
                                     if (note.Name == "Tempo")
                                     {
-                                        beatsPerMinute = note.EffectiveLength;
+                                        beatsPerMinute = (int)note.Length;
                                     }
                                     else
                                     {
@@ -265,11 +303,15 @@ namespace BlueprintEditor
             foreach (var noteGroups in songs)
             {
                 var songAddress = currentAddress;
-                int? currentLength = null;
-                int? currentBeatsPerMinute = null;
+                int currentBeatsPerMinute = 60;
 
                 foreach (var noteGroup in noteGroups)
                 {
+                    if (noteGroup.BeatsPerMinute.HasValue)
+                    {
+                        currentBeatsPerMinute = noteGroup.BeatsPerMinute.Value;
+                    }
+
                     var currentSignals = new Dictionary<Instrument, char>
                             {
                                 { Instrument.Piano, '0' },
@@ -283,24 +325,8 @@ namespace BlueprintEditor
                     var filters = noteGroup.Notes
                         .OrderBy(note => InstrumentOrder[note.Instrument] * 100 + note.Number)
                         .Select(note => CreateFilter(currentSignals[note.Instrument]++, note.Number))
+                        .Append(CreateFilter('Z', (int)(14400 / currentBeatsPerMinute / noteGroup.Length)))
                         .ToList();
-
-                    if (noteGroup.Length != currentLength)
-                    {
-                        filters.Add(CreateFilter('Z', noteGroup.Length));
-                        currentLength = noteGroup.Length;
-                    }
-
-                    if (noteGroup.BeatsPerMinute.HasValue && noteGroup.BeatsPerMinute != currentBeatsPerMinute)
-                    {
-                        filters.Add(CreateFilter('Y', noteGroup.BeatsPerMinute.Value));
-                        currentBeatsPerMinute = noteGroup.BeatsPerMinute;
-                    }
-
-                    for (int index = 0; index < filters.Count; index++)
-                    {
-                        filters[index].Index = index + 1;
-                    }
 
                     UpdateMemoryCell(filters);
                 }
@@ -448,13 +474,9 @@ namespace BlueprintEditor
                             {
                                 return $"jump by {filter.Count} to {address + 1 + filter.Count}";
                             }
-                            else if (signalName == "signal-Y")
-                            {
-                                return $"{filter.Count} beats per minute";
-                            }
                             else if (signalName == "signal-Z")
                             {
-                                return $"duration 1/{filter.Count}";
+                                return $"duration {filter.Count / 60f}";
                             }
                             else
                             {
@@ -483,19 +505,23 @@ namespace BlueprintEditor
             return new Filter { Signal = new SignalID { Name = $"signal-{signal}", Type = "virtual" }, Count = count };
         }
 
+        private static Instrument ParseInstrument(string text)
+        {
+            return Enum.TryParse(typeof(Instrument), text.Replace(" ", ""), true, out var instrumentValue) ? (Instrument)instrumentValue : Instrument.Unknown;
+        }
+
         private class Note
         {
             public Instrument Instrument { get; set; }
             public int Number { get; set; }
             public string Name { get; set; }
             public double Length { get; set; }
-            public int EffectiveLength { get; set; }
         }
 
         private class NoteGroup
         {
             public List<Note> Notes { get; set; }
-            public int Length { get; set; }
+            public double Length { get; set; }
             public int? BeatsPerMinute { get; set; }
         }
 
