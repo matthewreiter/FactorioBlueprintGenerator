@@ -15,6 +15,7 @@ namespace MemoryInitializer
             var outputJsonFile = configuration["OutputJson"];
             var width = int.TryParse(configuration["Width"], out var widthValue) ? widthValue : 16;
             var height = int.TryParse(configuration["Height"], out var heightValue) ? heightValue : 16;
+            var programRows = int.TryParse(configuration["ProgramRows"], out var programRowsValue) ? programRowsValue : height;
 
             var cellWidth = width + ((width + 7) / 16 + 1) * 2;
             var cellHeight = height * 3;
@@ -27,28 +28,53 @@ namespace MemoryInitializer
             {
                 for (int column = 0; column < width; column++)
                 {
-                    var address = row * width + column;
+                    var address = (row < programRows ? row : row - programRows) * width + column;
+                    var memoryCellEntityNumber = (row * width + column) * 2 + 1;
+                    var memoryCellX = column + (column / 16 + 1) * 2 + xOffset;
+                    var memoryCellY = (height - row - 1) * 3 + yOffset;
 
-                    var memoryCell = new Entity
+                    var adjacentMemoryCellReaders = new List<int> { -1, 1 }
+                        .Where(offset => column + offset >= 0 && column + offset < width)
+                        .Select(offset => memoryCellEntityNumber + 1 + offset * 2)
+                        .Concat(new List<int> { -1, 1 }
+                            .Where(offset => row + offset >= 0 && row + offset < height && (row < programRows == row + offset < programRows) && column == 0)
+                            .Select(offset => memoryCellEntityNumber + 1 + offset * width * 2)
+                        )
+                        .ToList();
+
+                    // Memory cell
+                    entities.Add(new Entity
                     {
-                        Entity_number = address * 2 + 1,
+                        Entity_number = memoryCellEntityNumber,
                         Name = ItemNames.ConstantCombinator,
                         Position = new Position
                         {
-                            X = column + (column / 16 + 1) * 2 + xOffset,
-                            Y = (height - row - 1) * 3 + yOffset
+                            X = memoryCellX,
+                            Y = memoryCellY
                         },
-                        Direction = 4
-                    };
+                        Direction = 4,
+                        Connections = CreateConnections(new ConnectionPoint
+                        {
+                            Green = new List<ConnectionData>
+                            {
+                                new ConnectionData
+                                {
+                                    Entity_id = memoryCellEntityNumber + 1,
+                                    Circuit_id = 1
+                                }
+                            }
+                        })
+                    });
 
-                    var memoryCellReader = new Entity
+                    // Memory cell reader
+                    entities.Add(new Entity
                     {
-                        Entity_number = memoryCell.Entity_number + 1,
+                        Entity_number = memoryCellEntityNumber + 1,
                         Name = ItemNames.DeciderCombinator,
                         Position = new Position
                         {
-                            X = memoryCell.Position.X,
-                            Y = memoryCell.Position.Y + 2
+                            X = memoryCellX,
+                            Y = memoryCellY + 1.5
                         },
                         Direction = 4,
                         Control_behavior = new ControlBehavior
@@ -69,34 +95,50 @@ namespace MemoryInitializer
                                 },
                                 Copy_count_from_input = true
                             }
-                        }
-                    };
-
-                    memoryCell.Connections = CreateConnections(new ConnectionPoint
-                    {
-                        Green = new List<ConnectionData>
+                        },
+                        Connections = CreateConnections(new ConnectionPoint
                         {
-                            new ConnectionData
+                            Red = adjacentMemoryCellReaders.Select(entityNumber => new ConnectionData
                             {
-                                Entity_id = memoryCellReader.Entity_number,
+                                Entity_id = entityNumber,
                                 Circuit_id = 1
-                            }
-                        }
-                    });
-
-                    memoryCellReader.Connections = CreateConnections(new ConnectionPoint
-                    {
-                        Green = new List<ConnectionData>
-                        {
-                            new ConnectionData
+                            }).ToList(),
+                            Green = new List<ConnectionData>
                             {
-                                Entity_id = memoryCell.Entity_number
+                                new ConnectionData
+                                {
+                                    Entity_id = memoryCellEntityNumber
+                                }
                             }
+                        }, new ConnectionPoint
+                        {
+                            Green = adjacentMemoryCellReaders.Select(entityNumber => new ConnectionData
+                            {
+                                Entity_id = entityNumber,
+                                Circuit_id = 2
+                            }).ToList()
+                        })
+                    });
+                }
+            }
+
+            var substationWidth = (width + 7) / 16 + 1;
+            var substationHeight = (height * 3 + 3) / 18 + 1;
+
+            for (int row = 0; row < substationHeight; row++)
+            {
+                for (int column = 0; column < substationWidth; column++)
+                {
+                    entities.Add(new Entity
+                    {
+                        Entity_number = width * height * 2 + row * substationWidth + column + 1,
+                        Name = ItemNames.Substation,
+                        Position = new Position
+                        {
+                            X = column * 18 + 0.5 + xOffset,
+                            Y = row * 18 + 2.5 + yOffset
                         }
                     });
-
-                    entities.Add(memoryCell);
-                    entities.Add(memoryCellReader);
                 }
             }
 
