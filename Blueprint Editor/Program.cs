@@ -1,4 +1,5 @@
-﻿using BlueprintEditor.Models;
+﻿using BlueprintCommon;
+using BlueprintEditor.Models;
 using ExcelDataReader;
 using Microsoft.Extensions.Configuration;
 using System;
@@ -45,7 +46,7 @@ namespace BlueprintEditor
             var songAlignment = int.TryParse(configuration["SongAlignment"], out var songAlignmentValue) ? songAlignmentValue : 1;
             var spreadsheetTabs = SplitString(configuration["SpreadsheetTabs"], ',');
 
-            var json = ReadBlueprintFileAsJson(inputBlueprintFile);
+            var json = BlueprintUtil.ReadBlueprintFileAsJson(inputBlueprintFile);
             var jsonObj = JsonSerializer.Deserialize<object>(json);
             var blueprintWrapper = JsonSerializer.Deserialize<BlueprintWrapper>(json, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
@@ -61,7 +62,7 @@ namespace BlueprintEditor
 
             UpdateMemoryCellsFromSongs(memoryCells, songs, baseAddress, songAlignment);
 
-            WriteOutBlueprint(outputBlueprintFile, blueprintWrapper);
+            BlueprintUtil.WriteOutBlueprint(outputBlueprintFile, blueprintWrapper);
             WriteOutJson(outputUpdatedJsonFile, blueprintWrapper);
             WriteOutCommands(outputUpdatedCommandsFile, memoryCells);
         }
@@ -357,51 +358,6 @@ namespace BlueprintEditor
                 .GroupBy(note => note.Pitch / 5)
                 .Select(group => Math.Min(group.Count(), 3) << (group.Key * 2))
                 .Sum();
-        }
-
-        private static string ReadBlueprintFileAsJson(string blueprintFile)
-        {
-            using var inputStream = new StreamReader(blueprintFile);
-            var input = inputStream.ReadToEnd().Trim();
-
-            var compressedBytes = Convert.FromBase64String(input.Substring(1));
-
-            var buffer = new MemoryStream();
-            using (var output = new ZOutputStream(buffer))
-            {
-                output.Write(compressedBytes);
-            }
-
-            return Encoding.UTF8.GetString(buffer.ToArray());
-        }
-
-        private static void WriteBlueprintFileFromJson(string blueprintFile, string json)
-        {
-            var buffer = new MemoryStream();
-            using (var output = new ZOutputStream(buffer, 9))
-            {
-                output.Write(Encoding.UTF8.GetBytes(json));
-            }
-
-            using var outputWriter = new StreamWriter(blueprintFile);
-            outputWriter.Write('0');
-            outputWriter.Write(Convert.ToBase64String(buffer.ToArray()));
-            outputWriter.Flush();
-        }
-
-        private static void WriteOutBlueprint(string blueprintFile, BlueprintWrapper wrapper)
-        {
-            if (blueprintFile == null)
-            {
-                return;
-            }
-
-            WriteBlueprintFileFromJson(blueprintFile, JsonSerializer.Serialize(wrapper, new JsonSerializerOptions
-            {
-                WriteIndented = false,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                IgnoreNullValues = true
-            }));
         }
 
         private static void WriteOutJson(string outputJsonFile, object jsonObj)
