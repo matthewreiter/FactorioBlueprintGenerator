@@ -9,16 +9,6 @@ namespace BlueprintCommon.Models
     public class Blueprint
     {
         /// <summary>
-        /// The name of the blueprint set by the user.
-        /// </summary>
-        public string Label { get; set; }
-
-        /// <summary>
-        /// The color of the label of this blueprint. Optional.
-        /// </summary>
-        public Color Label_color { get; set; }
-
-        /// <summary>
         /// The icons of the blueprint set by the user.
         /// </summary>
         public List<Icon> Icons { get; set; }
@@ -42,6 +32,16 @@ namespace BlueprintCommon.Models
         /// The schedules for trains in this blueprint.
         /// </summary>
         public List<Schedule> Schedules { get; set; }
+
+        /// <summary>
+        /// The name of the blueprint set by the user.
+        /// </summary>
+        public string Label { get; set; }
+
+        /// <summary>
+        /// The color of the label of this blueprint. Optional.
+        /// </summary>
+        public Color Label_color { get; set; }
 
         /// <summary>
         /// The map version of the map the blueprint was created in.
