@@ -1,4 +1,5 @@
 ﻿using BlueprintCommon;
+using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
 using ExcelDataReader;
 using Microsoft.Extensions.Configuration;
@@ -43,7 +44,7 @@ namespace MusicBoxCompiler
             var blueprintWrapper = JsonSerializer.Deserialize<BlueprintWrapper>(json, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
             var memoryCells = blueprintWrapper.Blueprint.Entities
-                .Where(entity => entity.Name == "constant-combinator")
+                .Where(entity => entity.Name == ItemNames.ConstantCombinator)
                 .OrderBy(entity => entity.Position.X - entity.Position.Y * 1000000)
                 .ToList();
 
@@ -412,15 +413,15 @@ namespace MusicBoxCompiler
                                 var drum = (int)(filter.Count - 1);
                                 return Drums[drum];
                             }
-                            else if (signalName == "signal-U")
+                            else if (signalName == VirtualSignalNames.LetterOrDigit('U'))
                             {
                                 return $"jump by {filter.Count} to {address + 1 + filter.Count}";
                             }
-                            else if (signalName == "signal-Y")
+                            else if (signalName == VirtualSignalNames.LetterOrDigit('Y'))
                             {
                                 return $"histogram {filter.Count:X}";
                             }
-                            else if (signalName == "signal-Z")
+                            else if (signalName == VirtualSignalNames.LetterOrDigit('Z'))
                             {
                                 return $"duration {filter.Count / 60f}";
                             }
@@ -448,7 +449,7 @@ namespace MusicBoxCompiler
 
         private static Filter CreateFilter(char signal, long count)
         {
-            return new Filter { Signal = new SignalID { Name = $"signal-{signal}", Type = "virtual" }, Count = count };
+            return new Filter { Signal = new SignalID { Name = VirtualSignalNames.LetterOrDigit(signal), Type = SignalTypes.Virtual }, Count = count };
         }
 
         private static Instrument ParseInstrument(string text)
