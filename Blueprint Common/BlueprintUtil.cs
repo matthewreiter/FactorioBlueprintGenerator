@@ -53,5 +53,21 @@ namespace BlueprintCommon
                 IgnoreNullValues = true
             }));
         }
+
+        public static void WriteOutJson(string outputJsonFile, object jsonObj)
+        {
+            if (outputJsonFile == null)
+            {
+                return;
+            }
+
+            using var outputStream = new StreamWriter(outputJsonFile);
+            outputStream.Write(JsonSerializer.Serialize(jsonObj, new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                IgnoreNullValues = true
+            }));
+        }
     }
 }

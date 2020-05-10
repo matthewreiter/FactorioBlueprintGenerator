@@ -28,7 +28,7 @@ namespace MusicBoxCompiler
 
         public static void Main(string[] args)
         {
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance); // Required for reading from Excel spreadsheets from .NET Core apps
 
             var configuration = new ConfigurationBuilder()
                 .AddCommandLine(args)
@@ -54,7 +54,7 @@ namespace MusicBoxCompiler
                 .OrderBy(entity => entity.Position.X - entity.Position.Y * 1000000)
                 .ToList();
 
-            WriteOutJson(outputJsonFile, jsonObj);
+            BlueprintUtil.WriteOutJson(outputJsonFile, jsonObj);
             WriteOutCommands(outputCommandsFile, memoryCells);
 
             var songs = ReadSongsFromSpreadsheet(inputSpreadsheetFile, spreadsheetTabs);
@@ -62,7 +62,7 @@ namespace MusicBoxCompiler
             UpdateMemoryCellsFromSongs(memoryCells, songs, baseAddress, songAlignment);
 
             BlueprintUtil.WriteOutBlueprint(outputBlueprintFile, blueprintWrapper);
-            WriteOutJson(outputUpdatedJsonFile, blueprintWrapper);
+            BlueprintUtil.WriteOutJson(outputUpdatedJsonFile, blueprintWrapper);
             WriteOutCommands(outputUpdatedCommandsFile, memoryCells);
         }
 
@@ -357,22 +357,6 @@ namespace MusicBoxCompiler
                 .GroupBy(note => note.Pitch / 5)
                 .Select(group => Math.Min(group.Count(), 3) << (group.Key * 2))
                 .Sum();
-        }
-
-        private static void WriteOutJson(string outputJsonFile, object jsonObj)
-        {
-            if (outputJsonFile == null)
-            {
-                return;
-            }
-
-            using var outputStream = new StreamWriter(outputJsonFile);
-            outputStream.Write(JsonSerializer.Serialize(jsonObj, new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                IgnoreNullValues = true
-            }));
         }
 
         private static void WriteOutCommands(string outputCommandsFile, List<Entity> memoryCells)
