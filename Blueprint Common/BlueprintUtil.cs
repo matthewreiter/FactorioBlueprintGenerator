@@ -69,5 +69,16 @@ namespace BlueprintCommon
                 IgnoreNullValues = true
             }));
         }
+
+        public static void PopulateIndices(Blueprint blueprint)
+        {
+            if (blueprint.Icons != null)
+            {
+                for (int index = 0; index < blueprint.Icons.Count; index++)
+                {
+                    blueprint.Icons[index].Index = index + 1;
+                }
+            }
+        }
     }
 }

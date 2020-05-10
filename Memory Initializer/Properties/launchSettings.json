@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Memory Initializer": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/blueprint.txt\" --OutputJson=\"$(ProjectDir)/Test/blueprint.json\" --Width=128 --Height=8"
+    }
+  }
+}
