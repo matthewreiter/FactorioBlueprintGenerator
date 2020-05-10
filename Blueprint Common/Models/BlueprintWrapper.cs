@@ -1,4 +1,4 @@
-﻿namespace BlueprintEditor.Models
+﻿namespace BlueprintCommon.Models
 {
     public class BlueprintWrapper
     {

@@ -1,5 +1,5 @@
 ﻿using BlueprintCommon;
-using BlueprintEditor.Models;
+using BlueprintCommon.Models;
 using ExcelDataReader;
 using Microsoft.Extensions.Configuration;
 using System;
@@ -9,9 +9,8 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using zlib;
 
-namespace BlueprintEditor
+namespace MusicBoxCompiler
 {
     public class Program
     {

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace BlueprintEditor.Models
+namespace BlueprintCommon.Models
 {
     /// <summary>
     /// Additional documentation: https://wiki.factorio.com/Blueprint_string_format
