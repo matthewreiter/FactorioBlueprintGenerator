@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Blueprint Reader": {
+      "commandName": "Project",
+      "commandLineArgs": "--InputBlueprint=\"$(ProjectDir)/Test/blueprint.txt\" --OutputJson=\"$(ProjectDir)/Test/blueprint.json\""
+    }
+  }
+}
