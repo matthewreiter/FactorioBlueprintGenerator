@@ -84,7 +84,7 @@ namespace MemoryInitializer
                                 First_signal = new SignalID
                                 {
                                     Type = SignalTypes.Virtual,
-                                    Name = VirtualSignalNames.LetterOrDigit('A')
+                                    Name = VirtualSignalNames.Info
                                 },
                                 Constant = address,
                                 Comparator = Comparators.IsEqual,
