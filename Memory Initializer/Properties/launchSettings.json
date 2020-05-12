@@ -1,8 +1,12 @@
 {
   "profiles": {
-    "Memory Initializer": {
+    "ROM": {
       "commandName": "Project",
-      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/blueprint.txt\" --OutputJson=\"$(ProjectDir)/Test/blueprint.json\" --Width=128 --Height=32 --ProgramRows=16"
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/rom.txt\" --OutputJson=\"$(ProjectDir)/Test/rom.json\" --MemoryType=ROM --Width=128 --Height=32 --ProgramRows=16"
+    },
+    "RAM": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/ram.txt\" --OutputJson=\"$(ProjectDir)/Test/ram.json\" --MemoryType=RAM --Width=128 --Height=16"
     }
   }
 }
