@@ -6,7 +6,7 @@
     },
     "RAM": {
       "commandName": "Project",
-      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/ram.txt\" --OutputJson=\"$(ProjectDir)/Test/ram.json\" --MemoryType=RAM --Width=128 --Height=16"
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/ram.txt\" --OutputJson=\"$(ProjectDir)/Test/ram.json\" --MemoryType=RAM --Width=128 --Height=16 --BaseAddress=16384"
     }
   }
 }

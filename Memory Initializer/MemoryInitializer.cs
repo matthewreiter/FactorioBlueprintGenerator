@@ -175,6 +175,8 @@ namespace MemoryInitializer
         {
             var width = int.TryParse(configuration["Width"], out var widthValue) ? widthValue : 16;
             var height = int.TryParse(configuration["Height"], out var heightValue) ? heightValue : 16;
+            var baseAddress = int.TryParse(configuration["BaseAddress"], out var baseAddressValue) ? baseAddressValue : 0;
+            var signal = char.TryParse(configuration["Signal"], out var signalValue) ? signalValue : '0';
 
             var cellWidth = width + ((width + 7) / 16 + 1) * 2;
             var cellHeight = height * 6;
@@ -187,7 +189,7 @@ namespace MemoryInitializer
             {
                 for (int column = 0; column < width; column++)
                 {
-                    var address = row * width + column + 1;
+                    var address = row * width + column + baseAddress + 1;
                     var memoryCellEntityNumber = (row * width + column) * 3 + 2;
                     var memoryCellX = column + (column / 16 + 1) * 2 + xOffset;
                     var memoryCellY = (height - row - 1) * 6 + 2.5 + yOffset;
@@ -226,7 +228,7 @@ namespace MemoryInitializer
                                 Output_signal = new SignalID
                                 {
                                     Type = SignalTypes.Virtual,
-                                    Name = VirtualSignalNames.LetterOrDigit('A')
+                                    Name = VirtualSignalNames.LetterOrDigit(signal)
                                 },
                                 Copy_count_from_input = true
                             }
@@ -308,7 +310,7 @@ namespace MemoryInitializer
                                 Output_signal = new SignalID
                                 {
                                     Type = SignalTypes.Virtual,
-                                    Name = VirtualSignalNames.LetterOrDigit('A')
+                                    Name = VirtualSignalNames.LetterOrDigit(signal)
                                 },
                                 Copy_count_from_input = true
                             }
@@ -374,7 +376,7 @@ namespace MemoryInitializer
                                 Output_signal = new SignalID
                                 {
                                     Type = SignalTypes.Virtual,
-                                    Name = VirtualSignalNames.LetterOrDigit('A')
+                                    Name = VirtualSignalNames.LetterOrDigit(signal)
                                 },
                                 Copy_count_from_input = true
                             }
