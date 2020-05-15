@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Find And Replace": {
+      "commandName": "Project",
+      "commandLineArgs": "--InputBlueprint=\"$(ProjectDir)/Test/blueprint.txt\" --OutputBlueprint=\"$(ProjectDir)/Test/blueprintUpdated.txt\" --OutputJson=\"$(ProjectDir)/Test/blueprint.json\" --OutputUpdatedJson=\"$(ProjectDir)/Test/blueprintUpdated.json\" --SignalToFind=signal-info --ReplacementSignal=signal-A"
+    }
+  }
+}

@@ -70,6 +70,11 @@ namespace BlueprintCommon
             }));
         }
 
+        public static BlueprintWrapper DeserializeBlueprintWrapper(string json)
+        {
+            return JsonSerializer.Deserialize<BlueprintWrapper>(json, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        }
+
         public static void PopulateIndices(Blueprint blueprint)
         {
             if (blueprint.Icons != null)

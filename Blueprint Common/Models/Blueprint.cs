@@ -494,7 +494,7 @@ namespace BlueprintCommon.Models
     {
         public SignalID Signal { get; set; }
 
-        public long Count { get; set; }
+        public int Count { get; set; }
 
         /// <summary>
         /// Index of the filter, 1-based.
@@ -506,15 +506,27 @@ namespace BlueprintCommon.Models
     {
         public SignalID First_signal { get; set; }
 
+        public int? First_constant { get; set; }
+
         public SignalID Second_signal { get; set; }
+
+        public int? Second_constant { get; set; }
 
         public string Operation { get; set; }
 
         public SignalID Output_signal { get; set; }
     }
 
-    public class DeciderConditions : CircuitCondition
+    public class DeciderConditions
     {
+        public SignalID First_signal { get; set; }
+
+        public SignalID Second_signal { get; set; }
+
+        public int? Constant { get; set; }
+
+        public string Comparator { get; set; }
+
         public SignalID Output_signal { get; set; }
 
         public bool Copy_count_from_input { get; set; }
@@ -526,7 +538,7 @@ namespace BlueprintCommon.Models
 
         public SignalID Second_signal { get; set; }
 
-        public long Constant { get; set; }
+        public int? Constant { get; set; }
 
         public string Comparator { get; set; }
     }

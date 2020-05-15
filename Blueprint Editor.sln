@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Memory Initializer", "Memor
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Blueprint Reader", "Blueprint Reader\Blueprint Reader.csproj", "{E3929B2C-A62D-4BF9-9D97-A8EAC4CC75BA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Find And Replace", "Find And Replace\Find And Replace.csproj", "{4E44F236-0187-4D47-9E42-BBBD4F348821}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{E3929B2C-A62D-4BF9-9D97-A8EAC4CC75BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E3929B2C-A62D-4BF9-9D97-A8EAC4CC75BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E3929B2C-A62D-4BF9-9D97-A8EAC4CC75BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4E44F236-0187-4D47-9E42-BBBD4F348821}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4E44F236-0187-4D47-9E42-BBBD4F348821}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4E44F236-0187-4D47-9E42-BBBD4F348821}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4E44F236-0187-4D47-9E42-BBBD4F348821}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -41,7 +41,7 @@ namespace MusicBoxCompiler
 
             var json = BlueprintUtil.ReadBlueprintFileAsJson(inputBlueprintFile);
             var jsonObj = JsonSerializer.Deserialize<object>(json);
-            var blueprintWrapper = JsonSerializer.Deserialize<BlueprintWrapper>(json, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            var blueprintWrapper = BlueprintUtil.DeserializeBlueprintWrapper(json);
 
             var memoryCells = blueprintWrapper.Blueprint.Entities
                 .Where(entity => entity.Name == ItemNames.ConstantCombinator)
