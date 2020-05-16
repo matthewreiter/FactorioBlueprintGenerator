@@ -320,7 +320,7 @@ namespace MusicBoxCompiler
                     var filters = noteGroup.Notes
                         .OrderBy(note => InstrumentOrder[note.Instrument] * 100 + note.Number)
                         .Select(note => CreateFilter(currentSignals[note.Instrument]++, note.Number))
-                        .Append(CreateFilter('Z', (long)(14400 / currentBeatsPerMinute / noteGroup.Length)))
+                        .Append(CreateFilter('Z', (int)(14400 / currentBeatsPerMinute / noteGroup.Length)))
                         .Append(CreateFilter('Y', GetHistogram(noteGroup.Notes)))
                         .ToList();
 
@@ -345,7 +345,7 @@ namespace MusicBoxCompiler
             UpdateMemoryCell(new List<Filter> { CreateJumpFilter(0) });
         }
 
-        private static long GetHistogram(List<Note> notes)
+        private static int GetHistogram(List<Note> notes)
         {
             return notes
                 .GroupBy(note => note.Pitch / 5)
@@ -447,7 +447,7 @@ namespace MusicBoxCompiler
             return string.IsNullOrWhiteSpace(value) ? new string[] { } : value.Split(separator);
         }
 
-        private static Filter CreateFilter(char signal, long count)
+        private static Filter CreateFilter(char signal, int count)
         {
             return new Filter { Signal = new SignalID { Name = VirtualSignalNames.LetterOrDigit(signal), Type = SignalTypes.Virtual }, Count = count };
         }
