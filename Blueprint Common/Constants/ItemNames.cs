@@ -5,6 +5,7 @@
         public const string Blueprint = "blueprint";
         public const string ElectronicCircuit = "electronic-circuit";
         public const string AdvancedCircuit = "advanced-circuit";
+        public const string ProcessingUnit = "processing-unit";
         public const string ConstantCombinator = "constant-combinator";
         public const string DeciderCombinator = "decider-combinator";
         public const string Substation = "substation";
