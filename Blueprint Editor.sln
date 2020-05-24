@@ -3,15 +3,21 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29609.76
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Blueprint Common", "Blueprint Common\Blueprint Common.csproj", "{ADC190A9-3505-4223-A115-21DE40F27DE6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Blueprint Common", "Blueprint Common\Blueprint Common.csproj", "{ADC190A9-3505-4223-A115-21DE40F27DE6}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Music Box Compiler", "Music Box Compiler\Music Box Compiler.csproj", "{ACDCB043-5156-4A24-B7DE-2FF1543C1BEF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Memory Initializer", "Memory Initializer\Memory Initializer.csproj", "{BBDFB62E-C178-4058-89E7-A9AAEBEE7E2D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Memory Initializer", "Memory Initializer\Memory Initializer.csproj", "{BBDFB62E-C178-4058-89E7-A9AAEBEE7E2D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Blueprint Reader", "Blueprint Reader\Blueprint Reader.csproj", "{E3929B2C-A62D-4BF9-9D97-A8EAC4CC75BA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Blueprint Reader", "Blueprint Reader\Blueprint Reader.csproj", "{E3929B2C-A62D-4BF9-9D97-A8EAC4CC75BA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Find And Replace", "Find And Replace\Find And Replace.csproj", "{4E44F236-0187-4D47-9E42-BBBD4F348821}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Find And Replace", "Find And Replace\Find And Replace.csproj", "{4E44F236-0187-4D47-9E42-BBBD4F348821}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "See Sharp Compiler", "See Sharp Compiler\See Sharp Compiler.csproj", "{797845EA-E7FF-4CE9-BD87-5AA9E2EBD65C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "See Sharp Compiler Test", "See Sharp Compiler Test\See Sharp Compiler Test.csproj", "{D63D8041-7700-4382-A529-979FC687CF74}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "See Sharp Runtime", "See Sharp Runtime\See Sharp Runtime.csproj", "{9E552215-AA7C-4FCA-B51D-75E2C8809CA2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +45,18 @@ Global
 		{4E44F236-0187-4D47-9E42-BBBD4F348821}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4E44F236-0187-4D47-9E42-BBBD4F348821}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4E44F236-0187-4D47-9E42-BBBD4F348821}.Release|Any CPU.Build.0 = Release|Any CPU
+		{797845EA-E7FF-4CE9-BD87-5AA9E2EBD65C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{797845EA-E7FF-4CE9-BD87-5AA9E2EBD65C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{797845EA-E7FF-4CE9-BD87-5AA9E2EBD65C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{797845EA-E7FF-4CE9-BD87-5AA9E2EBD65C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D63D8041-7700-4382-A529-979FC687CF74}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D63D8041-7700-4382-A529-979FC687CF74}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D63D8041-7700-4382-A529-979FC687CF74}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D63D8041-7700-4382-A529-979FC687CF74}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9E552215-AA7C-4FCA-B51D-75E2C8809CA2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9E552215-AA7C-4FCA-B51D-75E2C8809CA2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9E552215-AA7C-4FCA-B51D-75E2C8809CA2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9E552215-AA7C-4FCA-B51D-75E2C8809CA2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
