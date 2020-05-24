@@ -1,6 +1,7 @@
 ﻿using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
 using Microsoft.Extensions.Configuration;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using static MemoryInitializer.MemoryUtil;
@@ -11,9 +12,25 @@ namespace MemoryInitializer
     {
         public static Blueprint Generate(IConfigurationRoot configuration)
         {
-            var width = int.TryParse(configuration["Width"], out var widthValue) ? widthValue : 16;
-            var height = int.TryParse(configuration["Height"], out var heightValue) ? heightValue : 16;
-            var programRows = int.TryParse(configuration["ProgramRows"], out var programRowsValue) ? programRowsValue : height;
+            return Generate(configuration.Get<RomConfiguration>());
+        }
+
+        public static Blueprint Generate(RomConfiguration configuration, IList<MemoryCell> program = null, IList<MemoryCell> data = null)
+        {
+            var width = configuration.Width ?? 16;
+            var height = configuration.Height ?? 16;
+            var programRows = configuration.ProgramRows ?? (program != null ? (program.Count - 1) / width + 1 : height / 2);
+            var programName = configuration.ProgramName;
+
+            if (program != null && program.Count > programRows * width)
+            {
+                throw new Exception($"Program too large to fit in ROM ({program.Count} > {programRows * width})");
+            }
+
+            if (data != null && data.Count > (height - programRows) * width)
+            {
+                throw new Exception($"Data too large to fit in ROM ({data.Count} > {(height - programRows) * width})");
+            }
 
             var cellWidth = width + ((width + 7) / 16 + 1) * 2;
             var cellHeight = height * 3;
@@ -26,7 +43,9 @@ namespace MemoryInitializer
             {
                 for (int column = 0; column < width; column++)
                 {
-                    var address = (row < programRows ? row : row - programRows) * width + column + 1;
+                    var memoryCell = row < programRows
+                        ? program?.ElementAtOrDefault(row * width + column) ?? new MemoryCell { Address = row * width + column + 1 }
+                        : data?.ElementAtOrDefault((row - programRows) * width + column) ?? new MemoryCell { Address = (row - programRows) * width + column + 1 };
                     var memoryCellEntityNumber = (row * width + column) * 2 + 1;
                     var memoryCellX = column + (column / 16 + 1) * 2 + xOffset;
                     var memoryCellY = (height - row - 1) * 3 + yOffset;
@@ -51,6 +70,10 @@ namespace MemoryInitializer
                             Y = memoryCellY
                         },
                         Direction = 4,
+                        Control_behavior = new ControlBehavior
+                        {
+                            Filters = memoryCell.Filters
+                        },
                         Connections = CreateConnections(new ConnectionPoint
                         {
                             Green = new List<ConnectionData>
@@ -85,7 +108,7 @@ namespace MemoryInitializer
                                     Type = SignalTypes.Virtual,
                                     Name = VirtualSignalNames.Info
                                 },
-                                Constant = address,
+                                Constant = memoryCell.Address,
                                 Comparator = Comparators.IsEqual,
                                 Output_signal = new SignalID
                                 {
@@ -131,7 +154,7 @@ namespace MemoryInitializer
 
             return new Blueprint
             {
-                Label = $"{width}x{height} ROM",
+                Label = $"{width}x{height} ROM{(programName != null ? $": {programName}": "")}",
                 Icons = new List<Icon>
                 {
                     new Icon
@@ -148,5 +171,19 @@ namespace MemoryInitializer
                 Version = BlueprintVersions.CurrentVersion
             };
         }
+    }
+
+    public class RomConfiguration
+    {
+        public int? Width { get; set; }
+        public int? Height { get; set; }
+        public int? ProgramRows { get; set; }
+        public string ProgramName { get; set; }
+    }
+
+    public class MemoryCell
+    {
+        public int Address { get; set; }
+        public List<Filter> Filters { get; set; }
     }
 }
