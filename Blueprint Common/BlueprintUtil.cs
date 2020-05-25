@@ -1,5 +1,6 @@
 ﻿using BlueprintCommon.Models;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -83,6 +84,24 @@ namespace BlueprintCommon
                 {
                     blueprint.Icons[index].Index = index + 1;
                 }
+            }
+
+            if (blueprint.Entities != null)
+            {
+                foreach (var entity in blueprint.Entities)
+                {
+                    entity.Control_behavior?.Filters?.ForEachWithIndex((filter, index) => filter.Index = index + 1);
+                }
+            }
+        }
+
+        public static void ForEachWithIndex<T>(this IEnumerable<T> enumerable, Action<T, int> action)
+        {
+            var index = 0;
+            foreach (var item in enumerable)
+            {
+                action(item, index);
+                index++;
             }
         }
     }

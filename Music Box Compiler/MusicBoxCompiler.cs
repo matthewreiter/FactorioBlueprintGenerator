@@ -54,6 +54,7 @@ namespace MusicBoxCompiler
             var songs = ReadSongsFromSpreadsheet(inputSpreadsheetFile, spreadsheetTabs);
 
             UpdateMemoryCellsFromSongs(memoryCells, songs, baseAddress, songAlignment);
+            BlueprintUtil.PopulateIndices(blueprintWrapper.Blueprint);
 
             BlueprintUtil.WriteOutBlueprint(outputBlueprintFile, blueprintWrapper);
             BlueprintUtil.WriteOutJson(outputUpdatedJsonFile, blueprintWrapper);
@@ -282,11 +283,6 @@ namespace MusicBoxCompiler
 
             void UpdateMemoryCell(List<Filter> filters, bool isEnabled = true)
             {
-                for (int index = 0; index < filters.Count; index++)
-                {
-                    filters[index].Index = index + 1;
-                }
-
                 memoryCells[currentAddress++].Control_behavior = new ControlBehavior { Filters = filters, Is_on = isEnabled ? (bool?)null : false };
             }
 
@@ -361,12 +357,11 @@ namespace MusicBoxCompiler
             }
 
             var commands = memoryCells
-                .Select((entity, index) => new { entity, index })
+                .Select((entity, index) => (entity, index))
                 .Where(entityWithIndex => entityWithIndex.entity.Control_behavior != null)
                 .Select(entityWithIndex =>
                 {
-                    var entity = entityWithIndex.entity;
-                    var address = entityWithIndex.index;
+                    var (entity, address) = entityWithIndex;
                     var isEnabled = entity.Control_behavior.Is_on ?? true;
 
                     var signals = entity.Control_behavior.Filters
@@ -405,12 +400,12 @@ namespace MusicBoxCompiler
                                     instrument = Instrument.Unknown;
                                 }
 
-                                var note = (int)(filter.Count - 1);
+                                var note = filter.Count - 1;
                                 return $"{instrument} {Notes[note % Notes.Count]}{(note + 8) / Notes.Count + 1}";
                             }
                             else if ((match = DrumSignalRegex.Match(signalName)).Success)
                             {
-                                var drum = (int)(filter.Count - 1);
+                                var drum = filter.Count - 1;
                                 return Drums[drum];
                             }
                             else if (signalName == VirtualSignalNames.LetterOrDigit('U'))
