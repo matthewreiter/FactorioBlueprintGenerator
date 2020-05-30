@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "IL Assembler": {
+      "commandName": "Project",
+      "commandLineArgs": "--InputProgram=\"$(SolutionDir)See Sharp Compiler Test/bin/Debug/netcoreapp3.1/SeeSharpCompilerTest.dll\" --OutputBlueprint=\"$(ProjectDir)Test/rom.txt\" --OutputJson=\"$(ProjectDir)Test/rom.json\" --OutputInstructions=\"$(ProjectDir)Test/instructions.txt\" --Width=128 --Height=32"
+    }
+  }
+}
