@@ -14,6 +14,11 @@ namespace SeeSharpCompilerTest
             var b = 10;
             var sum = a + b + u235 % 100;
             GetAnswer(out var answer);
+
+            for (int index = 0; index <= 3; index++)
+            {
+                sum *= 2;
+            }
         }
 
         [Inline]

@@ -111,6 +111,7 @@ namespace Assembler
                     var localVariables = methodBody.LocalVariables;
                     var instructionOffsetToIndexMap = new Dictionary<int, int>();
                     var jumps = new List<(Instruction, int)>();
+                    var jumpIfs = new List<(Instruction, int)>();
 
                     AddInstruction(Instruction.AdjustStackPointer(localVariables.Count));
 
@@ -193,6 +194,10 @@ namespace Assembler
                         {
                             PushStackValue(3);
                         }
+                        else if (opCodeValue == OpCodes.Ldloc_S.Value)
+                        {
+                            PushStackValue((byte)ilInstruction.Operand);
+                        }
                         else if (opCodeValue == OpCodes.Stloc_0.Value)
                         {
                             PopStackValue(0);
@@ -264,6 +269,18 @@ namespace Assembler
                         {
                             AddBinaryOperation(Operation.Xor);
                         }
+                        else if (opCodeValue == OpCodes.Ceq.Value)
+                        {
+                            AddComparison(ConditionOperator.IsEqual);
+                        }
+                        else if (opCodeValue == OpCodes.Cgt.Value)
+                        {
+                            AddComparison(ConditionOperator.GreaterThan);
+                        }
+                        else if (opCodeValue == OpCodes.Clt.Value)
+                        {
+                            AddComparison(ConditionOperator.LessThan);
+                        }
                         else if (opCodeValue == OpCodes.Br_S.Value)
                         {
                             var operand = (int)ilInstruction.Operand;
@@ -272,6 +289,14 @@ namespace Assembler
                             {
                                 jumps.Add((AddInstruction(Instruction.Jump(-(Instructions.Count + 1))), operand));
                             }
+                        }
+                        else if (opCodeValue == OpCodes.Brtrue_S.Value)
+                        {
+                            var operand = (int)ilInstruction.Operand;
+
+                            AddInstruction(Instruction.Pop(3));
+                            AddInstructions(Instruction.NoOp(4));
+                            jumpIfs.Add((AddInstruction(Instruction.JumpIf(-(Instructions.Count + 1), conditionLeftRegister: 3, conditionOperator: ConditionOperator.IsNotEqual)), operand));
                         }
                         else if (opCodeValue == OpCodes.Call.Value)
                         {
@@ -314,6 +339,11 @@ namespace Assembler
                         instruction.AutoIncrement += instructionOffsetToIndexMap[offset];
                     }
 
+                    foreach (var (instruction, offset) in jumpIfs)
+                    {
+                        instruction.RightImmediateValue += instructionOffsetToIndexMap[offset];
+                    }
+
                     return methodContext;
                 }
                 finally
@@ -351,12 +381,25 @@ namespace Assembler
 
             private void AddBinaryOperation(Operation opCode)
             {
-                AddInstruction(Instruction.Pop(3));
-                AddInstruction(Instruction.Pop(4));
+                AddInstruction(Instruction.Pop(3)); // Right operand
+                AddInstruction(Instruction.Pop(4)); // Left operand
                 AddInstructions(Instruction.NoOp(4));
                 AddInstruction(Instruction.BinaryOperation(opCode, outputRegister: 5, leftInputRegister: 4, rightInputRegister: 3));
                 AddInstructions(Instruction.NoOp(4));
                 AddInstruction(Instruction.PushRegister(5));
+            }
+
+            private void AddComparison(ConditionOperator comparisonOperator)
+            {
+                AddInstruction(Instruction.Pop(3)); // Right operand
+                AddInstruction(Instruction.Pop(4)); // Left operand
+                AddInstructions(Instruction.NoOp(4));
+                AddInstruction(Instruction.BinaryOperation(Operation.Subtract, outputRegister: 5, leftInputRegister: 4, rightInputRegister: 3));
+                AddInstructions(Instruction.NoOp(3));
+                AddInstruction(Instruction.SetRegisterToImmediateValue(6, 0));
+                AddInstruction(Instruction.SetRegister(6, immediateValue: 1, conditionLeftRegister: 5, conditionOperator: comparisonOperator));
+                AddInstructions(Instruction.NoOp(4));
+                AddInstruction(Instruction.PushRegister(6));
             }
 
             private Instruction AddInstruction(Instruction instruction)
@@ -386,10 +429,15 @@ namespace Assembler
                     methodContext.StackPointerOffset += instruction.AutoIncrement;
                 }
 
-                if (instruction.LeftInputRegister == SpecialRegisters.InstructionPointer && instruction.AutoIncrement != 0)
+                if (instruction.OutputRegister == SpecialRegisters.InstructionPointer)
+                {
+                    AddInstructions(Instruction.NoOp(6));
+                }
+                else if (instruction.LeftInputRegister == SpecialRegisters.InstructionPointer && instruction.AutoIncrement != 0)
                 {
                     AddInstructions(Instruction.NoOp(4));
                 }
+                
 
                 return instruction;
             }
