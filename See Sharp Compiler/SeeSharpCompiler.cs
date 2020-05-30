@@ -1,20 +1,27 @@
 ﻿using BlueprintCommon;
-using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
-using MemoryInitializer;
+using CompilerCommon;
+using ILReader;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Configuration;
+using SeeSharp.Runtime.Attributes;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 
 namespace SeeSharpCompiler
 {
     public static class SeeSharpCompiler
     {
+        private const int RegisterCount = 32;
+        private const int RamAddress = 16385;
+
         public static void Run(IConfigurationRoot configuration)
         {
             Run(configuration.Get<CompilerConfiguration>());
@@ -33,7 +40,9 @@ namespace SeeSharpCompiler
 
             if (compiledProgram != null)
             {
-                var blueprint = CreateBlueprintFromCompiledProgram(compiledProgram, width, height);
+                var blueprint = BlueprintGenerator.CreateBlueprintFromCompiledProgram(compiledProgram, width, height);
+                BlueprintUtil.PopulateIndices(blueprint);
+
                 var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
 
                 BlueprintUtil.WriteOutBlueprint(outputBlueprintFile, blueprintWrapper);
@@ -47,8 +56,8 @@ namespace SeeSharpCompiler
             var compilation = CSharpCompilation.Create("SeeSharpProgram")
                 .AddSyntaxTrees(CSharpSyntaxTree.ParseText(File.ReadAllText(inputProgramFile), path: inputProgramFile))
                 .AddReferences(
-                    MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-                    MetadataReference.CreateFromFile("../../../../See Sharp Runtime/bin/Debug/netcoreapp3.1/SeeSharpRuntime.dll")
+                    MetadataReference.CreateFromFile("C:/Program Files/dotnet/packs/Microsoft.NETCore.App.Ref/3.1.0/ref/netcoreapp3.1/System.Runtime.dll"),
+                    MetadataReference.CreateFromFile(typeof(InlineAttribute).Assembly.Location)
                 );
 
             var syntaxTree = compilation.SyntaxTrees[0];
@@ -71,6 +80,7 @@ namespace SeeSharpCompiler
             return diagnostics.Count(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error) == 0
                 ? new CompiledProgram
                 {
+                    Name = "See Sharp Compiler Test",
                     Instructions = visitor.Instructions
                 }
                 : null;
@@ -93,7 +103,14 @@ namespace SeeSharpCompiler
 
             public void Visit()
             {
+                // Initialize registers
+                AddInstruction(Instruction.SetRegisterToImmediateValue(SpecialRegisters.StackPointer, RamAddress));
+                AddInstructions(Enumerable.Range(3, RegisterCount - 2).Select(register => Instruction.SetRegisterToImmediateValue(register, 0)));
+
                 Visit(syntaxTree.GetRoot());
+
+                // Jump back to the beginning
+                AddInstruction(Instruction.Jump(-(Instructions.Count + 1)));
             }
 
             public override void VisitCompilationUnit(CompilationUnitSyntax node)
@@ -119,9 +136,6 @@ namespace SeeSharpCompiler
                 {
                     if (node.Identifier.ValueText == "Main")
                     {
-                        AddInstruction(Instruction.SetRegisterToImmediateValue(SpecialRegisters.StackPointer, 1));
-                        AddInstructions(Instruction.NoOp(4));
-
                         Visit(node.Body);
                     }
                 }
@@ -176,17 +190,86 @@ namespace SeeSharpCompiler
 
                 if (symbol != null && symbol.Kind == SymbolKind.Local && methodContext != null && methodContext.LocalVariables.TryGetValue(symbol, out var address))
                 {
-                    Instructions.Add(new Instruction
-                    {
-                        OpCode = OpCode.Read,
-                        OutputRegister = 3,
-                        LeftInputRegister = SpecialRegisters.StackPointer,
-                        LeftImmediateValue = address - methodContext.StackPointerOffset
-                    });
-
-                    AddInstructions(Instruction.NoOp(4));
-                    AddInstruction(Instruction.PushRegister(3));
+                    PushStackValue(address);
                 }
+            }
+
+            public override void VisitMemberAccessExpression(MemberAccessExpressionSyntax node)
+            {
+                if (HandleConstantExpression(node))
+                {
+                    return;
+                }
+
+                var symbol = semanticModel.GetSymbolInfo(node).Symbol;
+
+                if (symbol != null)
+                {
+                    
+                }
+            }
+
+            public override void VisitInvocationExpression(InvocationExpressionSyntax node)
+            {
+                var symbol = semanticModel.GetSymbolInfo(node).Symbol;
+
+                if (symbol != null)
+                {
+                    var arguments = node.ArgumentList.Arguments;
+                    Visit(arguments);
+
+                    if (GetAttribute<InlineAttribute>(symbol) != null)
+                    {
+                        var containingType = GetTypeForSymbol(symbol.ContainingType);
+
+                        if (containingType != null)
+                        {
+                            var parameterTypes = ((IMethodSymbol)symbol).Parameters.Select(parameter => GetTypeForSymbol(parameter.Type)).ToArray();
+                            var method = containingType.GetMethod(symbol.Name, parameterTypes);
+
+                            if (method != null)
+                            {
+                                var ilInstructions = method.GetInstructions();
+
+                                foreach (var ilInstruction in ilInstructions)
+                                {
+                                    var opCodeValue = ilInstruction.Code.Value;
+
+                                    if (opCodeValue == OpCodes.Ldc_I4.Value)
+                                    {
+                                        AddInstruction(Instruction.PushImmediateValue((int)ilInstruction.Operand));
+                                    }
+                                    else if (opCodeValue == OpCodes.Ldarg_0.Value)
+                                    {
+                                        PushStackValue(-arguments.Count);
+                                    }
+                                    else if (opCodeValue == OpCodes.Call.Value)
+                                    {
+                                        var operand = (MethodInfo)ilInstruction.Operand;
+
+                                        if (operand.GetCustomAttribute<CompilerGeneratedAttribute>() != null)
+                                        {
+                                            if (operand.DeclaringType.Name == "Memory" && operand.Name == "ReadSignal")
+                                            {
+                                                AddInstruction(Instruction.Pop(3));
+                                                AddInstruction(Instruction.Pop(4));
+                                                AddInstructions(Instruction.NoOp(4));
+                                                AddInstruction(Instruction.ReadSignal(outputRegister: 5, addressRegister: 3, signalRegister: 4));
+                                                AddInstructions(Instruction.NoOp(4));
+                                                AddInstruction(Instruction.PushRegister(5));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            public override void VisitArgument(ArgumentSyntax node)
+            {
+                Visit(node.Expression);
             }
 
             public override void VisitPrefixUnaryExpression(PrefixUnaryExpressionSyntax node)
@@ -199,16 +282,9 @@ namespace SeeSharpCompiler
                 switch (node.OperatorToken.Kind())
                 {
                     case SyntaxKind.MinusToken:
-                        AddInstruction(Instruction.PopRegister(4));
+                        AddInstruction(Instruction.Pop(4));
                         AddInstructions(Instruction.NoOp(4));
-
-                        AddInstruction(new Instruction
-                        {
-                            OpCode = OpCode.Subtract,
-                            OutputRegister = 5,
-                            RightInputRegister = 4
-                        });
-
+                        AddInstruction(Instruction.BinaryOperation(Operation.Subtract, outputRegister: 5, rightInputRegister: 4));
                         AddInstructions(Instruction.NoOp(4));
                         AddInstruction(Instruction.PushRegister(5));
 
@@ -228,37 +304,29 @@ namespace SeeSharpCompiler
 
                 var opCode = node.OperatorToken.Kind() switch
                 {
-                    SyntaxKind.AsteriskToken => OpCode.Multiply,
-                    SyntaxKind.SlashToken => OpCode.Divide,
-                    SyntaxKind.PlusToken => OpCode.Add,
-                    SyntaxKind.MinusToken => OpCode.Subtract,
-                    SyntaxKind.PercentToken => OpCode.Mod,
-                    SyntaxKind.LessThanLessThanToken => OpCode.LeftShift,
-                    SyntaxKind.GreaterThanGreaterThanToken => OpCode.RightShift,
-                    SyntaxKind.AmpersandToken => OpCode.And,
-                    SyntaxKind.BarToken => OpCode.Or,
-                    SyntaxKind.CaretToken => OpCode.Xor,
-                    _ => OpCode.NoOp
+                    SyntaxKind.AsteriskToken => Operation.Multiply,
+                    SyntaxKind.SlashToken => Operation.Divide,
+                    SyntaxKind.PlusToken => Operation.Add,
+                    SyntaxKind.MinusToken => Operation.Subtract,
+                    SyntaxKind.PercentToken => Operation.Mod,
+                    SyntaxKind.LessThanLessThanToken => Operation.LeftShift,
+                    SyntaxKind.GreaterThanGreaterThanToken => Operation.RightShift,
+                    SyntaxKind.AmpersandToken => Operation.And,
+                    SyntaxKind.BarToken => Operation.Or,
+                    SyntaxKind.CaretToken => Operation.Xor,
+                    _ => Operation.NoOp
                 };
 
-                if (opCode == OpCode.NoOp)
+                if (opCode == Operation.NoOp)
                 {
                     Diagnostics.Add(Diagnostic.Create(DiagnosticDescriptors.UnsupportedOperator, node.GetLocation(), node.OperatorToken.Kind()));
                     return;
                 }
 
-                AddInstruction(Instruction.PopRegister(3));
-                AddInstruction(Instruction.PopRegister(4));
+                AddInstruction(Instruction.Pop(3));
+                AddInstruction(Instruction.Pop(4));
                 AddInstructions(Instruction.NoOp(4));
-
-                AddInstruction(new Instruction
-                {
-                    OpCode = opCode,
-                    OutputRegister = 5,
-                    LeftInputRegister = 3,
-                    RightInputRegister = 4
-                });
-
+                AddInstruction(Instruction.BinaryOperation(opCode, outputRegister: 5, leftInputRegister: 3, rightInputRegister: 4));
                 AddInstructions(Instruction.NoOp(4));
                 AddInstruction(Instruction.PushRegister(5));
             }
@@ -293,6 +361,18 @@ namespace SeeSharpCompiler
                 {
                     methodContext.StackPointerOffset += instruction.AutoIncrement;
                 }
+
+                if (instruction.LeftInputRegister == SpecialRegisters.InstructionPointer && instruction.AutoIncrement != 0)
+                {
+                    AddInstructions(Instruction.NoOp(4));
+                }
+            }
+
+            private void PushStackValue(int offsetRelativeToBase)
+            {
+                AddInstruction(Instruction.ReadStackValue(offsetRelativeToBase - methodContext.StackPointerOffset, 3));
+                AddInstructions(Instruction.NoOp(4));
+                AddInstruction(Instruction.PushRegister(3));
             }
 
             private void AddInstructions(IEnumerable<Instruction> instructions)
@@ -302,175 +382,27 @@ namespace SeeSharpCompiler
                     AddInstruction(instruction);
                 }
             }
-        }
 
-        private static Blueprint CreateBlueprintFromCompiledProgram(CompiledProgram compiledProgram, int? width, int? height)
-        {
-            var program = new List<MemoryCell>();
-            var data = new List<MemoryCell>();
-
-            var address = 1;
-            foreach (var instruction in compiledProgram.Instructions)
+            private AttributeData GetAttribute<T>(ISymbol symbol)
             {
-                if (instruction.OpCode != OpCode.NoOp || instruction.AutoIncrement != 0)
-                {
-                    Console.WriteLine($"{address}: {instruction.OpCode} [{instruction.OutputRegister}] + {instruction.AutoIncrement} = [{instruction.LeftInputRegister}] + {instruction.LeftImmediateValue}, [{instruction.RightInputRegister}] + {instruction.RightImmediateValue} if [{instruction.ConditionRegister}] + {instruction.ConditionImmediateValue} {instruction.ConditionOperator}");
-                    program.Add(new MemoryCell { Address = address, Filters = ConvertInstructionToFilters(instruction) });
-                }
+                var assemblyName = typeof(T).Assembly.FullName;
+                var attributeName = typeof(T).FullName;
 
-                address++;
+                return symbol.GetAttributes().FirstOrDefault(attribute =>
+                    attribute.AttributeClass.ContainingAssembly.ToString() == assemblyName &&
+                    attribute.AttributeClass.ToString() == attributeName);
             }
 
-            return RomGenerator.Generate(new RomConfiguration { Width = width, Height = height }, program, data);
-        }
-
-        private static List<Filter> ConvertInstructionToFilters(Instruction instruction)
-        {
-            return new List<Filter>
+            private Type GetTypeForSymbol(ITypeSymbol symbol)
             {
-                CreateFilter('0', (int)instruction.OpCode),
-                CreateFilter('1', instruction.OutputRegister),
-                CreateFilter('A', instruction.AutoIncrement),
-                CreateFilter('2', instruction.LeftInputRegister),
-                CreateFilter('B', instruction.LeftImmediateValue),
-                CreateFilter('3', instruction.RightInputRegister),
-                CreateFilter('C', instruction.RightImmediateValue),
-                CreateFilter('4', instruction.ConditionRegister),
-                CreateFilter('D', instruction.ConditionImmediateValue),
-                CreateFilter('5', (int)instruction.ConditionOperator)
+                return Type.GetType($"{symbol.ToDisplayString()}, {symbol.ContainingAssembly.ToDisplayString()}");
             }
-                .Where(filter => filter.Count != 0)
-                .ToList();
-        }
-
-        private static Filter CreateFilter(char signal, int count)
-        {
-            return new Filter { Signal = new SignalID { Name = VirtualSignalNames.LetterOrDigit(signal), Type = SignalTypes.Virtual }, Count = count };
         }
 
         private class MethodContext
         {
             public Dictionary<ISymbol, int> LocalVariables { get; set; } = new Dictionary<ISymbol, int>();
             public int StackPointerOffset { get; set; } = 0;
-        }
-
-        private class CompiledProgram
-        {
-            public List<Instruction> Instructions { get; set; }
-        }
-
-        private class Instruction
-        {
-            public OpCode OpCode { get; set; }
-            public int OutputRegister { get; set; }
-            public int AutoIncrement { get; set; }
-            public int LeftInputRegister { get; set; }
-            public int LeftImmediateValue { get; set; }
-            public int RightInputRegister { get; set; }
-            public int RightImmediateValue { get; set; }
-            public int ConditionRegister { get; set; }
-            public int ConditionImmediateValue { get; set; }
-            public ConditionOperator ConditionOperator { get; set; }
-
-            public static IEnumerable<Instruction> NoOp(int cycles)
-            {
-                for (int index = 0; index < cycles; index++)
-                {
-                    yield return new Instruction
-                    {
-                        OpCode = OpCode.NoOp
-                    };
-                }
-            }
-
-            public static Instruction SetRegisterToImmediateValue(int outputRegister, int value)
-            {
-                return new Instruction
-                {
-                    OpCode = OpCode.Add,
-                    OutputRegister = outputRegister,
-                    LeftImmediateValue = value
-                };
-            }
-
-            public static Instruction PushImmediateValue(int value)
-            {
-                return new Instruction
-                {
-                    OpCode = OpCode.Write,
-                    AutoIncrement = 1,
-                    LeftInputRegister = SpecialRegisters.StackPointer,
-                    RightImmediateValue = value
-                };
-            }
-
-            public static Instruction PushRegister(int register)
-            {
-                return new Instruction
-                {
-                    OpCode = OpCode.Write,
-                    AutoIncrement = 1,
-                    LeftInputRegister = SpecialRegisters.StackPointer,
-                    RightInputRegister = register
-                };
-            }
-
-            public static Instruction PopRegister(int register)
-            {
-                return new Instruction
-                {
-                    OpCode = OpCode.Read,
-                    OutputRegister = register,
-                    AutoIncrement = -1,
-                    LeftInputRegister = SpecialRegisters.StackPointer
-                };
-            }
-
-            public static Instruction AdjustStackPointer(int value)
-            {
-                return new Instruction
-                {
-                    OpCode = OpCode.NoOp,
-                    AutoIncrement = value,
-                    LeftInputRegister = SpecialRegisters.StackPointer
-                };
-            }
-        }
-
-        private enum OpCode
-        {
-            NoOp,
-            Multiply,
-            Divide,
-            Add,
-            Subtract,
-            Mod,
-            Power,
-            LeftShift,
-            RightShift,
-            And,
-            Or,
-            Xor,
-            Note,
-            Chord,
-            Read,
-            Write
-        }
-
-        private enum ConditionOperator
-        {
-            IsEqual,
-            IsNotEqual,
-            GreaterThan,
-            LessThan,
-            GreaterThanOrEqual,
-            LessThanOrEqual
-        }
-
-        private class SpecialRegisters
-        {
-            public const int InstructionPointer = 1;
-            public const int StackPointer = 2;
         }
     }
 

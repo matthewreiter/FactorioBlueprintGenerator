@@ -16,7 +16,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Blueprint Common\Blueprint Common.csproj" />
-    <ProjectReference Include="..\Memory Initializer\Memory Initializer.csproj" />
+    <ProjectReference Include="..\Compiler Common\Compiler Common.csproj" />
+    <ProjectReference Include="..\IL Reader\IL Reader.csproj" />
+    <ProjectReference Include="..\See Sharp Runtime\See Sharp Runtime.csproj" />
   </ItemGroup>
 
   <ItemGroup>

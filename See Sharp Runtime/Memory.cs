@@ -5,6 +5,9 @@ namespace SeeSharp.Runtime
     public static class Memory
     {
         [CompilerGenerated]
-        public extern static int ReadSignal(int address, Signal signal);
+        public static int ReadSignal(int address, Signal signal)
+        {
+            return 0;
+        }
     }
 }

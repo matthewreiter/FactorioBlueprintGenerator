@@ -44,8 +44,8 @@ namespace MemoryInitializer
                 for (int column = 0; column < width; column++)
                 {
                     var memoryCell = row < programRows
-                        ? program?.ElementAtOrDefault(row * width + column) ?? new MemoryCell { Address = row * width + column + 1 }
-                        : data?.ElementAtOrDefault((row - programRows) * width + column) ?? new MemoryCell { Address = (row - programRows) * width + column + 1 };
+                        ? program?.ElementAtOrDefault(row * width + column) ?? new MemoryCell { Address = row * width + column + 1 + GetAddressOffset(program) }
+                        : data?.ElementAtOrDefault((row - programRows) * width + column) ?? new MemoryCell { Address = (row - programRows) * width + column + 1 + GetAddressOffset(data) };
                     var memoryCellEntityNumber = (row * width + column) * 2 + 1;
                     var memoryCellX = column + (column / 16 + 1) * 2 + xOffset;
                     var memoryCellY = (height - row - 1) * 3 + yOffset;
@@ -171,6 +171,9 @@ namespace MemoryInitializer
                 Version = BlueprintVersions.CurrentVersion
             };
         }
+
+        private static int GetAddressOffset(IList<MemoryCell> memoryCells) =>
+            memoryCells?.Count > 0 ? memoryCells.Last().Address - memoryCells.Count : 0;
     }
 
     public class RomConfiguration

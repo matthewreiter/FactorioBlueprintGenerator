@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <RootNamespace>CompilerCommon</RootNamespace>
+    <AssemblyName>CompilerCommon</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Blueprint Common\Blueprint Common.csproj" />
+    <ProjectReference Include="..\Memory Initializer\Memory Initializer.csproj" />
+  </ItemGroup>
+
+</Project>
