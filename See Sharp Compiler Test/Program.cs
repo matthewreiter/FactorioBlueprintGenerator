@@ -12,6 +12,7 @@ namespace SeeSharpCompilerTest
             var u235 = FactoryNetwork.GetValue(Signal.Uranium235);
             var a = 5;
             var b = 10;
+            var c = ~b;
             var sum = a + b + u235 % 100;
             GetAnswer(out var answer);
 

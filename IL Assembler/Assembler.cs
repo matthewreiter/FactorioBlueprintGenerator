@@ -229,6 +229,14 @@ namespace Assembler
                             AddInstructions(Instruction.NoOp(4));
                             AddInstruction(Instruction.WriteMemory(addressRegister: 4, inputRegister: 3));
                         }
+                        else if (opCodeValue == OpCodes.Not.Value)
+                        {
+                            AddInstruction(Instruction.Pop(3));
+                            AddInstructions(Instruction.NoOp(4));
+                            AddInstruction(Instruction.BinaryOperation(Operation.Xor, 4, leftInputRegister: 3, rightImmediateValue: -1));
+                            AddInstructions(Instruction.NoOp(4));
+                            AddInstruction(Instruction.Push(4));
+                        }
                         else if (opCodeValue == OpCodes.Mul.Value)
                         {
                             AddBinaryOperation(Operation.Multiply);
