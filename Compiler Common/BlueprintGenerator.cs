@@ -19,7 +19,7 @@ namespace CompilerCommon
             {
                 if (instruction.OpCode != Operation.NoOp || instruction.AutoIncrement != 0 || address == compiledProgram.Instructions.Count)
                 {
-                    Console.WriteLine($"{address}: {instruction.OpCode} [{instruction.OutputRegister}] + {instruction.AutoIncrement} = [{instruction.LeftInputRegister}] + {instruction.LeftImmediateValue}, [{instruction.RightInputRegister}] + {instruction.RightImmediateValue} if [{instruction.ConditionRegister}] + {instruction.ConditionImmediateValue} {instruction.ConditionOperator}");
+                    Console.WriteLine($"{address}: {instruction}");
                     program.Add(new MemoryCell { Address = address, Filters = ConvertInstructionToFilters(instruction) });
                 }
 

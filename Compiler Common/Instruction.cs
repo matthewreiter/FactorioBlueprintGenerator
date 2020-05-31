@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace CompilerCommon
 {
@@ -113,6 +114,91 @@ namespace CompilerCommon
             ConditionImmediateValue = -conditionRightImmediateValue,
             ConditionOperator = conditionOperator
         };
+
+        public override string ToString()
+        {
+            var builder = new StringBuilder();
+            builder.Append(OpCode);
+
+            if (OutputRegister != 0)
+            {
+                builder.Append($" [{OutputRegister}] =");
+            }
+
+            if (LeftInputRegister != 0)
+            {
+                builder.Append($" [{LeftInputRegister}");
+
+                if (AutoIncrement != 0)
+                {
+                    builder.Append($" += {AutoIncrement}");
+                }
+
+                builder.Append("]");
+            }
+
+            if (LeftInputRegister != 0 && LeftImmediateValue != 0)
+            {
+                builder.Append(" +");
+            }
+
+            if (LeftImmediateValue != 0 || LeftInputRegister == 0)
+            {
+                builder.Append($" {LeftImmediateValue}");
+            }
+
+            builder.Append(",");
+
+            if (RightInputRegister != 0)
+            {
+                builder.Append($" [{RightInputRegister}]");
+            }
+
+            if (RightInputRegister != 0 && RightImmediateValue != 0)
+            {
+                builder.Append(" +");
+            }
+
+            if (RightImmediateValue != 0 || RightInputRegister == 0)
+            {
+                builder.Append($" {RightImmediateValue}");
+            }
+
+            if (ConditionRegister != 0 || ConditionImmediateValue != 0)
+            {
+                builder.Append($" if");
+
+                if (ConditionRegister != 0)
+                {
+                    builder.Append($" [{ConditionRegister}]");
+                }
+
+                if (ConditionRegister != 0 && ConditionImmediateValue != 0)
+                {
+                    builder.Append(" +");
+                }
+
+                if (ConditionImmediateValue != 0)
+                {
+                    builder.Append($" {ConditionImmediateValue}");
+                }
+
+                var shortConditionOperator = ConditionOperator switch
+                {
+                    ConditionOperator.IsEqual => "==",
+                    ConditionOperator.IsNotEqual => "!=",
+                    ConditionOperator.GreaterThan => ">",
+                    ConditionOperator.LessThan => "<",
+                    ConditionOperator.GreaterThanOrEqual => ">=",
+                    ConditionOperator.LessThanOrEqual => "<=",
+                    _ => "?"
+                };
+
+                builder.Append($" {shortConditionOperator} 0");
+            }
+
+            return builder.ToString();
+        }
     }
 
     public enum Operation
