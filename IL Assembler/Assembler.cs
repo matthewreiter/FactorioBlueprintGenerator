@@ -75,12 +75,7 @@ namespace Assembler
 
             public void Build(Assembly assembly)
             {
-                var main = assembly.GetTypes().Select(type => type.GetMethod("Main")).FirstOrDefault(main => main != null);
-
-                if (main == null)
-                {
-                    throw new Exception("No main method found.");
-                }
+                var main = assembly.EntryPoint;
 
                 Analyze(main);
                 AllocateStaticFields();
