@@ -17,6 +17,7 @@ namespace Assembler
     {
         private const int RegisterCount = 32;
         private const int RamAddress = 16385;
+        private const int ReturnRegister = 3;
 
         public static void Run(IConfigurationRoot configuration)
         {
@@ -63,7 +64,11 @@ namespace Assembler
         private class ProgramBuilder
         {
             public List<Instruction> Instructions { get; } = new List<Instruction>();
-            private MethodContext methodContext = new MethodContext();
+
+            private MethodContext methodContext = new MethodContext { InstructionIndex = 0 };
+            private readonly Dictionary<MethodInfo, MethodContext> methodContexts = new Dictionary<MethodInfo, MethodContext>();
+            private HashSet<MethodInfo> nonInlinedMethods;
+            private readonly List<(Instruction, MethodInfo)> calls = new List<(Instruction, MethodInfo)>();
 
             public void Build(Assembly assembly)
             {
@@ -74,6 +79,8 @@ namespace Assembler
                     throw new Exception("No main method found.");
                 }
 
+                nonInlinedMethods = GetNonInlinedMethods(main);
+
                 // Initialize registers
                 AddInstruction(Instruction.SetRegisterToImmediateValue(SpecialRegisters.StackPointer, RamAddress));
                 AddInstructions(Enumerable.Range(3, RegisterCount - 2).Select(register => Instruction.SetRegisterToImmediateValue(register, 0)));
@@ -81,39 +88,106 @@ namespace Assembler
                 // Clear the first 32 words of RAM
                 AddInstructions(Enumerable.Range(RamAddress, 32).Select(address => Instruction.WriteMemory(addressValue: address, immediateValue: 0)));
 
-                AddMethod(main, inline: true);
-                //AddTestCode();
+                AddCallOrInlinedMethod(main);
 
                 // Jump back to the beginning
                 AddInstruction(Instruction.Jump(-(Instructions.Count + 1)));
+
+                foreach (var method in nonInlinedMethods)
+                {
+                    methodContexts[method] = AddMethod(method);
+                }
+
+                foreach (var (instruction, method) in calls)
+                {
+                    instruction.SetJumpTarget(methodContexts[method].InstructionIndex);
+                }
+
+                if (nonInlinedMethods.Count > 0)
+                {
+                    Console.WriteLine("Method addresses:");
+                    foreach (var method in nonInlinedMethods)
+                    {
+                        Console.WriteLine($"{method.DeclaringType.Name}.{method.Name}: {methodContexts[method].InstructionIndex + 1}");
+                    }
+                    Console.WriteLine();
+                }
             }
 
-            private void AddTestCode()
+            private static HashSet<MethodInfo> GetNonInlinedMethods(MethodInfo main)
             {
-                AddInstruction(Instruction.PushImmediateValue(5));
-                AddInstruction(Instruction.PushImmediateValue(10));
-                AddInstruction(Instruction.PushImmediateValue(15));
-                AddInstruction(Instruction.Pop(3));
-                AddInstruction(Instruction.Pop(4));
-                AddInstruction(Instruction.Pop(5));
-                AddInstructions(Instruction.NoOp(120));
+                var callCounts = new Dictionary<MethodInfo, int>();
+                var inlinedMethods = new HashSet<MethodInfo>();
+                var methodsToVisit = new Queue<MethodInfo>();
+
+                methodsToVisit.Enqueue(main);
+                callCounts[main] = 1;
+
+                while (methodsToVisit.Count > 0)
+                {
+                    var method = methodsToVisit.Dequeue();
+                    var ilInstructions = method.GetInstructions();
+
+                    foreach (var ilInstruction in ilInstructions)
+                    {
+                        var opCodeValue = ilInstruction.Code.Value;
+
+                        if (opCodeValue == OpCodes.Call.Value)
+                        {
+                            var operand = (MethodInfo)ilInstruction.Operand;
+
+                            if (operand.GetCustomAttribute<CompilerGeneratedAttribute>() != null || operand.GetCustomAttribute<InlineAttribute>() != null || ilInstructions.Count <= 10)
+                            {
+                                inlinedMethods.Add(operand);
+                            }
+
+                            if (callCounts.ContainsKey(operand))
+                            {
+                                callCounts[operand]++;
+                            }
+                            else
+                            {
+                                callCounts[operand] = 1;
+                                methodsToVisit.Enqueue(operand);
+                            }
+                        }
+                    }
+                }
+
+                return callCounts
+                    .Where(entry => entry.Value > 1 && !inlinedMethods.Contains(entry.Key))
+                    .Select(entry => entry.Key)
+                    .ToHashSet();
             }
 
             private MethodContext AddMethod(MethodInfo method, bool inline = false)
             {
+                // Stack frame layout:
+                // Parameters
+                // Return address (if inlined)
+                // Local variables (stack pointer offset is relative to first local variable)
+                // Evaluation stack
+
                 var previousMethodContext = methodContext;
-                methodContext = new MethodContext();
+                var parameters = method.GetParameters();
+                var ilInstructions = method.GetInstructions();
+                var methodBody = method.GetMethodBody();
+                var localVariables = methodBody.LocalVariables;
+                var instructionOffsetToIndexMap = new Dictionary<int, int>();
+                var jumps = new List<(Instruction, int)>();
+
+                methodContext = new MethodContext
+                {
+                    InstructionIndex = Instructions.Count,
+                    IsInline = inline,
+                    IsVoid = method.ReturnType == typeof(void),
+                    ParameterCount = parameters.Length,
+                    LocalVariableCount = localVariables.Count
+                };
+
                 try
                 {
-                    var parameters = method.GetParameters();
-                    var ilInstructions = method.GetInstructions();
-                    var methodBody = method.GetMethodBody();
-                    var localVariables = methodBody.LocalVariables;
-                    var instructionOffsetToIndexMap = new Dictionary<int, int>();
-                    var jumps = new List<(Instruction, int)>();
-                    var jumpIfs = new List<(Instruction, int)>();
-
-                    AddInstruction(Instruction.AdjustStackPointer(localVariables.Count));
+                    AdjustStackPointer(localVariables.Count);
 
                     var ilInstructionIndex = 0;
                     foreach (var ilInstruction in ilInstructions)
@@ -124,7 +198,7 @@ namespace Assembler
 
                         if (opCodeValue == OpCodes.Pop.Value)
                         {
-                            AddInstruction(Instruction.AdjustStackPointer(-1));
+                            AdjustStackPointer(-1);
                         }
                         else if (opCodeValue == OpCodes.Ldc_I4.Value)
                         {
@@ -176,7 +250,23 @@ namespace Assembler
                         }
                         else if (opCodeValue == OpCodes.Ldarg_0.Value)
                         {
-                            PushStackValue(-parameters.Length);
+                            LoadArgument(0);
+                        }
+                        else if (opCodeValue == OpCodes.Ldarg_1.Value)
+                        {
+                            LoadArgument(1);
+                        }
+                        else if (opCodeValue == OpCodes.Ldarg_2.Value)
+                        {
+                            LoadArgument(2);
+                        }
+                        else if (opCodeValue == OpCodes.Ldarg_3.Value)
+                        {
+                            LoadArgument(3);
+                        }
+                        else if (opCodeValue == OpCodes.Ldarg_S.Value)
+                        {
+                            LoadArgument((byte)ilInstruction.Operand);
                         }
                         else if (opCodeValue == OpCodes.Ldloc_0.Value)
                         {
@@ -304,35 +394,17 @@ namespace Assembler
 
                             AddInstruction(Instruction.Pop(3));
                             AddInstructions(Instruction.NoOp(4));
-                            jumpIfs.Add((AddInstruction(Instruction.JumpIf(-(Instructions.Count + 1), conditionLeftRegister: 3, conditionOperator: ConditionOperator.IsNotEqual)), operand));
+                            jumps.Add((AddInstruction(Instruction.JumpIf(-(Instructions.Count + 1), conditionLeftRegister: 3, conditionOperator: ConditionOperator.IsNotEqual)), operand));
                         }
                         else if (opCodeValue == OpCodes.Call.Value)
                         {
                             var operand = (MethodInfo)ilInstruction.Operand;
 
-                            if (operand.GetCustomAttribute<CompilerGeneratedAttribute>() != null)
-                            {
-                                AddCompilerGeneratedMethod(operand);
-                            }
-                            else if (operand.GetCustomAttribute<InlineAttribute>() != null)
-                            {
-                                var calledMethodContext = AddMethod(operand, inline: true);
-                                methodContext.StackPointerOffset += calledMethodContext.StackPointerOffset;
-                            }
+                            AddCallOrInlinedMethod(operand);
                         }
                         else if (opCodeValue == OpCodes.Ret.Value)
                         {
-                            if (method.ReturnType != typeof(void))
-                            {
-                                AddInstruction(Instruction.Pop(3, additionalStackPointerAdjustment: -(localVariables.Count + method.GetParameters().Length)));
-                                AddInstructions(Instruction.NoOp(4));
-                                AddInstruction(Instruction.PushRegister(3));
-                            }
-
-                            if (!inline)
-                            {
-                                throw new NotImplementedException("Cannot yet return from a non-inlined method");
-                            }
+                            AddReturn();
                         }
                         else if (opCodeValue != OpCodes.Nop.Value)
                         {
@@ -344,12 +416,7 @@ namespace Assembler
 
                     foreach (var (instruction, offset) in jumps)
                     {
-                        instruction.AutoIncrement += instructionOffsetToIndexMap[offset];
-                    }
-
-                    foreach (var (instruction, offset) in jumpIfs)
-                    {
-                        instruction.RightImmediateValue += instructionOffsetToIndexMap[offset];
+                        instruction.SetJumpTarget(instructionOffsetToIndexMap[offset]);
                     }
 
                     return methodContext;
@@ -364,13 +431,17 @@ namespace Assembler
             {
                 if (method.DeclaringType.Name == "Memory" && method.Name == "ReadSignal")
                 {
-                    AddInstruction(Instruction.Pop(3)); // Signal
+                    AddInstruction(Instruction.Pop(5)); // Signal
                     AddInstruction(Instruction.Pop(4)); // Address
                     AddInstructions(Instruction.NoOp(4));
-                    AddInstruction(Instruction.ReadSignal(outputRegister: 5, addressRegister: 4, signalRegister: 3));
+                    AddInstruction(Instruction.ReadSignal(outputRegister: ReturnRegister, addressRegister: 4, signalRegister: 5));
                     AddInstructions(Instruction.NoOp(4));
-                    AddInstruction(Instruction.PushRegister(5));
                 }
+            }
+
+            private void LoadArgument(int argumentIndex)
+            {
+                PushStackValue(argumentIndex - methodContext.ParameterCount - (methodContext.IsInline ? 0 : 1)); // Adjust to take into account the return address
             }
 
             private void PopStackValue(int offsetRelativeToBase)
@@ -385,6 +456,14 @@ namespace Assembler
                 AddInstruction(Instruction.ReadStackValue(offsetRelativeToBase - methodContext.StackPointerOffset, outputRegister: 3));
                 AddInstructions(Instruction.NoOp(4));
                 AddInstruction(Instruction.PushRegister(3));
+            }
+
+            private void AdjustStackPointer(int offset)
+            {
+                if (offset != 0)
+                {
+                    AddInstruction(Instruction.AdjustStackPointer(offset));
+                }
             }
 
             private void AddBinaryOperation(Operation opCode)
@@ -408,6 +487,60 @@ namespace Assembler
                 AddInstruction(Instruction.SetRegister(6, immediateValue: 1, conditionLeftRegister: 5, conditionOperator: comparisonOperator));
                 AddInstructions(Instruction.NoOp(4));
                 AddInstruction(Instruction.PushRegister(6));
+            }
+
+            private void AddCallOrInlinedMethod(MethodInfo method)
+            {
+                if (nonInlinedMethods.Contains(method))
+                {
+                    AddInstruction(Instruction.Push(inputRegister: SpecialRegisters.InstructionPointer, immediateValue: 3)); // Takes into account push, jump and 4 no-ops to skip minus 3 cycles of overhead
+                    calls.Add((AddInstruction(Instruction.Jump(-(Instructions.Count + 1))), method));
+                    methodContext.StackPointerOffset--; // Record the effect of the return statement popping the return address off the stack
+                }
+                else if (method.GetCustomAttribute<CompilerGeneratedAttribute>() != null)
+                {
+                    AddCompilerGeneratedMethod(method);
+                }
+                else
+                {
+                    AddMethod(method, inline: true);
+                }
+
+                methodContext.StackPointerOffset -= method.GetParameters().Length;
+
+                if (method.ReturnType != typeof(void))
+                {
+                    AddInstruction(Instruction.PushRegister(ReturnRegister));
+                }
+            }
+
+            private void AddReturn()
+            {
+                if (methodContext.IsInline)
+                {
+                    if (methodContext.IsVoid)
+                    {
+                        AdjustStackPointer(-(methodContext.LocalVariableCount + methodContext.ParameterCount));
+                    }
+                    else
+                    {
+                        AddInstruction(Instruction.Pop(ReturnRegister, additionalStackPointerAdjustment: -(methodContext.LocalVariableCount + methodContext.ParameterCount)));
+                        AddInstructions(Instruction.NoOp(4));
+                    }
+                }
+                else
+                {
+                    if (methodContext.IsVoid)
+                    {
+                        Instruction.AdjustStackPointer(-methodContext.LocalVariableCount);
+                    }
+                    else
+                    {
+                        AddInstruction(Instruction.Pop(ReturnRegister, additionalStackPointerAdjustment: -methodContext.LocalVariableCount));
+                    }
+
+                    AddInstruction(Instruction.Pop(SpecialRegisters.InstructionPointer, additionalStackPointerAdjustment: -methodContext.ParameterCount));
+                }
             }
 
             private Instruction AddInstruction(Instruction instruction)
@@ -461,6 +594,11 @@ namespace Assembler
 
         private class MethodContext
         {
+            public int InstructionIndex { get; set; }
+            public bool IsInline { get; set; }
+            public bool IsVoid { get; set; }
+            public int ParameterCount { get; set; }
+            public int LocalVariableCount { get; set; }
             public int StackPointerOffset { get; set; } = 0;
         }
     }

@@ -1,5 +1,4 @@
 ﻿using SeeSharp.Runtime;
-using SeeSharp.Runtime.Attributes;
 
 namespace SeeSharpCompilerTest
 {
@@ -24,13 +23,11 @@ namespace SeeSharpCompilerTest
             }
         }
 
-        [Inline]
         private static void GetAnswer(out int result)
         {
             result = 42;
         }
 
-        [Inline]
         private static void DoNothing() { }
 
         private static int IgnoreResult()

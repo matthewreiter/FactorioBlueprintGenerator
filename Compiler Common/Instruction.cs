@@ -6,6 +6,8 @@ namespace CompilerCommon
 {
     public class Instruction
     {
+        private const int RamSignal = 1;
+
         public Operation OpCode { get; set; }
         public int OutputRegister { get; set; }
         public int AutoIncrement { get; set; }
@@ -39,7 +41,7 @@ namespace CompilerCommon
             AutoIncrement = -1 + additionalStackPointerAdjustment,
             LeftInputRegister = SpecialRegisters.StackPointer,
             LeftImmediateValue = -1,
-            RightImmediateValue = 1
+            RightImmediateValue = RamSignal
         };
 
         public static Instruction PushImmediateValue(int value) => Push(immediateValue: value);
@@ -66,7 +68,7 @@ namespace CompilerCommon
 
         public static Instruction WriteStackValue(int offset, int inputRegister = 0, int immediateValue = 0) => WriteMemory(SpecialRegisters.StackPointer, offset, inputRegister, immediateValue);
 
-        public static Instruction ReadMemory(int outputRegister, int addressRegister = 0, int addressValue = 0) => ReadSignal(outputRegister, addressRegister, addressValue, signalValue: 1);
+        public static Instruction ReadMemory(int outputRegister, int addressRegister = 0, int addressValue = 0) => ReadSignal(outputRegister, addressRegister, addressValue, signalValue: RamSignal);
 
         public static Instruction WriteMemory(int addressRegister = 0, int addressValue = 0, int inputRegister = 0, int immediateValue = 0) => new Instruction
         {
@@ -114,6 +116,18 @@ namespace CompilerCommon
             ConditionImmediateValue = -conditionRightImmediateValue,
             ConditionOperator = conditionOperator
         };
+
+        public void SetJumpTarget(int jumpTarget)
+        {
+            if (OutputRegister == SpecialRegisters.InstructionPointer)
+            {
+                RightImmediateValue += jumpTarget;
+            }
+            else
+            {
+                AutoIncrement += jumpTarget;
+            }
+        }
 
         public override string ToString()
         {
