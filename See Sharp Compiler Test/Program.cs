@@ -4,6 +4,8 @@ namespace SeeSharpCompilerTest
 {
     public static class Program
     {
+        private static int counter = -50;
+
         public static void Main()
         {
             DoNothing();
@@ -20,6 +22,7 @@ namespace SeeSharpCompilerTest
             for (int index = 0; index <= 3; index++)
             {
                 sum *= 2;
+                counter++;
             }
         }
 

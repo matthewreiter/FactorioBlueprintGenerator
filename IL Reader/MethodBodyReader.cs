@@ -1,3 +1,5 @@
+// From https://www.codeproject.com/Articles/14058/Parsing-the-IL-of-a-Method-Body
+
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -11,10 +13,10 @@ namespace ILReader
         /// Constructs the array of ILInstructions according to the IL byte code.
         /// </summary>
         /// <param name="module"></param>
-        public static List<ILInstruction> GetInstructions(this MethodInfo methodInfo)
+        public static List<ILInstruction> GetInstructions(this MethodBase method)
         {
-            var il = methodInfo.GetMethodBody().GetILAsByteArray();
-            var module = methodInfo.Module;
+            var il = method.GetMethodBody().GetILAsByteArray();
+            var module = method.Module;
             var instructions = new List<ILInstruction>();
             int position = 0;
 
@@ -83,7 +85,7 @@ namespace ILReader
                         
                         // thanks to the guys from code project who commented on this missing feature
 
-                        instruction.Operand = module.ResolveType(metadataToken, methodInfo.DeclaringType.GetGenericArguments(), methodInfo.GetGenericArguments());
+                        instruction.Operand = module.ResolveType(metadataToken, method.DeclaringType.GetGenericArguments(), method.GetGenericArguments());
                         break;
                     case OperandType.InlineI:
                         {

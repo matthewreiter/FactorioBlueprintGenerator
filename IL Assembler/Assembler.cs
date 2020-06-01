@@ -68,7 +68,10 @@ namespace Assembler
             private MethodContext methodContext = new MethodContext { InstructionIndex = 0 };
             private readonly Dictionary<MethodInfo, MethodContext> methodContexts = new Dictionary<MethodInfo, MethodContext>();
             private HashSet<MethodInfo> nonInlinedMethods;
+            private readonly HashSet<Type> types = new HashSet<Type>();
+            private readonly Dictionary<FieldInfo, int> staticFieldAddresses = new Dictionary<FieldInfo, int>();
             private readonly List<(Instruction, MethodInfo)> calls = new List<(Instruction, MethodInfo)>();
+            private int initialStackPointer;
 
             public void Build(Assembly assembly)
             {
@@ -79,15 +82,17 @@ namespace Assembler
                     throw new Exception("No main method found.");
                 }
 
-                nonInlinedMethods = GetNonInlinedMethods(main);
+                Analyze(main);
+                AllocateStaticFields();
 
                 // Initialize registers
-                AddInstruction(Instruction.SetRegisterToImmediateValue(SpecialRegisters.StackPointer, RamAddress));
+                AddInstruction(Instruction.SetRegisterToImmediateValue(SpecialRegisters.StackPointer, initialStackPointer));
                 AddInstructions(Enumerable.Range(3, RegisterCount - 2).Select(register => Instruction.SetRegisterToImmediateValue(register, 0)));
 
                 // Clear the first 32 words of RAM
                 AddInstructions(Enumerable.Range(RamAddress, 32).Select(address => Instruction.WriteMemory(addressValue: address, immediateValue: 0)));
 
+                InitializeTypes();
                 AddCallOrInlinedMethod(main);
 
                 // Jump back to the beginning
@@ -112,9 +117,19 @@ namespace Assembler
                     }
                     Console.WriteLine();
                 }
+
+                if (staticFieldAddresses.Count > 0)
+                {
+                    Console.WriteLine("Static field addresses:");
+                    foreach (var entry in staticFieldAddresses)
+                    {
+                        Console.WriteLine($"{entry.Key.DeclaringType.Name}.{entry.Key.Name}: {entry.Value}");
+                    }
+                    Console.WriteLine();
+                }
             }
 
-            private static HashSet<MethodInfo> GetNonInlinedMethods(MethodInfo main)
+            private void Analyze(MethodInfo main)
             {
                 var callCounts = new Dictionary<MethodInfo, int>();
                 var inlinedMethods = new HashSet<MethodInfo>();
@@ -128,18 +143,26 @@ namespace Assembler
                     var method = methodsToVisit.Dequeue();
                     var ilInstructions = method.GetInstructions();
 
+                    types.Add(method.DeclaringType);
+
+                    if (method.GetCustomAttribute<CompilerGeneratedAttribute>() != null || method.GetCustomAttribute<InlineAttribute>() != null || ilInstructions.Count <= 10)
+                    {
+                        inlinedMethods.Add(method);
+                    }
+
                     foreach (var ilInstruction in ilInstructions)
                     {
                         var opCodeValue = ilInstruction.Code.Value;
 
-                        if (opCodeValue == OpCodes.Call.Value)
+                        if (opCodeValue == OpCodes.Ldsfld.Value || opCodeValue == OpCodes.Stsfld.Value)
+                        {
+                            var operand = (FieldInfo)ilInstruction.Operand;
+
+                            types.Add(operand.DeclaringType);
+                        }
+                        else if (opCodeValue == OpCodes.Call.Value)
                         {
                             var operand = (MethodInfo)ilInstruction.Operand;
-
-                            if (operand.GetCustomAttribute<CompilerGeneratedAttribute>() != null || operand.GetCustomAttribute<InlineAttribute>() != null || ilInstructions.Count <= 10)
-                            {
-                                inlinedMethods.Add(operand);
-                            }
 
                             if (callCounts.ContainsKey(operand))
                             {
@@ -154,13 +177,43 @@ namespace Assembler
                     }
                 }
 
-                return callCounts
+                nonInlinedMethods = callCounts
                     .Where(entry => entry.Value > 1 && !inlinedMethods.Contains(entry.Key))
                     .Select(entry => entry.Key)
                     .ToHashSet();
             }
 
-            private MethodContext AddMethod(MethodInfo method, bool inline = false)
+            private void AllocateStaticFields()
+            {
+                var currentAddress = RamAddress;
+
+                foreach (var type in types)
+                {
+                    foreach (var field in type
+                        .GetFields(BindingFlags.DeclaredOnly | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                        .Where(field => !field.IsLiteral))
+                    {
+                        staticFieldAddresses[field] = currentAddress++;
+                    }
+                }
+
+                initialStackPointer = currentAddress;
+            }
+
+            private void InitializeTypes()
+            {
+                foreach (var type in types)
+                {
+                    var staticConstructor = type.GetConstructor(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
+
+                    if (staticConstructor != null)
+                    {
+                        AddMethod(staticConstructor, inline: true);
+                    }
+                }
+            }
+
+            private MethodContext AddMethod(MethodBase method, bool inline = false)
             {
                 // Stack frame layout:
                 // Parameters
@@ -180,7 +233,7 @@ namespace Assembler
                 {
                     InstructionIndex = Instructions.Count,
                     IsInline = inline,
-                    IsVoid = method.ReturnType == typeof(void),
+                    IsVoid = !(method is MethodInfo && ((MethodInfo)method).ReturnType != typeof(void)),
                     ParameterCount = parameters.Length,
                     LocalVariableCount = localVariables.Count
                 };
@@ -318,6 +371,36 @@ namespace Assembler
                             AddInstruction(Instruction.Pop(4)); // Address
                             AddInstructions(Instruction.NoOp(4));
                             AddInstruction(Instruction.WriteMemory(addressRegister: 4, inputRegister: 3));
+                        }
+                        else if (opCodeValue == OpCodes.Ldsfld.Value)
+                        {
+                            var operand = (FieldInfo)ilInstruction.Operand;
+
+                            if (staticFieldAddresses.TryGetValue(operand, out var address))
+                            {
+                                AddInstruction(Instruction.ReadMemory(3, addressValue: address));
+                                AddInstructions(Instruction.NoOp(4));
+                                AddInstruction(Instruction.PushRegister(3));
+                            }
+                            else
+                            {
+                                throw new Exception($"Field {operand.DeclaringType}.{operand.Name} not allocated");
+                            }
+                        }
+                        else if (opCodeValue == OpCodes.Stsfld.Value)
+                        {
+                            var operand = (FieldInfo)ilInstruction.Operand;
+
+                            if (staticFieldAddresses.TryGetValue(operand, out var address))
+                            {
+                                AddInstruction(Instruction.Pop(3));
+                                AddInstructions(Instruction.NoOp(4));
+                                AddInstruction(Instruction.WriteMemory(addressValue: address, inputRegister: 3));
+                            }
+                            else
+                            {
+                                throw new Exception($"Field {operand.DeclaringType}.{operand.Name} not allocated");
+                            }
                         }
                         else if (opCodeValue == OpCodes.Not.Value)
                         {

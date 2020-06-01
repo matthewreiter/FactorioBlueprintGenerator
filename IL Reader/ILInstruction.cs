@@ -1,3 +1,5 @@
+// From https://www.codeproject.com/Articles/14058/Parsing-the-IL-of-a-Method-Body
+
 using System;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -10,8 +12,6 @@ namespace ILReader
         public OpCode Code { get; set; }
 
         public object Operand { get; set; }
-
-        public byte[] OperandData { get; set; }
 
         public int Offset { get; set; }
 

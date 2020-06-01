@@ -1,3 +1,5 @@
+// From https://www.codeproject.com/Articles/14058/Parsing-the-IL-of-a-Method-Body
+
 using System.Reflection;
 using System.Reflection.Emit;
 
