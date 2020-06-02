@@ -16,6 +16,7 @@ namespace SeeSharpCompilerTest
             var c = ~b | a;
             var sum = a + b + u235 % 100;
             GetAnswer(out var answer);
+            GetAnswer(out counter);
             var isFalse = !true;
             var isTrue = !isFalse || false;
 

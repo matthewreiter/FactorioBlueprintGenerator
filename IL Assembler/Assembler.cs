@@ -358,7 +358,7 @@ namespace Assembler
                         }
                         else if (opCodeValue == OpCodes.Ldloca_S.Value)
                         {
-                            AddInstruction(Instruction.Push(inputRegister: SpecialRegisters.StackPointer, (byte)ilInstruction.Operand - methodContext.StackPointerOffset));
+                            AddInstruction(Instruction.Push(inputRegister: SpecialRegisters.StackPointer, immediateValue: (byte)ilInstruction.Operand - methodContext.StackPointerOffset));
                         }
                         else if (opCodeValue == OpCodes.Stind_I4.Value) // Pop value, pop address, then store value at address
                         {
@@ -391,6 +391,19 @@ namespace Assembler
                                 AddInstruction(Instruction.Pop(3));
                                 AddInstructions(Instruction.NoOp(4));
                                 AddInstruction(Instruction.WriteMemory(addressValue: address, inputRegister: 3));
+                            }
+                            else
+                            {
+                                throw new Exception($"Field {operand.DeclaringType}.{operand.Name} not allocated");
+                            }
+                        }
+                        else if (opCodeValue == OpCodes.Ldsflda.Value)
+                        {
+                            var operand = (FieldInfo)ilInstruction.Operand;
+
+                            if (staticFieldAddresses.TryGetValue(operand, out var address))
+                            {
+                                AddInstruction(Instruction.PushImmediateValue(address));
                             }
                             else
                             {
