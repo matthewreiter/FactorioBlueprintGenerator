@@ -26,6 +26,13 @@ namespace CompilerCommon
                 address++;
             }
 
+            var romUsed = program.Count + data.Count;
+            var totalRom = width * height;
+
+            Console.WriteLine();
+            Console.WriteLine($"ROM usage: {romUsed}/{totalRom} ({(double)romUsed / totalRom * 100:F1}%)");
+            Console.WriteLine();
+
             return RomGenerator.Generate(new RomConfiguration { Width = width, Height = height, ProgramRows = height / 2, ProgramName = compiledProgram.Name }, program, data);
         }
 
