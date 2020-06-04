@@ -69,6 +69,8 @@ namespace Assembler
             private readonly Dictionary<MethodInfo, MethodContext> methodContexts = new Dictionary<MethodInfo, MethodContext>();
             private HashSet<MethodInfo> nonInlinedMethods;
             private readonly HashSet<Type> types = new HashSet<Type>();
+            private readonly Dictionary<Type, TypeInfo> typeInfoCache = new Dictionary<Type, TypeInfo>();
+            private readonly Dictionary<MethodBase, MethodParameterInfo> methodParameterInfoCache = new Dictionary<MethodBase, MethodParameterInfo>();
             private readonly Dictionary<FieldInfo, int> staticFieldAddresses = new Dictionary<FieldInfo, int>();
             private readonly List<(Instruction, MethodInfo)> calls = new List<(Instruction, MethodInfo)>();
             private int initialStackPointer;
@@ -186,13 +188,81 @@ namespace Assembler
                 {
                     foreach (var field in type
                         .GetFields(BindingFlags.DeclaredOnly | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-                        .Where(field => !field.IsLiteral))
+                        .Where(field => !field.IsLiteral)) // Exclude constants
                     {
-                        staticFieldAddresses[field] = currentAddress++;
+                        staticFieldAddresses[field] = currentAddress;
+                        currentAddress += GetVariableSize(field.FieldType);
                     }
                 }
 
                 initialStackPointer = currentAddress;
+            }
+
+            private (Dictionary<int, VariableInfo>, int) AllocateLocalVariables(IEnumerable<LocalVariableInfo> localVariables)
+            {
+                var variables = new Dictionary<int, VariableInfo>();
+                var currentOffset = 0;
+
+                foreach (var localVariable in localVariables)
+                {
+                    var size = GetVariableSize(localVariable.LocalType);
+                    variables[localVariable.LocalIndex] = new VariableInfo { Offset = currentOffset, Size = size };
+                    currentOffset += size;
+                }
+
+                return (variables, currentOffset);
+            }
+
+            private MethodParameterInfo GetMethodParameterInfo(MethodBase method)
+            {
+                if (!methodParameterInfoCache.TryGetValue(method, out var methodParameterInfo))
+                {
+                    var variables = new Dictionary<int, VariableInfo>();
+                    var currentOffset = 0;
+
+                    foreach (var parameter in method.GetParameters())
+                    {
+                        var size = GetVariableSize(parameter.ParameterType);
+                        variables[parameter.Position] = new VariableInfo { Offset = currentOffset, Size = size };
+                        currentOffset += size;
+                    }
+
+                    methodParameterInfo = new MethodParameterInfo { Parameters = variables, Size = currentOffset };
+                }
+
+                return methodParameterInfo;
+            }
+
+            private TypeInfo GetTypeInfo(Type type)
+            {
+                if (!typeInfoCache.TryGetValue(type, out var typeInfo))
+                {
+                    var offsets = new Dictionary<FieldInfo, int>();
+                    var currentOffset = 0;
+
+                    foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+                    {
+                        offsets[field] = currentOffset;
+                        currentOffset += GetVariableSize(field.FieldType);
+                    }
+
+                    typeInfo = new TypeInfo { FieldOffsets = offsets, Size = currentOffset };
+                    typeInfoCache[type] = typeInfo;
+                }
+
+                return typeInfo;
+            }
+
+            private int GetVariableSize(Type type)
+            {
+                if (type.IsValueType && !type.IsPrimitive)
+                {
+                    return GetTypeInfo(type).Size;
+                }
+                else
+                {
+                    return 1;
+                }
             }
 
             private void InitializeTypes()
@@ -217,10 +287,10 @@ namespace Assembler
                 // Evaluation stack
 
                 var previousMethodContext = methodContext;
-                var parameters = method.GetParameters();
                 var ilInstructions = method.GetInstructions();
                 var methodBody = method.GetMethodBody();
-                var localVariables = methodBody.LocalVariables;
+                var methodParameterInfo = GetMethodParameterInfo(method);
+                var (localVariables, localVariablesSize) = AllocateLocalVariables(methodBody.LocalVariables);
                 var instructionOffsetToIndexMap = new Dictionary<int, int>();
                 var jumps = new List<(Instruction, int)>();
 
@@ -229,13 +299,15 @@ namespace Assembler
                     InstructionIndex = Instructions.Count,
                     IsInline = inline,
                     IsVoid = !(method is MethodInfo && ((MethodInfo)method).ReturnType != typeof(void)),
-                    ParameterCount = parameters.Length,
-                    LocalVariableCount = localVariables.Count
+                    Parameters = methodParameterInfo.Parameters,
+                    ParametersSize = methodParameterInfo.Size,
+                    LocalVariables = localVariables,
+                    LocalVariablesSize = localVariablesSize
                 };
 
                 try
                 {
-                    AdjustStackPointer(localVariables.Count);
+                    AdjustStackPointer(localVariablesSize);
 
                     var ilInstructionIndex = 0;
                     foreach (var ilInstruction in ilInstructions)
@@ -247,6 +319,12 @@ namespace Assembler
                         if (opCodeValue == OpCodes.Pop.Value)
                         {
                             AdjustStackPointer(-1);
+                        }
+                        else if (opCodeValue == OpCodes.Dup.Value)
+                        {
+                            AddInstruction(Instruction.ReadStackValue(-1, 3));
+                            AddInstructions(Instruction.NoOp(4));
+                            AddInstruction(Instruction.PushRegister(3));
                         }
                         else if (opCodeValue == OpCodes.Ldc_I4.Value)
                         {
@@ -318,49 +396,59 @@ namespace Assembler
                         }
                         else if (opCodeValue == OpCodes.Ldloc_0.Value)
                         {
-                            PushStackValue(0);
+                            LoadLocalVariable(0);
                         }
                         else if (opCodeValue == OpCodes.Ldloc_1.Value)
                         {
-                            PushStackValue(1);
+                            LoadLocalVariable(1);
                         }
                         else if (opCodeValue == OpCodes.Ldloc_2.Value)
                         {
-                            PushStackValue(2);
+                            LoadLocalVariable(2);
                         }
                         else if (opCodeValue == OpCodes.Ldloc_3.Value)
                         {
-                            PushStackValue(3);
+                            LoadLocalVariable(3);
                         }
                         else if (opCodeValue == OpCodes.Ldloc_S.Value)
                         {
-                            PushStackValue((byte)ilInstruction.Operand);
+                            LoadLocalVariable((byte)ilInstruction.Operand);
                         }
                         else if (opCodeValue == OpCodes.Stloc_0.Value)
                         {
-                            PopStackValue(0);
+                            StoreLocalVariable(0);
                         }
                         else if (opCodeValue == OpCodes.Stloc_1.Value)
                         {
-                            PopStackValue(1);
+                            StoreLocalVariable(1);
                         }
                         else if (opCodeValue == OpCodes.Stloc_2.Value)
                         {
-                            PopStackValue(2);
+                            StoreLocalVariable(2);
                         }
                         else if (opCodeValue == OpCodes.Stloc_3.Value)
                         {
-                            PopStackValue(3);
+                            StoreLocalVariable(3);
                         }
                         else if (opCodeValue == OpCodes.Stloc_S.Value)
                         {
-                            PopStackValue((byte)ilInstruction.Operand);
+                            StoreLocalVariable((byte)ilInstruction.Operand);
                         }
                         else if (opCodeValue == OpCodes.Ldloca_S.Value)
                         {
-                            AddInstruction(Instruction.Push(inputRegister: SpecialRegisters.StackPointer, immediateValue: (byte)ilInstruction.Operand - methodContext.StackPointerOffset));
+                            var operand = (byte)ilInstruction.Operand;
+
+                            AddInstruction(Instruction.Push(inputRegister: SpecialRegisters.StackPointer, immediateValue: localVariables[operand].Offset - methodContext.StackPointerOffset));
                         }
-                        else if (opCodeValue == OpCodes.Stind_I4.Value) // Pop value, pop address, then store value at address
+                        else if (opCodeValue == OpCodes.Ldind_I4.Value)
+                        {
+                            AddInstruction(Instruction.Pop(4)); // Address
+                            AddInstructions(Instruction.NoOp(4));
+                            AddInstruction(Instruction.ReadMemory(3, addressRegister: 4));
+                            AddInstructions(Instruction.NoOp(4));
+                            AddInstruction(Instruction.PushRegister(3));
+                        }
+                        else if (opCodeValue == OpCodes.Stind_I4.Value)
                         {
                             AddInstruction(Instruction.Pop(3)); // Value
                             AddInstruction(Instruction.Pop(4)); // Address
@@ -408,6 +496,47 @@ namespace Assembler
                             else
                             {
                                 throw new Exception($"Field {operand.DeclaringType}.{operand.Name} not allocated");
+                            }
+                        }
+                        else if (opCodeValue == OpCodes.Ldfld.Value)
+                        {
+                            var operand = (FieldInfo)ilInstruction.Operand;
+                            var typeInfo = GetTypeInfo(operand.DeclaringType);
+
+                            AddInstruction(Instruction.ReadStackValue(typeInfo.FieldOffsets[operand] - typeInfo.Size, 3, -typeInfo.Size));
+                            AddInstructions(Instruction.NoOp(4));
+                            AddInstruction(Instruction.PushRegister(3));
+                        }
+                        else if (opCodeValue == OpCodes.Stfld.Value)
+                        {
+                            var operand = (FieldInfo)ilInstruction.Operand;
+                            var typeInfo = GetTypeInfo(operand.DeclaringType);
+
+                            AddInstruction(Instruction.Pop(4)); // Value
+                            AddInstruction(Instruction.Pop(3)); // Pointer to beginning of structure
+                            AddInstructions(Instruction.NoOp(4));
+                            AddInstruction(Instruction.WriteMemory(addressRegister: 3, addressValue: typeInfo.FieldOffsets[operand], inputRegister: 4));
+                        }
+                        else if (opCodeValue == OpCodes.Ldflda.Value)
+                        {
+                            var operand = (FieldInfo)ilInstruction.Operand;
+                            var typeInfo = GetTypeInfo(operand.DeclaringType);
+
+                            AddInstruction(Instruction.Pop(3)); // Pointer to beginning of structure
+                            AddInstructions(Instruction.NoOp(4));
+                            AddInstruction(Instruction.Push(inputRegister: 3, immediateValue: typeInfo.FieldOffsets[operand]));
+                        }
+                        else if (opCodeValue == OpCodes.Initobj.Value)
+                        {
+                            var operand = (Type)ilInstruction.Operand;
+                            var typeInfo = GetTypeInfo(operand);
+
+                            AddInstruction(Instruction.Pop(3));
+                            AddInstructions(Instruction.NoOp(4));
+
+                            for (int index = 0; index < typeInfo.Size; index++)
+                            {
+                                AddInstruction(Instruction.WriteMemory(addressRegister: 3, addressValue: index, immediateValue: 0));
                             }
                         }
                         else if (opCodeValue == OpCodes.Not.Value)
@@ -532,21 +661,60 @@ namespace Assembler
 
             private void LoadArgument(int argumentIndex)
             {
-                PushStackValue(argumentIndex - methodContext.ParameterCount - (methodContext.IsInline ? 0 : 1)); // Adjust to take into account the return address
+                PushStackValue(methodContext.Parameters[argumentIndex], -methodContext.ParametersSize - (methodContext.IsInline ? 0 : 1)); // Adjust to take into account the return address
             }
 
-            private void PopStackValue(int offsetRelativeToBase)
+            private void LoadLocalVariable(int localIndex)
             {
-                AddInstruction(Instruction.Pop(3));
-                AddInstructions(Instruction.NoOp(4));
-                AddInstruction(Instruction.WriteStackValue(offsetRelativeToBase - methodContext.StackPointerOffset, inputRegister: 3));
+                PushStackValue(methodContext.LocalVariables[localIndex]);
             }
 
-            private void PushStackValue(int offsetRelativeToBase)
+            private void StoreLocalVariable(int localIndex)
             {
-                AddInstruction(Instruction.ReadStackValue(offsetRelativeToBase - methodContext.StackPointerOffset, outputRegister: 3));
-                AddInstructions(Instruction.NoOp(4));
-                AddInstruction(Instruction.PushRegister(3));
+                PopStackValue(methodContext.LocalVariables[localIndex]);
+            }
+
+            private void PopStackValue(VariableInfo variable, int offsetRelativeToBase = 0)
+            {
+                // Start at the end of the variable since popping happens from right to left
+                var baseOffset = variable.Offset + variable.Size - 1 + offsetRelativeToBase;
+
+                CopyData(variable.Size,
+                    (chunkOffset, index) => Instruction.Pop(3 + index),
+                    (chunkOffset, index) => Instruction.WriteStackValue(baseOffset - methodContext.StackPointerOffset - chunkOffset - index, inputRegister: 3 + index));
+            }
+
+            private void PushStackValue(VariableInfo variable, int offsetRelativeToBase = 0)
+            {
+                var baseOffset = variable.Offset + offsetRelativeToBase;
+
+                CopyData(variable.Size,
+                    (chunkOffset, index) => Instruction.ReadStackValue(baseOffset - methodContext.StackPointerOffset + chunkOffset + index, outputRegister: 3 + index),
+                    (chunkOffset, index) => Instruction.PushRegister(3 + index));
+            }
+
+            private void CopyData(int size, Func<int, int, Instruction> read, Func<int, int, Instruction> write)
+            {
+                const int minChunkSize = 5; // The minimum chunk size to avoid needing no-ops
+                int chunkSize;
+
+                for (int chunkOffset = 0; chunkOffset < size; chunkOffset += chunkSize)
+                {
+                    var remainingValues = size - chunkOffset;
+                    chunkSize = remainingValues < minChunkSize * 2 ? remainingValues : minChunkSize;
+
+                    for (int index = 0; index < chunkSize; index++)
+                    {
+                        AddInstruction(read(chunkOffset, index));
+                    }
+
+                    AddInstructions(Instruction.NoOp(Math.Max(0, minChunkSize - chunkSize)));
+
+                    for (int index = 0; index < chunkSize; index++)
+                    {
+                        AddInstruction(write(chunkOffset, index));
+                    }
+                }
             }
 
             private void AdjustStackPointer(int offset)
@@ -597,7 +765,7 @@ namespace Assembler
                     AddMethod(method, inline: true);
                 }
 
-                methodContext.StackPointerOffset -= method.GetParameters().Length;
+                methodContext.StackPointerOffset -= GetMethodParameterInfo(method).Size;
 
                 if (method.ReturnType != typeof(void))
                 {
@@ -611,11 +779,11 @@ namespace Assembler
                 {
                     if (methodContext.IsVoid)
                     {
-                        AdjustStackPointer(-(methodContext.LocalVariableCount + methodContext.ParameterCount));
+                        AdjustStackPointer(-(methodContext.LocalVariablesSize + methodContext.ParametersSize));
                     }
                     else
                     {
-                        AddInstruction(Instruction.Pop(ReturnRegister, additionalStackPointerAdjustment: -(methodContext.LocalVariableCount + methodContext.ParameterCount)));
+                        AddInstruction(Instruction.Pop(ReturnRegister, additionalStackPointerAdjustment: -(methodContext.LocalVariablesSize + methodContext.ParametersSize)));
                         AddInstructions(Instruction.NoOp(4));
                     }
                 }
@@ -623,14 +791,14 @@ namespace Assembler
                 {
                     if (methodContext.IsVoid)
                     {
-                        Instruction.AdjustStackPointer(-methodContext.LocalVariableCount);
+                        Instruction.AdjustStackPointer(-methodContext.LocalVariablesSize);
                     }
                     else
                     {
-                        AddInstruction(Instruction.Pop(ReturnRegister, additionalStackPointerAdjustment: -methodContext.LocalVariableCount));
+                        AddInstruction(Instruction.Pop(ReturnRegister, additionalStackPointerAdjustment: -methodContext.LocalVariablesSize));
                     }
 
-                    AddInstruction(Instruction.Pop(SpecialRegisters.InstructionPointer, additionalStackPointerAdjustment: -methodContext.ParameterCount));
+                    AddInstruction(Instruction.Pop(SpecialRegisters.InstructionPointer, additionalStackPointerAdjustment: -methodContext.ParametersSize));
                 }
             }
 
@@ -688,9 +856,29 @@ namespace Assembler
             public int InstructionIndex { get; set; }
             public bool IsInline { get; set; }
             public bool IsVoid { get; set; }
-            public int ParameterCount { get; set; }
-            public int LocalVariableCount { get; set; }
+            public Dictionary<int, VariableInfo> Parameters { get; set; }
+            public int ParametersSize { get; set; }
+            public Dictionary<int, VariableInfo> LocalVariables { get; set; }
+            public int LocalVariablesSize { get; set; }
             public int StackPointerOffset { get; set; } = 0;
+        }
+
+        private class TypeInfo
+        {
+            public Dictionary<FieldInfo, int> FieldOffsets { get; set; }
+            public int Size { get; set; }
+        }
+
+        private class VariableInfo
+        {
+            public int Offset { get; set; }
+            public int Size { get; set; }
+        }
+
+        private class MethodParameterInfo
+        {
+            public Dictionary<int, VariableInfo> Parameters { get; set; }
+            public int Size { get; set; }
         }
     }
 

@@ -34,15 +34,7 @@ namespace CompilerCommon
             ConditionOperator = conditionOperator
         };
 
-        public static Instruction Pop(int outputRegister, int additionalStackPointerAdjustment = 0) => new Instruction
-        {
-            OpCode = Operation.Read,
-            OutputRegister = outputRegister,
-            AutoIncrement = -1 + additionalStackPointerAdjustment,
-            LeftInputRegister = SpecialRegisters.StackPointer,
-            LeftImmediateValue = -1,
-            RightImmediateValue = RamSignal
-        };
+        public static Instruction Pop(int outputRegister, int additionalStackPointerAdjustment = 0) => ReadStackValue(-1, outputRegister, stackPointerAdjustment: -1 + additionalStackPointerAdjustment);
 
         public static Instruction PushImmediateValue(int value) => Push(immediateValue: value);
 
@@ -64,7 +56,15 @@ namespace CompilerCommon
             LeftInputRegister = SpecialRegisters.StackPointer
         };
 
-        public static Instruction ReadStackValue(int offset, int outputRegister) => ReadMemory(outputRegister, SpecialRegisters.StackPointer, offset);
+        public static Instruction ReadStackValue(int offset, int outputRegister, int stackPointerAdjustment = 0) => new Instruction
+        {
+            OpCode = Operation.Read,
+            OutputRegister = outputRegister,
+            AutoIncrement = stackPointerAdjustment,
+            LeftInputRegister = SpecialRegisters.StackPointer,
+            LeftImmediateValue = offset,
+            RightImmediateValue = RamSignal
+        };
 
         public static Instruction WriteStackValue(int offset, int inputRegister = 0, int immediateValue = 0) => WriteMemory(SpecialRegisters.StackPointer, offset, inputRegister, immediateValue);
 

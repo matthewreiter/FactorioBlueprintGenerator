@@ -20,11 +20,21 @@ namespace SeeSharpCompilerTest
             var isFalse = !true;
             var isTrue = !isFalse || false;
 
-            for (int index = 0; index <= 3; index++)
+            var stuff = new Stuff { Field1 = 32, Field2 = 64 };
+            stuff.Field2 += stuff.Field1;
+
+            var fieldSum = GetFieldSum(stuff);
+
+            for (int index = 0; index < 4; index++)
             {
                 sum *= 2;
                 counter++;
             }
+        }
+
+        private static int GetFieldSum(Stuff stuff)
+        {
+            return stuff.Field1 + stuff.Field2;
         }
 
         private static void GetAnswer(out int result)
@@ -37,6 +47,12 @@ namespace SeeSharpCompilerTest
         private static int IgnoreResult()
         {
             return 100;
+        }
+
+        private struct Stuff
+        {
+            public int Field1;
+            public int Field2;
         }
     }
 }
