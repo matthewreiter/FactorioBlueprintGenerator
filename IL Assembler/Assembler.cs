@@ -71,7 +71,7 @@ namespace Assembler
             private readonly HashSet<Type> types = new HashSet<Type>();
             private readonly Dictionary<Type, TypeInfo> typeInfoCache = new Dictionary<Type, TypeInfo>();
             private readonly Dictionary<MethodBase, MethodParameterInfo> methodParameterInfoCache = new Dictionary<MethodBase, MethodParameterInfo>();
-            private readonly Dictionary<FieldInfo, int> staticFieldAddresses = new Dictionary<FieldInfo, int>();
+            private readonly Dictionary<FieldInfo, VariableInfo> staticFields = new Dictionary<FieldInfo, VariableInfo>();
             private readonly List<(Instruction, MethodInfo)> calls = new List<(Instruction, MethodInfo)>();
             private int initialStackPointer;
 
@@ -115,12 +115,12 @@ namespace Assembler
                     Console.WriteLine();
                 }
 
-                if (staticFieldAddresses.Count > 0)
+                if (staticFields.Count > 0)
                 {
                     Console.WriteLine("Static field addresses:");
-                    foreach (var entry in staticFieldAddresses)
+                    foreach (var entry in staticFields)
                     {
-                        Console.WriteLine($"{entry.Key.DeclaringType.Name}.{entry.Key.Name}: {entry.Value}");
+                        Console.WriteLine($"{entry.Key.DeclaringType.Name}.{entry.Key.Name}: {entry.Value.Offset}");
                     }
                     Console.WriteLine();
                 }
@@ -190,8 +190,9 @@ namespace Assembler
                         .GetFields(BindingFlags.DeclaredOnly | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
                         .Where(field => !field.IsLiteral)) // Exclude constants
                     {
-                        staticFieldAddresses[field] = currentAddress;
-                        currentAddress += GetVariableSize(field.FieldType);
+                        var size = GetVariableSize(field.FieldType);
+                        staticFields[field] = new VariableInfo { Offset = currentAddress, Size = size };
+                        currentAddress += size;
                     }
                 }
 
@@ -237,16 +238,17 @@ namespace Assembler
             {
                 if (!typeInfoCache.TryGetValue(type, out var typeInfo))
                 {
-                    var offsets = new Dictionary<FieldInfo, int>();
+                    var fields = new Dictionary<FieldInfo, VariableInfo>();
                     var currentOffset = 0;
 
                     foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
                     {
-                        offsets[field] = currentOffset;
-                        currentOffset += GetVariableSize(field.FieldType);
+                        var size = GetVariableSize(field.FieldType);
+                        fields[field] = new VariableInfo { Offset = currentOffset, Size = size };
+                        currentOffset += size;
                     }
 
-                    typeInfo = new TypeInfo { FieldOffsets = offsets, Size = currentOffset };
+                    typeInfo = new TypeInfo { Fields = fields, Size = currentOffset };
                     typeInfoCache[type] = typeInfo;
                 }
 
@@ -459,11 +461,11 @@ namespace Assembler
                         {
                             var operand = (FieldInfo)ilInstruction.Operand;
 
-                            if (staticFieldAddresses.TryGetValue(operand, out var address))
+                            if (staticFields.TryGetValue(operand, out var field))
                             {
-                                AddInstruction(Instruction.ReadMemory(3, addressValue: address));
-                                AddInstructions(Instruction.NoOp(4));
-                                AddInstruction(Instruction.PushRegister(3));
+                                CopyData(field.Size,
+                                    (chunkOffset, index) => Instruction.ReadMemory(3 + index, addressValue: field.Offset + chunkOffset + index),
+                                    (chunkOffset, index) => Instruction.PushRegister(3 + index));
                             }
                             else
                             {
@@ -474,11 +476,14 @@ namespace Assembler
                         {
                             var operand = (FieldInfo)ilInstruction.Operand;
 
-                            if (staticFieldAddresses.TryGetValue(operand, out var address))
+                            if (staticFields.TryGetValue(operand, out var field))
                             {
-                                AddInstruction(Instruction.Pop(3));
-                                AddInstructions(Instruction.NoOp(4));
-                                AddInstruction(Instruction.WriteMemory(addressValue: address, inputRegister: 3));
+                                // Start at the end of the variable since popping happens from right to left
+                                var baseOffset = field.Offset + field.Size - 1;
+
+                                CopyData(field.Size,
+                                    (chunkOffset, index) => Instruction.Pop(3 + index),
+                                    (chunkOffset, index) => Instruction.WriteMemory(addressValue: baseOffset - chunkOffset - index, inputRegister: 3 + index));
                             }
                             else
                             {
@@ -489,9 +494,9 @@ namespace Assembler
                         {
                             var operand = (FieldInfo)ilInstruction.Operand;
 
-                            if (staticFieldAddresses.TryGetValue(operand, out var address))
+                            if (staticFields.TryGetValue(operand, out var field))
                             {
-                                AddInstruction(Instruction.PushImmediateValue(address));
+                                AddInstruction(Instruction.PushImmediateValue(field.Offset));
                             }
                             else
                             {
@@ -502,20 +507,46 @@ namespace Assembler
                         {
                             var operand = (FieldInfo)ilInstruction.Operand;
                             var typeInfo = GetTypeInfo(operand.DeclaringType);
+                            var field = typeInfo.Fields[operand];
 
-                            AddInstruction(Instruction.ReadStackValue(typeInfo.FieldOffsets[operand] - typeInfo.Size, 3, -typeInfo.Size));
-                            AddInstructions(Instruction.NoOp(4));
-                            AddInstruction(Instruction.PushRegister(3));
+                            if (field.Size == 1)
+                            {
+                                AddInstruction(Instruction.ReadStackValue(field.Offset - typeInfo.Size, 3, stackPointerAdjustment: -typeInfo.Size));
+                                AddInstructions(Instruction.NoOp(4));
+                                AddInstruction(Instruction.PushRegister(3));
+                            }
+                            else
+                            {
+                                AddInstruction(Instruction.AdjustStackPointer(-typeInfo.Size));
+                                PushVariable(field, offsetRelativeToBase: methodContext.StackPointerOffset);
+                            }
                         }
                         else if (opCodeValue == OpCodes.Stfld.Value)
                         {
                             var operand = (FieldInfo)ilInstruction.Operand;
                             var typeInfo = GetTypeInfo(operand.DeclaringType);
+                            var field = typeInfo.Fields[operand];
 
-                            AddInstruction(Instruction.Pop(4)); // Value
-                            AddInstruction(Instruction.Pop(3)); // Pointer to beginning of structure
-                            AddInstructions(Instruction.NoOp(4));
-                            AddInstruction(Instruction.WriteMemory(addressRegister: 3, addressValue: typeInfo.FieldOffsets[operand], inputRegister: 4));
+                            if (field.Size == 1)
+                            {
+                                AddInstruction(Instruction.Pop(4)); // Value
+                                AddInstruction(Instruction.Pop(3)); // Pointer to beginning of structure
+                                AddInstructions(Instruction.NoOp(4));
+                                AddInstruction(Instruction.WriteMemory(addressRegister: 3, addressValue: field.Offset, inputRegister: 4));
+                            }
+                            else
+                            {
+                                AddInstruction(Instruction.ReadStackValue(-field.Size - 1, 3)); // Pointer to beginning of structure
+
+                                // Start at the end of the variable since popping happens from right to left
+                                var baseOffset = field.Offset + field.Size - 1;
+
+                                CopyData(field.Size,
+                                    (chunkOffset, index) => Instruction.Pop(4 + index),
+                                    (chunkOffset, index) => Instruction.WriteMemory(addressRegister: 3, addressValue: baseOffset - chunkOffset - index, inputRegister: 4 + index));
+
+                                AddInstruction(Instruction.AdjustStackPointer(-1)); // Pop off the structure pointer
+                            }
                         }
                         else if (opCodeValue == OpCodes.Ldflda.Value)
                         {
@@ -524,7 +555,7 @@ namespace Assembler
 
                             AddInstruction(Instruction.Pop(3)); // Pointer to beginning of structure
                             AddInstructions(Instruction.NoOp(4));
-                            AddInstruction(Instruction.Push(inputRegister: 3, immediateValue: typeInfo.FieldOffsets[operand]));
+                            AddInstruction(Instruction.Push(inputRegister: 3, immediateValue: typeInfo.Fields[operand].Offset));
                         }
                         else if (opCodeValue == OpCodes.Initobj.Value)
                         {
@@ -661,20 +692,20 @@ namespace Assembler
 
             private void LoadArgument(int argumentIndex)
             {
-                PushStackValue(methodContext.Parameters[argumentIndex], -methodContext.ParametersSize - (methodContext.IsInline ? 0 : 1)); // Adjust to take into account the return address
+                PushVariable(methodContext.Parameters[argumentIndex], -methodContext.ParametersSize - (methodContext.IsInline ? 0 : 1)); // Adjust to take into account the return address
             }
 
             private void LoadLocalVariable(int localIndex)
             {
-                PushStackValue(methodContext.LocalVariables[localIndex]);
+                PushVariable(methodContext.LocalVariables[localIndex]);
             }
 
             private void StoreLocalVariable(int localIndex)
             {
-                PopStackValue(methodContext.LocalVariables[localIndex]);
+                PopVariable(methodContext.LocalVariables[localIndex]);
             }
 
-            private void PopStackValue(VariableInfo variable, int offsetRelativeToBase = 0)
+            private void PopVariable(VariableInfo variable, int offsetRelativeToBase = 0)
             {
                 // Start at the end of the variable since popping happens from right to left
                 var baseOffset = variable.Offset + variable.Size - 1 + offsetRelativeToBase;
@@ -684,7 +715,7 @@ namespace Assembler
                     (chunkOffset, index) => Instruction.WriteStackValue(baseOffset - methodContext.StackPointerOffset - chunkOffset - index, inputRegister: 3 + index));
             }
 
-            private void PushStackValue(VariableInfo variable, int offsetRelativeToBase = 0)
+            private void PushVariable(VariableInfo variable, int offsetRelativeToBase = 0)
             {
                 var baseOffset = variable.Offset + offsetRelativeToBase;
 
@@ -865,19 +896,19 @@ namespace Assembler
 
         private class TypeInfo
         {
-            public Dictionary<FieldInfo, int> FieldOffsets { get; set; }
-            public int Size { get; set; }
-        }
-
-        private class VariableInfo
-        {
-            public int Offset { get; set; }
+            public Dictionary<FieldInfo, VariableInfo> Fields { get; set; }
             public int Size { get; set; }
         }
 
         private class MethodParameterInfo
         {
             public Dictionary<int, VariableInfo> Parameters { get; set; }
+            public int Size { get; set; }
+        }
+
+        private class VariableInfo
+        {
+            public int Offset { get; set; }
             public int Size { get; set; }
         }
     }

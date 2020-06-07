@@ -5,6 +5,7 @@ namespace SeeSharpCompilerTest
     public static class Program
     {
         private static int counter = -50;
+        private static Stuff moreStuff = new Stuff { Field1 = -10, Field2 = -20, Things1 = new Things { Type = -30, Count = -40 } };
 
         public static void Main()
         {
@@ -21,9 +22,12 @@ namespace SeeSharpCompilerTest
             var isTrue = !isFalse || false;
 
             var stuff = new Stuff { Field1 = 32, Field2 = 64 };
+            stuff.Things1 = new Things { Type = 123, Count = 45 };
             stuff.Field2 += stuff.Field1;
 
             var fieldSum = GetFieldSum(stuff);
+
+            var copyOfThings = stuff.Things1;
 
             for (int index = 0; index < 4; index++)
             {
@@ -53,6 +57,13 @@ namespace SeeSharpCompilerTest
         {
             public int Field1;
             public int Field2;
+            public Things Things1;
+        }
+
+        private struct Things
+        {
+            public int Type;
+            public int Count;
         }
     }
 }
