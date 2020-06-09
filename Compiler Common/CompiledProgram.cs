@@ -6,5 +6,6 @@ namespace CompilerCommon
     {
         public string Name { get; set; }
         public List<Instruction> Instructions { get; set; }
+        public List<Dictionary<int, int>> Data { get; set; }
     }
 }

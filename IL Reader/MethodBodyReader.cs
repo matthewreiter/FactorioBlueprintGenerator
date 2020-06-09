@@ -15,7 +15,14 @@ namespace ILReader
         /// <param name="module"></param>
         public static List<ILInstruction> GetInstructions(this MethodBase method)
         {
-            var il = method.GetMethodBody().GetILAsByteArray();
+            var methodBody = method.GetMethodBody();
+
+            if (methodBody == null)
+            {
+                return new List<ILInstruction> { };
+            }
+
+            var il = methodBody.GetILAsByteArray();
             var module = method.Module;
             var instructions = new List<ILInstruction>();
             int position = 0;
@@ -68,15 +75,16 @@ namespace ILReader
                         break;
                     case OperandType.InlineTok:
                         metadataToken = ReadInt32(il, ref position);
-                        try
+                        var member = module.ResolveMember(metadataToken);
+
+                        if (member.MemberType == MemberTypes.TypeInfo)
                         {
                             instruction.Operand = module.ResolveType(metadataToken);
                         }
-                        catch
+                        else
                         {
-
+                            instruction.Operand = member;
                         }
-                        // SSS : see what to do here
                         break;
                     case OperandType.InlineType:
                         metadataToken = ReadInt32(il, ref position);

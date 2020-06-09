@@ -17,6 +17,7 @@ namespace Assembler
     {
         private const int RegisterCount = 32;
         private const int RamAddress = 16385;
+        private const int HeapAddress = RamAddress + 1024;
         private const int ReturnRegister = 3;
 
         public static void Run(IConfigurationRoot configuration)
@@ -57,13 +58,15 @@ namespace Assembler
 
             return new CompiledProgram
             {
-                Instructions = programBuilder.Instructions
+                Instructions = programBuilder.Instructions,
+                Data = programBuilder.Data
             };
         }
 
         private class ProgramBuilder
         {
             public List<Instruction> Instructions { get; } = new List<Instruction>();
+            public List<Dictionary<int, int>> Data { get; } = new List<Dictionary<int, int>>();
 
             private MethodContext methodContext = new MethodContext { InstructionIndex = 0 };
             private readonly Dictionary<MethodInfo, MethodContext> methodContexts = new Dictionary<MethodInfo, MethodContext>();
@@ -88,6 +91,9 @@ namespace Assembler
 
                 // Clear the first 32 words of RAM
                 AddInstructions(Enumerable.Range(RamAddress, 32).Select(address => Instruction.WriteMemory(addressValue: address, immediateValue: 0)));
+
+                // Initialize heap
+                AddInstruction(Instruction.WriteMemory(addressValue: HeapAddress, immediateValue: HeapAddress + 1));
 
                 InitializeTypes();
                 AddCallOrInlinedMethod(main);
@@ -151,13 +157,18 @@ namespace Assembler
                     {
                         var opCodeValue = ilInstruction.Code.Value;
 
-                        if (opCodeValue == OpCodes.Ldsfld.Value || opCodeValue == OpCodes.Stsfld.Value)
+                        if (ilInstruction.Operand is Type)
+                        {
+                            types.Add((Type)ilInstruction.Operand);
+                        }
+                        else if (ilInstruction.Operand is FieldInfo)
                         {
                             var operand = (FieldInfo)ilInstruction.Operand;
 
                             types.Add(operand.DeclaringType);
                         }
-                        else if (opCodeValue == OpCodes.Call.Value)
+
+                        if (opCodeValue == OpCodes.Call.Value)
                         {
                             var operand = (MethodInfo)ilInstruction.Operand;
 
@@ -288,9 +299,20 @@ namespace Assembler
                 // Local variables (stack pointer offset is relative to first local variable)
                 // Evaluation stack
 
+                if (method == ((Action<Array, RuntimeFieldHandle>)RuntimeHelpers.InitializeArray).Method)
+                {
+                    return AddArrayInitializer(method, inline);
+                }
+
+                var methodBody = method.GetMethodBody();
+
+                if (methodBody == null)
+                {
+                    return null;
+                }
+
                 var previousMethodContext = methodContext;
                 var ilInstructions = method.GetInstructions();
-                var methodBody = method.GetMethodBody();
                 var methodParameterInfo = GetMethodParameterInfo(method);
                 var (localVariables, localVariablesSize) = AllocateLocalVariables(methodBody.LocalVariables);
                 var instructionOffsetToIndexMap = new Dictionary<int, int>();
@@ -328,113 +350,80 @@ namespace Assembler
                             AddInstructions(Instruction.NoOp(4));
                             AddInstruction(Instruction.PushRegister(3));
                         }
-                        else if (opCodeValue == OpCodes.Ldc_I4.Value)
+                        else if (opCodeValue == OpCodes.Ldc_I4_M1.Value ||
+                            opCodeValue == OpCodes.Ldc_I4_0.Value ||
+                            opCodeValue == OpCodes.Ldc_I4_1.Value ||
+                            opCodeValue == OpCodes.Ldc_I4_2.Value ||
+                            opCodeValue == OpCodes.Ldc_I4_3.Value ||
+                            opCodeValue == OpCodes.Ldc_I4_4.Value ||
+                            opCodeValue == OpCodes.Ldc_I4_5.Value ||
+                            opCodeValue == OpCodes.Ldc_I4_6.Value ||
+                            opCodeValue == OpCodes.Ldc_I4_7.Value ||
+                            opCodeValue == OpCodes.Ldc_I4_8.Value ||
+                            opCodeValue == OpCodes.Ldc_I4.Value ||
+                            opCodeValue == OpCodes.Ldc_I4_S.Value)
                         {
-                            AddInstruction(Instruction.PushImmediateValue((int)ilInstruction.Operand));
-                        }
-                        else if (opCodeValue == OpCodes.Ldc_I4_M1.Value)
-                        {
-                            AddInstruction(Instruction.PushImmediateValue(-1));
-                        }
-                        else if (opCodeValue == OpCodes.Ldc_I4_0.Value)
-                        {
-                            AddInstruction(Instruction.PushImmediateValue(0));
-                        }
-                        else if (opCodeValue == OpCodes.Ldc_I4_1.Value)
-                        {
-                            AddInstruction(Instruction.PushImmediateValue(1));
-                        }
-                        else if (opCodeValue == OpCodes.Ldc_I4_2.Value)
-                        {
-                            AddInstruction(Instruction.PushImmediateValue(2));
-                        }
-                        else if (opCodeValue == OpCodes.Ldc_I4_3.Value)
-                        {
-                            AddInstruction(Instruction.PushImmediateValue(3));
-                        }
-                        else if (opCodeValue == OpCodes.Ldc_I4_4.Value)
-                        {
-                            AddInstruction(Instruction.PushImmediateValue(4));
-                        }
-                        else if (opCodeValue == OpCodes.Ldc_I4_5.Value)
-                        {
-                            AddInstruction(Instruction.PushImmediateValue(5));
-                        }
-                        else if (opCodeValue == OpCodes.Ldc_I4_6.Value)
-                        {
-                            AddInstruction(Instruction.PushImmediateValue(6));
-                        }
-                        else if (opCodeValue == OpCodes.Ldc_I4_7.Value)
-                        {
-                            AddInstruction(Instruction.PushImmediateValue(7));
-                        }
-                        else if (opCodeValue == OpCodes.Ldc_I4_8.Value)
-                        {
-                            AddInstruction(Instruction.PushImmediateValue(8));
-                        }
-                        else if (opCodeValue == OpCodes.Ldc_I4_S.Value)
-                        {
-                            AddInstruction(Instruction.PushImmediateValue((sbyte)ilInstruction.Operand));
+                            AddInstruction(Instruction.PushImmediateValue(GetConstantValue(ilInstruction)));
                         }
                         else if (opCodeValue == OpCodes.Ldarg_0.Value)
                         {
-                            LoadArgument(0);
+                            PushArgument(0);
                         }
                         else if (opCodeValue == OpCodes.Ldarg_1.Value)
                         {
-                            LoadArgument(1);
+                            PushArgument(1);
                         }
                         else if (opCodeValue == OpCodes.Ldarg_2.Value)
                         {
-                            LoadArgument(2);
+                            PushArgument(2);
                         }
                         else if (opCodeValue == OpCodes.Ldarg_3.Value)
                         {
-                            LoadArgument(3);
+                            PushArgument(3);
                         }
                         else if (opCodeValue == OpCodes.Ldarg_S.Value)
                         {
-                            LoadArgument((byte)ilInstruction.Operand);
+                            PushArgument((byte)ilInstruction.Operand);
                         }
                         else if (opCodeValue == OpCodes.Ldloc_0.Value)
                         {
-                            LoadLocalVariable(0);
+                            PushLocalVariable(0);
                         }
                         else if (opCodeValue == OpCodes.Ldloc_1.Value)
                         {
-                            LoadLocalVariable(1);
+                            PushLocalVariable(1);
                         }
                         else if (opCodeValue == OpCodes.Ldloc_2.Value)
                         {
-                            LoadLocalVariable(2);
+                            PushLocalVariable(2);
                         }
                         else if (opCodeValue == OpCodes.Ldloc_3.Value)
                         {
-                            LoadLocalVariable(3);
+                            PushLocalVariable(3);
                         }
                         else if (opCodeValue == OpCodes.Ldloc_S.Value)
                         {
-                            LoadLocalVariable((byte)ilInstruction.Operand);
+                            PushLocalVariable((byte)ilInstruction.Operand);
                         }
                         else if (opCodeValue == OpCodes.Stloc_0.Value)
                         {
-                            StoreLocalVariable(0);
+                            PopLocalVariable(0);
                         }
                         else if (opCodeValue == OpCodes.Stloc_1.Value)
                         {
-                            StoreLocalVariable(1);
+                            PopLocalVariable(1);
                         }
                         else if (opCodeValue == OpCodes.Stloc_2.Value)
                         {
-                            StoreLocalVariable(2);
+                            PopLocalVariable(2);
                         }
                         else if (opCodeValue == OpCodes.Stloc_3.Value)
                         {
-                            StoreLocalVariable(3);
+                            PopLocalVariable(3);
                         }
                         else if (opCodeValue == OpCodes.Stloc_S.Value)
                         {
-                            StoreLocalVariable((byte)ilInstruction.Operand);
+                            PopLocalVariable((byte)ilInstruction.Operand);
                         }
                         else if (opCodeValue == OpCodes.Ldloca_S.Value)
                         {
@@ -570,6 +559,45 @@ namespace Assembler
                                 AddInstruction(Instruction.WriteMemory(addressRegister: 3, addressValue: index, immediateValue: 0));
                             }
                         }
+                        else if (opCodeValue == OpCodes.Newarr.Value)
+                        {
+                            var operand = (Type)ilInstruction.Operand;
+
+                            AddInstruction(Instruction.Pop(3)); // Array length
+                            AddInstruction(Instruction.ReadMemory(4, addressValue: HeapAddress));
+                            AddInstructions(Instruction.NoOp(4));
+                            AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 4, rightInputRegister: 3, rightImmediateValue: 1)); // Calculate the new free pointer
+                            AddInstruction(Instruction.SetRegister(6, inputRegister: 4, immediateValue: 1)); // Initialize the pointer for clearing the array, leaving room for the array length
+                            AddInstruction(Instruction.SetRegister(7, inputRegister: 3)); // Initialize the (decrementing) counter for clearing the array
+                            AddInstruction(Instruction.PushRegister(4)); // Push the array reference onto the stack
+                            AddInstruction(Instruction.WriteMemory(addressRegister: 4, inputRegister: 3)); // Write the array length to the beginning of the array
+                            AddInstruction(Instruction.WriteMemory(addressValue: HeapAddress, inputRegister: 5)); // Allocate the array on the heap
+
+                            // Loop to clear array
+                            AddInstruction(Instruction.WriteMemory(addressRegister: 6, immediateValue: 0, autoIncrement: 1));
+                            AddInstruction(Instruction.IncrementRegister(7, -1));
+                            AddInstruction(Instruction.JumpIf(-3, conditionLeftRegister: 7, conditionOperator: ConditionOperator.GreaterThan));
+                        }
+                        else if (opCodeValue == OpCodes.Ldtoken.Value)
+                        {
+                            var operand = (FieldInfo)ilInstruction.Operand;
+
+                            var arraySizeInstruction = ilInstructions[ilInstructionIndex - 3];
+                            var newArrayInstruction = ilInstructions[ilInstructionIndex - 2];
+
+                            int arraySize = GetConstantValue(arraySizeInstruction);
+                            var array = Array.CreateInstance((Type)newArrayInstruction.Operand, arraySize);
+                            RuntimeHelpers.InitializeArray(array, operand.FieldHandle);
+
+                            AddInstruction(Instruction.PushImmediateValue(Data.Count + 1)); // Push the token reference onto the stack
+
+                            int chunkSize;
+                            for (int chunkOffset = 0; chunkOffset < arraySize; chunkOffset += chunkSize)
+                            {
+                                chunkSize = Math.Min(SignalUtils.MaxSignals, arraySize - chunkOffset);
+                                Data.Add(Enumerable.Range(0, chunkSize).ToDictionary(index => index + 1, index => (int)array.GetValue(chunkOffset + index)));
+                            }
+                        }
                         else if (opCodeValue == OpCodes.Not.Value)
                         {
                             AddInstruction(Instruction.Pop(3));
@@ -690,17 +718,74 @@ namespace Assembler
                 }
             }
 
-            private void LoadArgument(int argumentIndex)
+            private MethodContext AddArrayInitializer(MethodBase method, bool inline)
+            {
+                var previousMethodContext = methodContext;
+                var methodParameterInfo = GetMethodParameterInfo(method);
+
+                methodContext = new MethodContext
+                {
+                    InstructionIndex = Instructions.Count,
+                    IsInline = inline,
+                    IsVoid = true,
+                    Parameters = methodParameterInfo.Parameters,
+                    ParametersSize = methodParameterInfo.Size
+                };
+
+                try
+                {
+                    ReadArgument(0, outputRegister: 3); // Array
+                    ReadArgument(1, outputRegister: 4); // Initial data
+                    AddInstructions(Instruction.NoOp(3));
+                    AddInstruction(Instruction.ReadMemory(5, addressRegister: 3)); // Initialize overall counter to array length
+
+                    // Outer loop beginning
+                    var outerLoopOffset = Instructions.Count;
+                    AddInstruction(Instruction.SetRegisterToImmediateValue(6, 1)); // Initialize signal counter
+                    AddInstruction(Instruction.SetRegisterToImmediateValue(7, SignalUtils.MaxSignals)); // Initialize the inner loop count
+                    AddInstructions(Instruction.NoOp(2));
+                    AddInstruction(Instruction.SetRegister(7, inputRegister: 5, conditionLeftRegister: 5, conditionRightImmediateValue: SignalUtils.MaxSignals, conditionOperator: ConditionOperator.LessThan)); // If there is less data remaining than the signal count, use that instead
+
+                    // Inner loop
+                    var innerLoopOffset = Instructions.Count;
+                    AddInstruction(Instruction.ReadSignal(outputRegister: 8, addressRegister: 4, signalRegister: 6)); // Read initial data from ROM
+                    AddInstruction(Instruction.IncrementRegister(5, -1)); // Decrement the overall counter
+                    AddInstruction(Instruction.IncrementRegister(6, 1)); // Increment the signal counter
+                    AddInstructions(Instruction.NoOp(1));
+                    AddInstruction(Instruction.IncrementRegister(7, -1)); // Decrement the inner loop counter
+                    AddInstruction(Instruction.WriteMemory(addressRegister: 3, addressValue: 1, inputRegister: 8, autoIncrement: 1)); // Write initial data to the array
+                    AddInstruction(Instruction.JumpIf(innerLoopOffset - (Instructions.Count + 1), conditionLeftRegister: 7, conditionRightImmediateValue: 0, ConditionOperator.GreaterThan)); // Jump to the beginning of the inner loop
+
+                    // Outer loop end
+                    AddInstruction(Instruction.IncrementRegister(4, 1)); // Increment the source pointer
+                    AddInstruction(Instruction.JumpIf(outerLoopOffset - (Instructions.Count + 1), conditionLeftRegister: 5, conditionRightImmediateValue: 0, ConditionOperator.GreaterThan)); // Jump to the beginning of the outer loop
+
+                    AddReturn();
+
+                    return methodContext;
+                }
+                finally
+                {
+                    methodContext = previousMethodContext;
+                }
+            }
+
+            private void ReadArgument(int argumentIndex, int outputRegister)
+            {
+                AddInstruction(Instruction.ReadStackValue(methodContext.Parameters[argumentIndex].Offset - methodContext.ParametersSize - (methodContext.IsInline ? 0 : 1) - methodContext.StackPointerOffset, outputRegister));
+            }
+
+            private void PushArgument(int argumentIndex)
             {
                 PushVariable(methodContext.Parameters[argumentIndex], -methodContext.ParametersSize - (methodContext.IsInline ? 0 : 1)); // Adjust to take into account the return address
             }
 
-            private void LoadLocalVariable(int localIndex)
+            private void PushLocalVariable(int localIndex)
             {
                 PushVariable(methodContext.LocalVariables[localIndex]);
             }
 
-            private void StoreLocalVariable(int localIndex)
+            private void PopLocalVariable(int localIndex)
             {
                 PopVariable(methodContext.LocalVariables[localIndex]);
             }
@@ -878,6 +963,64 @@ namespace Assembler
                 foreach (var instruction in instructions)
                 {
                     AddInstruction(instruction);
+                }
+            }
+
+            private int GetConstantValue(ILInstruction ilInstruction)
+            {
+                var opCodeValue = ilInstruction.Code.Value;
+
+                if (opCodeValue == OpCodes.Ldc_I4_M1.Value)
+                {
+                    return -1;
+                }
+                else if (opCodeValue == OpCodes.Ldc_I4_0.Value)
+                {
+                    return 0;
+                }
+                else if (opCodeValue == OpCodes.Ldc_I4_1.Value)
+                {
+                    return 1;
+                }
+                else if (opCodeValue == OpCodes.Ldc_I4_2.Value)
+                {
+                    return 2;
+                }
+                else if (opCodeValue == OpCodes.Ldc_I4_3.Value)
+                {
+                    return 3;
+                }
+                else if (opCodeValue == OpCodes.Ldc_I4_4.Value)
+                {
+                    return 4;
+                }
+                else if (opCodeValue == OpCodes.Ldc_I4_5.Value)
+                {
+                    return 5;
+                }
+                else if (opCodeValue == OpCodes.Ldc_I4_6.Value)
+                {
+                    return 6;
+                }
+                else if (opCodeValue == OpCodes.Ldc_I4_7.Value)
+                {
+                    return 7;
+                }
+                else if (opCodeValue == OpCodes.Ldc_I4_8.Value)
+                {
+                    return 8;
+                }
+                else if (opCodeValue == OpCodes.Ldc_I4.Value)
+                {
+                    return (int)ilInstruction.Operand;
+                }
+                else if (opCodeValue == OpCodes.Ldc_I4_S.Value)
+                {
+                    return (sbyte)ilInstruction.Operand;
+                }
+                else
+                {
+                    throw new Exception($"Cannot get constant value from {ilInstruction.Code}");
                 }
             }
         }

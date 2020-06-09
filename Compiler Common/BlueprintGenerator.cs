@@ -14,6 +14,8 @@ namespace CompilerCommon
             var program = new List<MemoryCell>();
             var data = new List<MemoryCell>();
 
+            Console.WriteLine("Instructions:");
+
             var address = 1;
             foreach (var instruction in compiledProgram.Instructions)
             {
@@ -24,6 +26,17 @@ namespace CompilerCommon
                 }
 
                 address++;
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("Data:");
+
+            var dataAddress = 1;
+            foreach (var dataCell in compiledProgram.Data)
+            {
+                Console.WriteLine($"{dataAddress}: {string.Join(", ", dataCell.Select(entry => $"{entry.Key} => {entry.Value}"))}");
+                data.Add(new MemoryCell { Address = dataAddress, Filters = ConvertDataToFilters(dataCell) });
+                dataAddress++;
             }
 
             var romUsed = program.Count + data.Count;
@@ -53,6 +66,11 @@ namespace CompilerCommon
             }
                 .Where(filter => filter.Count != 0)
                 .ToList();
+        }
+
+        private static List<Filter> ConvertDataToFilters(Dictionary<int, int> dataCell)
+        {
+            return dataCell.Select(entry => new Filter { Signal = SignalUtils.GetSignalByNumber(entry.Key), Count = entry.Value }).ToList();
         }
 
         private static Filter CreateFilter(char signal, int count)

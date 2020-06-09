@@ -21,6 +21,13 @@ namespace CompilerCommon
 
         public static IEnumerable<Instruction> NoOp(int cycles) => Enumerable.Repeat(new Instruction { OpCode = Operation.NoOp }, cycles);
 
+        public static Instruction IncrementRegister(int register, int increment) => new Instruction
+        {
+            OpCode = Operation.NoOp,
+            AutoIncrement = increment,
+            LeftInputRegister = register
+        };
+
         public static Instruction SetRegisterToImmediateValue(int outputRegister, int immediateValue) => SetRegister(outputRegister, immediateValue: immediateValue);
 
         public static Instruction SetRegister(int outputRegister, int inputRegister = 0, int immediateValue = 0, int conditionLeftRegister = 0, int conditionRightImmediateValue = 0, ConditionOperator conditionOperator = ConditionOperator.IsEqual) => new Instruction
@@ -40,21 +47,9 @@ namespace CompilerCommon
 
         public static Instruction PushRegister(int inputRegister) => Push(inputRegister: inputRegister);
 
-        public static Instruction Push(int inputRegister = 0, int immediateValue = 0) => new Instruction
-        {
-            OpCode = Operation.Write,
-            AutoIncrement = 1,
-            LeftInputRegister = SpecialRegisters.StackPointer,
-            RightInputRegister = inputRegister,
-            RightImmediateValue = immediateValue
-        };
+        public static Instruction Push(int inputRegister = 0, int immediateValue = 0) => WriteMemory(addressRegister: SpecialRegisters.StackPointer, inputRegister: inputRegister, immediateValue: immediateValue, autoIncrement: 1);
 
-        public static Instruction AdjustStackPointer(int offset) => new Instruction
-        {
-            OpCode = Operation.NoOp,
-            AutoIncrement = offset,
-            LeftInputRegister = SpecialRegisters.StackPointer
-        };
+        public static Instruction AdjustStackPointer(int increment) => IncrementRegister(SpecialRegisters.StackPointer, increment);
 
         public static Instruction ReadStackValue(int offset, int outputRegister, int stackPointerAdjustment = 0) => new Instruction
         {
@@ -70,9 +65,10 @@ namespace CompilerCommon
 
         public static Instruction ReadMemory(int outputRegister, int addressRegister = 0, int addressValue = 0) => ReadSignal(outputRegister, addressRegister, addressValue, signalValue: RamSignal);
 
-        public static Instruction WriteMemory(int addressRegister = 0, int addressValue = 0, int inputRegister = 0, int immediateValue = 0) => new Instruction
+        public static Instruction WriteMemory(int addressRegister = 0, int addressValue = 0, int inputRegister = 0, int immediateValue = 0, int autoIncrement = 0) => new Instruction
         {
             OpCode = Operation.Write,
+            AutoIncrement = autoIncrement,
             LeftInputRegister = addressRegister,
             LeftImmediateValue = addressValue,
             RightInputRegister = inputRegister,
@@ -99,12 +95,7 @@ namespace CompilerCommon
             RightImmediateValue = rightImmediateValue
         };
 
-        public static Instruction Jump(int offset) => new Instruction
-        {
-            OpCode = Operation.NoOp,
-            AutoIncrement = offset - 2, // Account for the delay between reading the instruction and the address getting incremented
-            LeftInputRegister = SpecialRegisters.InstructionPointer
-        };
+        public static Instruction Jump(int offset) => IncrementRegister(SpecialRegisters.InstructionPointer, increment: offset - 2); // Account for the delay between reading the instruction and the address getting incremented
 
         public static Instruction JumpIf(int offset, int conditionLeftRegister = 0, int conditionRightImmediateValue = 0, ConditionOperator conditionOperator = ConditionOperator.IsEqual) => new Instruction
         {
