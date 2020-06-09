@@ -23,6 +23,8 @@ namespace SeeSharpCompilerTest
             GetAnswer(out counter);
             var isFalse = !true;
             var isTrue = !isFalse || false;
+            soManyInts[5]++;
+            soManyInts[7] = soManyInts[8] - 1;
 
             var stuff = new Stuff { Field1 = 32, Field2 = 64 };
             stuff.Things1 = new Things { Type = 123, Count = 45 };

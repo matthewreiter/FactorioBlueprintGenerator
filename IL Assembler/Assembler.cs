@@ -453,8 +453,8 @@ namespace Assembler
                             if (staticFields.TryGetValue(operand, out var field))
                             {
                                 CopyData(field.Size,
-                                    (chunkOffset, index) => Instruction.ReadMemory(3 + index, addressValue: field.Offset + chunkOffset + index),
-                                    (chunkOffset, index) => Instruction.PushRegister(3 + index));
+                                    (offset, index) => Instruction.ReadMemory(3 + index, addressValue: field.Offset + offset),
+                                    (offset, index) => Instruction.PushRegister(3 + index));
                             }
                             else
                             {
@@ -471,8 +471,8 @@ namespace Assembler
                                 var baseOffset = field.Offset + field.Size - 1;
 
                                 CopyData(field.Size,
-                                    (chunkOffset, index) => Instruction.Pop(3 + index),
-                                    (chunkOffset, index) => Instruction.WriteMemory(addressValue: baseOffset - chunkOffset - index, inputRegister: 3 + index));
+                                    (offset, index) => Instruction.Pop(3 + index),
+                                    (offset, index) => Instruction.WriteMemory(addressValue: baseOffset - offset, inputRegister: 3 + index));
                             }
                             else
                             {
@@ -531,8 +531,8 @@ namespace Assembler
                                 var baseOffset = field.Offset + field.Size - 1;
 
                                 CopyData(field.Size,
-                                    (chunkOffset, index) => Instruction.Pop(4 + index),
-                                    (chunkOffset, index) => Instruction.WriteMemory(addressRegister: 3, addressValue: baseOffset - chunkOffset - index, inputRegister: 4 + index));
+                                    (offset, index) => Instruction.Pop(4 + index),
+                                    (offset, index) => Instruction.WriteMemory(addressRegister: 3, addressValue: baseOffset - offset, inputRegister: 4 + index));
 
                                 AddInstruction(Instruction.AdjustStackPointer(-1)); // Pop off the structure pointer
                             }
@@ -545,6 +545,21 @@ namespace Assembler
                             AddInstruction(Instruction.Pop(3)); // Pointer to beginning of structure
                             AddInstructions(Instruction.NoOp(4));
                             AddInstruction(Instruction.Push(inputRegister: 3, immediateValue: typeInfo.Fields[operand].Offset));
+                        }
+                        else if (opCodeValue == OpCodes.Ldelem_I4.Value)
+                        {
+                            PushArrayElement(1);
+                        }
+                        else if (opCodeValue == OpCodes.Stelem_I4.Value)
+                        {
+                            PopArrayElement(1);
+                        }
+                        else if (opCodeValue == OpCodes.Ldelema.Value)
+                        {
+                            var operand = (Type)ilInstruction.Operand;
+                            var typeInfo = GetTypeInfo(operand);
+
+                            PushArrayElementAddress(typeInfo.Size);
                         }
                         else if (opCodeValue == OpCodes.Initobj.Value)
                         {
@@ -770,6 +785,84 @@ namespace Assembler
                 }
             }
 
+            private void PushArrayElement(int size)
+            {
+                AddInstruction(Instruction.Pop(4)); // Index
+                AddInstruction(Instruction.Pop(3)); // Array
+                AddInstructions(Instruction.NoOp(4));
+
+                // TODO: check bounds
+
+                if (size != 1)
+                {
+                    AddInstruction(Instruction.BinaryOperation(Operation.Multiply, outputRegister: 4, leftInputRegister: 4, rightImmediateValue: size));
+                    AddInstructions(Instruction.NoOp(4));
+                }
+
+                AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 3, rightInputRegister: 4, rightImmediateValue: 1)); // Calculate starting address
+                AddInstructions(Instruction.NoOp(4));
+
+                CopyData(size,
+                    (offset, index) => Instruction.ReadMemory(6 + index, addressRegister: 5, addressValue: offset),
+                    (offset, index) => Instruction.PushRegister(6 + index));
+            }
+
+            private void PopArrayElement(int size)
+            {
+                if (size == 1)
+                {
+                    AddInstruction(Instruction.Pop(6)); // Value
+                    AddInstruction(Instruction.Pop(4)); // Index
+                    AddInstruction(Instruction.Pop(3)); // Array
+                    AddInstructions(Instruction.NoOp(4));
+
+                    // TODO: check bounds
+
+                    AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 3, rightInputRegister: 4, rightImmediateValue: 1)); // Calculate address
+                    AddInstructions(Instruction.NoOp(4));
+                    AddInstruction(Instruction.WriteMemory(addressRegister: 5, inputRegister: 6));
+                }
+                else
+                {
+                    AddInstruction(Instruction.ReadStackValue(-size - 1, outputRegister: 4)); // Index
+                    AddInstruction(Instruction.ReadStackValue(-size - 2, outputRegister: 3)); // Array
+                    AddInstructions(Instruction.NoOp(4));
+
+                    // TODO: check bounds
+
+                    AddInstruction(Instruction.BinaryOperation(Operation.Multiply, outputRegister: 4, leftInputRegister: 4, rightImmediateValue: size));
+                    AddInstructions(Instruction.NoOp(4));
+                    AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 3, rightInputRegister: 4, rightImmediateValue: size)); // Calculate starting address
+                    AddInstructions(Instruction.NoOp(4));
+
+                    CopyData(size,
+                        (offset, index) => Instruction.Pop(6 + index),
+                        (offset, index) => Instruction.WriteMemory(addressRegister: 5, addressValue: -offset, inputRegister: 6 + index));
+
+                    AddInstruction(Instruction.AdjustStackPointer(-2)); // Pop off the index and array
+                }
+            }
+
+            private void PushArrayElementAddress(int size)
+            {
+                if (size == 1)
+                {
+                    AddInstruction(Instruction.Pop(4)); // Index
+                    AddInstruction(Instruction.Pop(3)); // Array
+                    AddInstructions(Instruction.NoOp(4));
+
+                    // TODO: check bounds
+
+                    AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 3, rightInputRegister: 4, rightImmediateValue: 1)); // Calculate address
+                    AddInstructions(Instruction.NoOp(4));
+                    AddInstruction(Instruction.PushRegister(5));
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+            }
+
             private void ReadArgument(int argumentIndex, int outputRegister)
             {
                 AddInstruction(Instruction.ReadStackValue(methodContext.Parameters[argumentIndex].Offset - methodContext.ParametersSize - (methodContext.IsInline ? 0 : 1) - methodContext.StackPointerOffset, outputRegister));
@@ -796,8 +889,8 @@ namespace Assembler
                 var baseOffset = variable.Offset + variable.Size - 1 + offsetRelativeToBase;
 
                 CopyData(variable.Size,
-                    (chunkOffset, index) => Instruction.Pop(3 + index),
-                    (chunkOffset, index) => Instruction.WriteStackValue(baseOffset - methodContext.StackPointerOffset - chunkOffset - index, inputRegister: 3 + index));
+                    (offset, index) => Instruction.Pop(3 + index),
+                    (offset, index) => Instruction.WriteStackValue(baseOffset - methodContext.StackPointerOffset - offset, inputRegister: 3 + index));
             }
 
             private void PushVariable(VariableInfo variable, int offsetRelativeToBase = 0)
@@ -805,8 +898,8 @@ namespace Assembler
                 var baseOffset = variable.Offset + offsetRelativeToBase;
 
                 CopyData(variable.Size,
-                    (chunkOffset, index) => Instruction.ReadStackValue(baseOffset - methodContext.StackPointerOffset + chunkOffset + index, outputRegister: 3 + index),
-                    (chunkOffset, index) => Instruction.PushRegister(3 + index));
+                    (offset, index) => Instruction.ReadStackValue(baseOffset - methodContext.StackPointerOffset + offset, outputRegister: 3 + index),
+                    (offset, index) => Instruction.PushRegister(3 + index));
             }
 
             private void CopyData(int size, Func<int, int, Instruction> read, Func<int, int, Instruction> write)
@@ -821,14 +914,14 @@ namespace Assembler
 
                     for (int index = 0; index < chunkSize; index++)
                     {
-                        AddInstruction(read(chunkOffset, index));
+                        AddInstruction(read(chunkOffset + index, index));
                     }
 
                     AddInstructions(Instruction.NoOp(Math.Max(0, minChunkSize - chunkSize)));
 
                     for (int index = 0; index < chunkSize; index++)
                     {
-                        AddInstruction(write(chunkOffset, index));
+                        AddInstruction(write(chunkOffset + index, index));
                     }
                 }
             }
