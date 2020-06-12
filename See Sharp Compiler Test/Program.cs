@@ -8,6 +8,7 @@ namespace SeeSharpCompilerTest
         private static Stuff moreStuff = new Stuff { Field1 = -10, Field2 = -20, Things1 = new Things { Type = -30, Count = -40 } };
         private static readonly int[] soManyInts = { 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42 };
         private static readonly int[] someMoreInts = { -2, -4, -6 };
+        private static readonly Things[] someThings = new Things[] { new Things { Type = 67, Count = 89 }, new Things { }, new Things() };
         private static readonly int[] blank = new int[4];
 
         public static void Main()
@@ -33,6 +34,8 @@ namespace SeeSharpCompilerTest
             var fieldSum = GetFieldSum(stuff);
 
             var copyOfThings = stuff.Things1;
+            someThings[1] = copyOfThings;
+            someThings[2] = someThings[1];
 
             for (int index = 0; index < 4; index++)
             {

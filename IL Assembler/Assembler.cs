@@ -546,9 +546,23 @@ namespace Assembler
                             AddInstructions(Instruction.NoOp(4));
                             AddInstruction(Instruction.Push(inputRegister: 3, immediateValue: typeInfo.Fields[operand].Offset));
                         }
+                        else if (opCodeValue == OpCodes.Ldelem.Value)
+                        {
+                            var operand = (Type)ilInstruction.Operand;
+                            var typeInfo = GetTypeInfo(operand);
+
+                            PushArrayElement(typeInfo.Size);
+                        }
                         else if (opCodeValue == OpCodes.Ldelem_I4.Value)
                         {
                             PushArrayElement(1);
+                        }
+                        else if (opCodeValue == OpCodes.Stelem.Value)
+                        {
+                            var operand = (Type)ilInstruction.Operand;
+                            var typeInfo = GetTypeInfo(operand);
+
+                            PopArrayElement(typeInfo.Size);
                         }
                         else if (opCodeValue == OpCodes.Stelem_I4.Value)
                         {
@@ -577,13 +591,28 @@ namespace Assembler
                         else if (opCodeValue == OpCodes.Newarr.Value)
                         {
                             var operand = (Type)ilInstruction.Operand;
+                            var size = GetTypeInfo(operand).Size;
 
                             AddInstruction(Instruction.Pop(3)); // Array length
                             AddInstruction(Instruction.ReadMemory(4, addressValue: HeapAddress));
+
+                            // Calculate the total size of the array
+                            int arraySizeRegister;
+                            if (size != 1)
+                            {
+                                arraySizeRegister = 7;
+                                AddInstructions(Instruction.NoOp(3));
+                                AddInstruction(Instruction.BinaryOperation(Operation.Multiply, outputRegister: arraySizeRegister, leftInputRegister: 3, rightImmediateValue: size));
+                            }
+                            else
+                            {
+                                arraySizeRegister = 3;
+                            }
+
                             AddInstructions(Instruction.NoOp(4));
-                            AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 4, rightInputRegister: 3, rightImmediateValue: 1)); // Calculate the new free pointer
+                            AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 4, rightInputRegister: arraySizeRegister, rightImmediateValue: 1)); // Calculate the new free pointer
                             AddInstruction(Instruction.SetRegister(6, inputRegister: 4, immediateValue: 1)); // Initialize the pointer for clearing the array, leaving room for the array length
-                            AddInstruction(Instruction.SetRegister(7, inputRegister: 3)); // Initialize the (decrementing) counter for clearing the array
+                            AddInstruction(Instruction.SetRegister(7, inputRegister: arraySizeRegister)); // Initialize the (decrementing) counter for clearing the array
                             AddInstruction(Instruction.PushRegister(4)); // Push the array reference onto the stack
                             AddInstruction(Instruction.WriteMemory(addressRegister: 4, inputRegister: 3)); // Write the array length to the beginning of the array
                             AddInstruction(Instruction.WriteMemory(addressValue: HeapAddress, inputRegister: 5)); // Allocate the array on the heap
