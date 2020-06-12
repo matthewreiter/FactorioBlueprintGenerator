@@ -698,11 +698,22 @@ namespace Assembler
                         {
                             AddComparison(ConditionOperator.GreaterThan);
                         }
+                        else if (opCodeValue == OpCodes.Cgt_Un.Value)
+                        {
+                            AddComparison(ConditionOperator.GreaterThan, unsigned: true);
+                        }
                         else if (opCodeValue == OpCodes.Clt.Value)
                         {
                             AddComparison(ConditionOperator.LessThan);
                         }
-                        else if (opCodeValue == OpCodes.Br_S.Value)
+                        else if (opCodeValue == OpCodes.Clt_Un.Value)
+                        {
+                            AddComparison(ConditionOperator.LessThan, unsigned: true);
+                        }
+                        else if (opCodeValue == OpCodes.Br.Value ||
+                            opCodeValue == OpCodes.Br_S.Value ||
+                            opCodeValue == OpCodes.Leave.Value ||
+                            opCodeValue == OpCodes.Leave_S.Value)
                         {
                             var operand = (int)ilInstruction.Operand;
 
@@ -711,17 +722,89 @@ namespace Assembler
                                 jumps.Add((AddInstruction(Instruction.Jump(-(Instructions.Count + 1))), operand));
                             }
                         }
-                        else if (opCodeValue == OpCodes.Brtrue_S.Value)
+                        else if (opCodeValue == OpCodes.Brtrue.Value ||
+                            opCodeValue == OpCodes.Brtrue_S.Value)
                         {
                             var operand = (int)ilInstruction.Operand;
 
                             AddJumpIf(operand, ConditionOperator.IsNotEqual, jumps);
                         }
-                        else if (opCodeValue == OpCodes.Brfalse_S.Value)
+                        else if (opCodeValue == OpCodes.Brfalse.Value ||
+                            opCodeValue == OpCodes.Brfalse_S.Value)
                         {
                             var operand = (int)ilInstruction.Operand;
 
                             AddJumpIf(operand, ConditionOperator.IsEqual, jumps);
+                        }
+                        else if (opCodeValue == OpCodes.Beq.Value ||
+                            opCodeValue == OpCodes.Beq_S.Value)
+                        {
+                            var operand = (int)ilInstruction.Operand;
+
+                            AddBinaryJumpIf(operand, ConditionOperator.IsEqual, jumps);
+                        }
+                        else if (opCodeValue == OpCodes.Bne_Un.Value ||
+                            opCodeValue == OpCodes.Bne_Un_S.Value)
+                        {
+                            var operand = (int)ilInstruction.Operand;
+
+                            AddBinaryJumpIf(operand, ConditionOperator.IsNotEqual, jumps);
+                        }
+                        else if (opCodeValue == OpCodes.Bgt.Value ||
+                            opCodeValue == OpCodes.Bgt_S.Value)
+                        {
+                            var operand = (int)ilInstruction.Operand;
+
+                            AddBinaryJumpIf(operand, ConditionOperator.GreaterThan, jumps);
+                        }
+                        else if (opCodeValue == OpCodes.Bgt_Un.Value ||
+                            opCodeValue == OpCodes.Bgt_Un_S.Value)
+                        {
+                            var operand = (int)ilInstruction.Operand;
+
+                            AddBinaryJumpIf(operand, ConditionOperator.GreaterThan, jumps, unsigned: true);
+                        }
+                        else if (opCodeValue == OpCodes.Blt.Value ||
+                            opCodeValue == OpCodes.Blt_S.Value)
+                        {
+                            var operand = (int)ilInstruction.Operand;
+
+                            AddBinaryJumpIf(operand, ConditionOperator.LessThan, jumps);
+                        }
+                        else if (opCodeValue == OpCodes.Blt_Un.Value ||
+                            opCodeValue == OpCodes.Blt_Un_S.Value)
+                        {
+                            var operand = (int)ilInstruction.Operand;
+
+                            AddBinaryJumpIf(operand, ConditionOperator.LessThan, jumps, unsigned: true);
+                        }
+                        else if (opCodeValue == OpCodes.Bge.Value ||
+                            opCodeValue == OpCodes.Bge_S.Value)
+                        {
+                            var operand = (int)ilInstruction.Operand;
+
+                            AddBinaryJumpIf(operand, ConditionOperator.GreaterThanOrEqual, jumps);
+                        }
+                        else if (opCodeValue == OpCodes.Bge_Un.Value ||
+                            opCodeValue == OpCodes.Bge_Un_S.Value)
+                        {
+                            var operand = (int)ilInstruction.Operand;
+
+                            AddBinaryJumpIf(operand, ConditionOperator.GreaterThanOrEqual, jumps, unsigned: true);
+                        }
+                        else if (opCodeValue == OpCodes.Ble.Value ||
+                            opCodeValue == OpCodes.Ble_S.Value)
+                        {
+                            var operand = (int)ilInstruction.Operand;
+
+                            AddBinaryJumpIf(operand, ConditionOperator.LessThanOrEqual, jumps);
+                        }
+                        else if (opCodeValue == OpCodes.Ble_Un.Value ||
+                            opCodeValue == OpCodes.Ble_Un_S.Value)
+                        {
+                            var operand = (int)ilInstruction.Operand;
+
+                            AddBinaryJumpIf(operand, ConditionOperator.LessThanOrEqual, jumps, unsigned: true);
                         }
                         else if (opCodeValue == OpCodes.Call.Value)
                         {
@@ -977,15 +1060,17 @@ namespace Assembler
                 AddInstruction(Instruction.PushRegister(5));
             }
 
-            private void AddComparison(ConditionOperator comparisonOperator)
+            private void AddComparison(ConditionOperator comparisonOperator, bool unsigned = false)
             {
+                var unsignedAdjustment = unsigned ? int.MinValue : 0;
+
                 AddInstruction(Instruction.Pop(3)); // Right operand
                 AddInstruction(Instruction.Pop(4)); // Left operand
                 AddInstructions(Instruction.NoOp(4));
-                AddInstruction(Instruction.BinaryOperation(Operation.Subtract, outputRegister: 5, leftInputRegister: 4, rightInputRegister: 3));
+                AddInstruction(Instruction.BinaryOperation(Operation.Subtract, outputRegister: 5, leftInputRegister: 4, rightInputRegister: 3, rightImmediateValue: unsignedAdjustment));
                 AddInstructions(Instruction.NoOp(3));
                 AddInstruction(Instruction.SetRegisterToImmediateValue(6, 0));
-                AddInstruction(Instruction.SetRegister(6, immediateValue: 1, conditionLeftRegister: 5, conditionOperator: comparisonOperator));
+                AddInstruction(Instruction.SetRegister(6, immediateValue: 1, conditionLeftRegister: 5, conditionRightImmediateValue: unsignedAdjustment, conditionOperator: comparisonOperator));
                 AddInstructions(Instruction.NoOp(4));
                 AddInstruction(Instruction.PushRegister(6));
             }
@@ -1048,7 +1133,20 @@ namespace Assembler
             {
                 AddInstruction(Instruction.Pop(3));
                 AddInstructions(Instruction.NoOp(4));
-                jumps.Add((AddInstruction(Instruction.JumpIf(-(Instructions.Count + 1), conditionLeftRegister: 3, conditionRightImmediateValue: 0, conditionOperator: conditionOperator)), offset));
+                jumps.Add((AddInstruction(Instruction.JumpIf(-(Instructions.Count + 1), conditionLeftRegister: 3, conditionOperator: conditionOperator)), offset));
+            }
+
+            private void AddBinaryJumpIf(int offset, ConditionOperator conditionOperator, List<(Instruction, int)> jumps, bool unsigned = false)
+            {
+                var unsignedAdjustment = unsigned ? int.MinValue : 0;
+
+                AddInstruction(Instruction.Pop(3)); // Right operand
+                AddInstruction(Instruction.Pop(4)); // Left operand
+                AddInstructions(Instruction.NoOp(4));
+                AddInstruction(Instruction.BinaryOperation(Operation.Subtract, outputRegister: 5, leftInputRegister: 4, rightInputRegister: 3, rightImmediateValue: unsignedAdjustment));
+                AddInstructions(Instruction.NoOp(4));
+
+                jumps.Add((AddInstruction(Instruction.JumpIf(-(Instructions.Count + 1), conditionLeftRegister: 5, conditionRightImmediateValue: unsignedAdjustment, conditionOperator: conditionOperator)), offset));
             }
 
             private Instruction AddInstruction(Instruction instruction)
