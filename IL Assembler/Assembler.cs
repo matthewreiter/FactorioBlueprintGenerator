@@ -715,9 +715,13 @@ namespace Assembler
                         {
                             var operand = (int)ilInstruction.Operand;
 
-                            AddInstruction(Instruction.Pop(3));
-                            AddInstructions(Instruction.NoOp(4));
-                            jumps.Add((AddInstruction(Instruction.JumpIf(-(Instructions.Count + 1), conditionLeftRegister: 3, conditionOperator: ConditionOperator.IsNotEqual)), operand));
+                            AddJumpIf(operand, ConditionOperator.IsNotEqual, jumps);
+                        }
+                        else if (opCodeValue == OpCodes.Brfalse_S.Value)
+                        {
+                            var operand = (int)ilInstruction.Operand;
+
+                            AddJumpIf(operand, ConditionOperator.IsEqual, jumps);
                         }
                         else if (opCodeValue == OpCodes.Call.Value)
                         {
@@ -1038,6 +1042,13 @@ namespace Assembler
 
                     AddInstruction(Instruction.Pop(SpecialRegisters.InstructionPointer, additionalStackPointerAdjustment: -methodContext.ParametersSize));
                 }
+            }
+
+            private void AddJumpIf(int offset, ConditionOperator conditionOperator, List<(Instruction, int)> jumps)
+            {
+                AddInstruction(Instruction.Pop(3));
+                AddInstructions(Instruction.NoOp(4));
+                jumps.Add((AddInstruction(Instruction.JumpIf(-(Instructions.Count + 1), conditionLeftRegister: 3, conditionRightImmediateValue: 0, conditionOperator: conditionOperator)), offset));
             }
 
             private Instruction AddInstruction(Instruction instruction)
