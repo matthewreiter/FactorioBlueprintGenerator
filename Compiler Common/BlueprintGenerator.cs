@@ -1,40 +1,40 @@
 ﻿using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
 using MemoryInitializer;
-using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace CompilerCommon
 {
     public static class BlueprintGenerator
     {
-        public static Blueprint CreateBlueprintFromCompiledProgram(CompiledProgram compiledProgram, int? width, int? height)
+        public static Blueprint CreateBlueprintFromCompiledProgram(CompiledProgram compiledProgram, int? width, int? height, StreamWriter instructionsWriter)
         {
             var program = new List<MemoryCell>();
             var data = new List<MemoryCell>();
 
-            Console.WriteLine("Instructions:");
+            instructionsWriter.WriteLine("Instructions:");
 
             var address = 1;
             foreach (var instruction in compiledProgram.Instructions)
             {
                 if (instruction.OpCode != Operation.NoOp || instruction.AutoIncrement != 0 || address == compiledProgram.Instructions.Count)
                 {
-                    Console.WriteLine($"{address}: {instruction}");
+                    instructionsWriter.WriteLine($"{address}: {instruction}");
                     program.Add(new MemoryCell { Address = address, Filters = ConvertInstructionToFilters(instruction) });
                 }
 
                 address++;
             }
 
-            Console.WriteLine();
-            Console.WriteLine("Data:");
+            instructionsWriter.WriteLine();
+            instructionsWriter.WriteLine("Data:");
 
             var dataAddress = 1;
             foreach (var dataCell in compiledProgram.Data)
             {
-                Console.WriteLine($"{dataAddress}: {string.Join(", ", dataCell.Select(entry => $"{entry.Key} => {entry.Value}"))}");
+                instructionsWriter.WriteLine($"{dataAddress}: {string.Join(", ", dataCell.Select(entry => $"{entry.Key} => {entry.Value}"))}");
                 data.Add(new MemoryCell { Address = dataAddress, Filters = ConvertDataToFilters(dataCell) });
                 dataAddress++;
             }
@@ -42,9 +42,9 @@ namespace CompilerCommon
             var romUsed = program.Count + data.Count;
             var totalRom = width * height;
 
-            Console.WriteLine();
-            Console.WriteLine($"ROM usage: {romUsed}/{totalRom} ({(double)romUsed / totalRom * 100:F1}%)");
-            Console.WriteLine();
+            instructionsWriter.WriteLine();
+            instructionsWriter.WriteLine($"ROM usage: {romUsed}/{totalRom} ({(double)romUsed / totalRom * 100:F1}%)");
+            instructionsWriter.WriteLine();
 
             return RomGenerator.Generate(new RomConfiguration { Width = width, Height = height, ProgramRows = height / 2, ProgramName = compiledProgram.Name }, program, data);
         }

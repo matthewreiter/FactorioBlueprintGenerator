@@ -30,31 +30,32 @@ namespace Assembler
             var inputProgramFile = configuration.InputProgram;
             var outputBlueprintFile = configuration.OutputBlueprint;
             var outputJsonFile = configuration.OutputJson;
-            //var outputInstructionsFile = configuration.OutputInstructions;
+            var outputInstructionsFile = configuration.OutputInstructions;
             var width = configuration.Width;
             var height = configuration.Height;
 
-            var compiledProgram = AssembleCode(inputProgramFile);
+            using var instructionsWriter = new StreamWriter(outputInstructionsFile);
+
+            var compiledProgram = AssembleCode(inputProgramFile, instructionsWriter);
 
             if (compiledProgram != null)
             {
-                var blueprint = BlueprintGenerator.CreateBlueprintFromCompiledProgram(compiledProgram, width, height);
+                var blueprint = BlueprintGenerator.CreateBlueprintFromCompiledProgram(compiledProgram, width, height, instructionsWriter);
                 BlueprintUtil.PopulateIndices(blueprint);
 
                 var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
 
                 BlueprintUtil.WriteOutBlueprint(outputBlueprintFile, blueprintWrapper);
                 BlueprintUtil.WriteOutJson(outputJsonFile, blueprintWrapper);
-                //WriteOutInstructions(outputInstructionsFile, blueprint);
             }
         }
 
-        private static CompiledProgram AssembleCode(string inputProgramFile)
+        private static CompiledProgram AssembleCode(string inputProgramFile, StreamWriter instructionsWriter)
         {
             var assembly = Assembly.LoadFrom(inputProgramFile);
 
             var programBuilder = new ProgramBuilder();
-            programBuilder.Build(assembly);
+            programBuilder.Build(assembly, instructionsWriter);
 
             return new CompiledProgram
             {
@@ -78,7 +79,7 @@ namespace Assembler
             private readonly List<(Instruction, MethodInfo)> calls = new List<(Instruction, MethodInfo)>();
             private int initialStackPointer;
 
-            public void Build(Assembly assembly)
+            public void Build(Assembly assembly, StreamWriter instructionsWriter)
             {
                 var main = assembly.EntryPoint;
 
@@ -113,22 +114,25 @@ namespace Assembler
 
                 if (nonInlinedMethods.Count > 0)
                 {
-                    Console.WriteLine("Method addresses:");
+                    instructionsWriter.WriteLine("Method addresses:");
                     foreach (var method in nonInlinedMethods)
                     {
-                        Console.WriteLine($"{method.DeclaringType.Name}.{method.Name}: {methodContexts[method].InstructionIndex + 1}");
+                        if (methodContexts.TryGetValue(method, out var methodContext) && methodContext != null)
+                        {
+                            instructionsWriter.WriteLine($"{method.DeclaringType.Name}.{method.Name}: {methodContext.InstructionIndex + 1}");
+                        }
                     }
-                    Console.WriteLine();
+                    instructionsWriter.WriteLine();
                 }
 
                 if (staticFields.Count > 0)
                 {
-                    Console.WriteLine("Static field addresses:");
-                    foreach (var entry in staticFields)
+                    instructionsWriter.WriteLine("Static field addresses:");
+                    foreach (var entry in staticFields.Where(entry => entry.Value.Size > 0))
                     {
-                        Console.WriteLine($"{entry.Key.DeclaringType.Name}.{entry.Key.Name}: {entry.Value.Offset}");
+                        instructionsWriter.WriteLine($"{entry.Key.DeclaringType.Name}.{entry.Key.Name}: {entry.Value.Offset}");
                     }
-                    Console.WriteLine();
+                    instructionsWriter.WriteLine();
                 }
             }
 

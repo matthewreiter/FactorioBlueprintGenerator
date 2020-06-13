@@ -32,22 +32,23 @@ namespace SeeSharpCompiler
             var inputProgramFile = configuration.InputProgram;
             var outputBlueprintFile = configuration.OutputBlueprint;
             var outputJsonFile = configuration.OutputJson;
-            //var outputInstructionsFile = configuration.OutputInstructions;
+            var outputInstructionsFile = configuration.OutputInstructions;
             var width = configuration.Width;
             var height = configuration.Height;
+
+            using var instructionsWriter = new StreamWriter(outputInstructionsFile);
 
             var compiledProgram = CompileCode(inputProgramFile);
 
             if (compiledProgram != null)
             {
-                var blueprint = BlueprintGenerator.CreateBlueprintFromCompiledProgram(compiledProgram, width, height);
+                var blueprint = BlueprintGenerator.CreateBlueprintFromCompiledProgram(compiledProgram, width, height, instructionsWriter);
                 BlueprintUtil.PopulateIndices(blueprint);
 
                 var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
 
                 BlueprintUtil.WriteOutBlueprint(outputBlueprintFile, blueprintWrapper);
                 BlueprintUtil.WriteOutJson(outputJsonFile, blueprintWrapper);
-                //WriteOutInstructions(outputInstructionsFile, blueprint);
             }
         }
 
