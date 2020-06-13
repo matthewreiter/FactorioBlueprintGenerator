@@ -44,7 +44,6 @@ namespace CompilerCommon
 
             instructionsWriter.WriteLine();
             instructionsWriter.WriteLine($"ROM usage: {romUsed}/{totalRom} ({(double)romUsed / totalRom * 100:F1}%)");
-            instructionsWriter.WriteLine();
 
             return RomGenerator.Generate(new RomConfiguration { Width = width, Height = height, ProgramRows = height / 2, ProgramName = compiledProgram.Name }, program, data);
         }
