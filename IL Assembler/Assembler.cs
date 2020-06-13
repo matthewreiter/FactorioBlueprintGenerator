@@ -85,6 +85,7 @@ namespace Assembler
 
                 Analyze(main);
                 AllocateStaticFields();
+                EmitTypes();
 
                 // Initialize registers
                 AddInstruction(Instruction.SetRegisterToImmediateValue(SpecialRegisters.StackPointer, initialStackPointer));
@@ -111,6 +112,15 @@ namespace Assembler
                 {
                     instruction.SetJumpTarget(methodContexts[method].InstructionIndex);
                 }
+
+                instructionsWriter.WriteLine("Types:");
+                foreach (var type in types)
+                {
+                    var typeInfo = GetTypeInfo(type);
+                    instructionsWriter.WriteLine($"{type.FullName}: reference={typeInfo.RuntimeTypeReference} size={typeInfo.Size} initialize={typeInfo.Initialize}" +
+                        $" fields=({string.Join(", ", typeInfo.Fields.Select(field => $"{field.Key.Name}: offset={field.Value.Offset} size={field.Value.Size} type={field.Key.FieldType.FullName}"))})");
+                }
+                instructionsWriter.WriteLine();
 
                 if (nonInlinedMethods.Count > 0)
                 {
@@ -142,15 +152,48 @@ namespace Assembler
                 var inlinedMethods = new HashSet<MethodBase>();
                 var methodsToVisit = new Queue<MethodBase>();
 
+                void AddType(Type type)
+                {
+                    if (type == null)
+                    {
+                        return;
+                    }
+
+                    if (types.Add(type))
+                    {
+                        AddType(type.BaseType);
+                    }
+                }
+
+                void AddTypeInitializer(Type type)
+                {
+                    var typeInfo = GetTypeInfo(type);
+
+                    if (!typeInfo.Initialize)
+                    {
+                        typeInfo.Initialize = true;
+
+                        var staticConstructor = type.GetConstructor(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
+
+                        if (staticConstructor != null)
+                        {
+                            typeInfo.StaticConstructor = staticConstructor;
+                            methodsToVisit.Enqueue(staticConstructor);
+                        }
+                    }
+                }
+
                 methodsToVisit.Enqueue(main);
                 callCounts[main] = 1;
+
+                AddType(typeof(Type)); // Ensure that we have the "Type" type defined
 
                 while (methodsToVisit.Count > 0)
                 {
                     var method = methodsToVisit.Dequeue();
                     var ilInstructions = method.GetInstructions();
 
-                    types.Add(method.DeclaringType);
+                    AddType(method.DeclaringType);
 
                     if (method.GetCustomAttribute<CompilerGeneratedAttribute>() != null || method.GetCustomAttribute<InlineAttribute>() != null || ilInstructions.Count <= 10)
                     {
@@ -161,18 +204,24 @@ namespace Assembler
                     {
                         var opCodeValue = ilInstruction.Code.Value;
 
-                        if (ilInstruction.Operand is Type)
+                        if (ilInstruction.Operand is Type typeOperand)
                         {
-                            types.Add((Type)ilInstruction.Operand);
+                            AddType(typeOperand);
                         }
-                        else if (ilInstruction.Operand is FieldInfo)
+                        else if (ilInstruction.Operand is FieldInfo fieldInfoOperand && ilInstruction.Code.Value != OpCodes.Ldtoken.Value)
                         {
-                            var operand = (FieldInfo)ilInstruction.Operand;
+                            AddType(fieldInfoOperand.DeclaringType);
 
-                            types.Add(operand.DeclaringType);
+                            // Only initialize the type if a static field is referenced. This isn't perfect since static initializers can do other things besides initialize static variables, but it reduces the amount of code that is generated.
+                            if (fieldInfoOperand.IsStatic)
+                            {
+                                AddTypeInitializer(fieldInfoOperand.DeclaringType);
+                            }
                         }
 
-                        if (opCodeValue == OpCodes.Call.Value)
+                        if (opCodeValue == OpCodes.Call.Value ||
+                            opCodeValue == OpCodes.Callvirt.Value ||
+                            opCodeValue == OpCodes.Newobj.Value)
                         {
                             var operand = (MethodBase)ilInstruction.Operand;
 
@@ -185,6 +234,16 @@ namespace Assembler
                                 callCounts[operand] = 1;
                                 methodsToVisit.Enqueue(operand);
                             }
+                        }
+                        else if (opCodeValue == OpCodes.Ldstr.Value)
+                        {
+                            AddType(typeof(string));
+                        }
+                        else if (opCodeValue == OpCodes.Newarr.Value)
+                        {
+                            var operand = (Type)ilInstruction.Operand;
+
+                            AddType(operand.MakeArrayType());
                         }
                     }
                 }
@@ -201,13 +260,18 @@ namespace Assembler
 
                 foreach (var type in types)
                 {
-                    foreach (var field in type
-                        .GetFields(BindingFlags.DeclaredOnly | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-                        .Where(field => !field.IsLiteral)) // Exclude constants
+                    var typeInfo = GetTypeInfo(type);
+
+                    if (typeInfo.Initialize)
                     {
-                        var size = GetVariableSize(field.FieldType);
-                        staticFields[field] = new VariableInfo { Offset = currentAddress, Size = size };
-                        currentAddress += size;
+                        foreach (var field in type
+                            .GetFields(BindingFlags.DeclaredOnly | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                            .Where(field => !field.IsLiteral)) // Exclude constants
+                        {
+                            var size = GetVariableSize(field.FieldType);
+                            staticFields[field] = new VariableInfo { Offset = currentAddress, Size = size };
+                            currentAddress += size;
+                        }
                     }
                 }
 
@@ -233,17 +297,23 @@ namespace Assembler
             {
                 if (!methodParameterInfoCache.TryGetValue(method, out var methodParameterInfo))
                 {
-                    var variables = new Dictionary<int, VariableInfo>();
+                    var parameters = new Dictionary<int, VariableInfo>();
+                    var positionOffset = 0;
                     var currentOffset = 0;
+
+                    if (!method.IsStatic)
+                    {
+                        parameters[positionOffset++] = new VariableInfo { Offset = currentOffset++, Size = 1 };
+                    }
 
                     foreach (var parameter in method.GetParameters())
                     {
                         var size = GetVariableSize(parameter.ParameterType);
-                        variables[parameter.Position] = new VariableInfo { Offset = currentOffset, Size = size };
+                        parameters[parameter.Position + positionOffset] = new VariableInfo { Offset = currentOffset, Size = size };
                         currentOffset += size;
                     }
 
-                    methodParameterInfo = new MethodParameterInfo { Parameters = variables, Size = currentOffset };
+                    methodParameterInfo = new MethodParameterInfo { Parameters = parameters, Size = currentOffset };
                 }
 
                 return methodParameterInfo;
@@ -251,10 +321,20 @@ namespace Assembler
 
             private TypeInfo GetTypeInfo(Type type)
             {
+                if (type == null)
+                {
+                    return null;
+                }
+
                 if (!typeInfoCache.TryGetValue(type, out var typeInfo))
                 {
                     var fields = new Dictionary<FieldInfo, VariableInfo>();
                     var currentOffset = 0;
+
+                    if (!type.IsValueType)
+                    {
+                        currentOffset++; // Leave room for the type reference
+                    }
 
                     foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
                     {
@@ -276,9 +356,36 @@ namespace Assembler
                 {
                     return GetTypeInfo(type).Size;
                 }
+                else if (type == typeof(long) || type == typeof(ulong) || type == typeof(double))
+                {
+                    return 2;
+                }
                 else
                 {
                     return 1;
+                }
+            }
+
+            private void EmitTypes()
+            {
+                const int runtimeTypeSize = 2;
+
+                // Create type placeholders
+                foreach (var type in types)
+                {
+                    var typeInfo = GetTypeInfo(type);
+                    typeInfo.RuntimeTypeReference = AddData(Enumerable.Repeat(0, runtimeTypeSize));
+                }
+
+                var typeTypeReference = GetTypeInfo(typeof(Type)).RuntimeTypeReference;
+
+                // Fill in types
+                foreach (var type in types)
+                {
+                    var typeInfo = GetTypeInfo(type);
+
+                    SetData(typeInfo.RuntimeTypeReference, 0, typeTypeReference);
+                    SetData(typeInfo.RuntimeTypeReference, 1, GetTypeInfo(type.BaseType)?.RuntimeTypeReference ?? 0);
                 }
             }
 
@@ -286,7 +393,7 @@ namespace Assembler
             {
                 foreach (var type in types)
                 {
-                    var staticConstructor = type.GetConstructor(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
+                    var staticConstructor = GetTypeInfo(type).StaticConstructor;
 
                     if (staticConstructor != null)
                     {
@@ -644,10 +751,65 @@ namespace Assembler
                             AddInstruction(Instruction.Pop(3));
                             AddInstructions(Instruction.NoOp(4));
 
+                            // Clear fields
                             for (int index = 0; index < typeInfo.Size; index++)
                             {
                                 AddInstruction(Instruction.WriteMemory(addressRegister: 3, addressValue: index, immediateValue: 0));
                             }
+                        }
+                        else if (opCodeValue == OpCodes.Box.Value)
+                        {
+                            var operand = (Type)ilInstruction.Operand;
+                            var typeInfo = GetTypeInfo(operand);
+                            var size = typeInfo.Size;
+
+                            AddInstruction(Instruction.ReadMemory(3, addressValue: HeapAddress));
+
+                            CopyData(size,
+                                (offset, index) => Instruction.Pop(4 + index),
+                                (offset, index) => Instruction.WriteMemory(addressRegister: 3, addressValue: size - offset, inputRegister: 4 + index));
+
+                            AddInstruction(Instruction.WriteMemory(addressValue: HeapAddress, inputRegister: 3, immediateValue: size + 1)); // Allocate the box object on the heap
+                            AddInstruction(Instruction.WriteMemory(addressRegister: 3, immediateValue: typeInfo.RuntimeTypeReference)); // Store the type reference
+                            AddInstruction(Instruction.PushRegister(3)); // Push the box reference onto the stack
+                        }
+                        else if (opCodeValue == OpCodes.Unbox_Any.Value)
+                        {
+                            var operand = (Type)ilInstruction.Operand;
+                            var size = GetVariableSize(operand);
+
+                            AddInstruction(Instruction.Pop(3)); // Box reference
+                            AddInstructions(Instruction.NoOp(4));
+
+                            CopyData(size,
+                                (offset, index) => Instruction.ReadMemory(outputRegister: 4 + index, addressRegister: 3, addressValue: offset + 1),
+                                (offset, index) => Instruction.PushRegister(4 + index));
+                        }
+                        else if (opCodeValue == OpCodes.Sizeof.Value)
+                        {
+                            var operand = (Type)ilInstruction.Operand;
+                            var size = GetVariableSize(operand);
+
+                            AddInstruction(Instruction.PushImmediateValue(size));
+                        }
+                        else if (opCodeValue == OpCodes.Newobj.Value)
+                        {
+                            var operand = (ConstructorInfo)ilInstruction.Operand;
+                            var typeInfo = GetTypeInfo(operand.DeclaringType);
+
+                            AddInstruction(Instruction.ReadMemory(3, addressValue: HeapAddress));
+                            AddInstructions(Instruction.NoOp(4));
+                            AddInstruction(Instruction.WriteMemory(addressValue: HeapAddress, inputRegister: 3, immediateValue: typeInfo.Size)); // Allocate the object on the heap
+                            AddInstruction(Instruction.PushRegister(3)); // Push the object reference onto the stack
+                            AddInstruction(Instruction.WriteMemory(addressRegister: 3, immediateValue: typeInfo.RuntimeTypeReference)); // Store the type reference
+
+                            // Clear fields
+                            for (int offset = 1; offset < typeInfo.Size; offset++)
+                            {
+                                AddInstruction(Instruction.WriteMemory(addressRegister: 3, addressValue: offset, immediateValue: 0));
+                            }
+
+                            AddCallOrInlinedMethod(operand);
                         }
                         else if (opCodeValue == OpCodes.Newarr.Value)
                         {
@@ -672,11 +834,12 @@ namespace Assembler
                             }
 
                             AddInstructions(Instruction.NoOp(4));
-                            AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 4, rightInputRegister: arraySizeRegister, rightImmediateValue: 1)); // Calculate the new free pointer
-                            AddInstruction(Instruction.SetRegister(6, inputRegister: 4, immediateValue: 1)); // Initialize the pointer for clearing the array, leaving room for the array length
+                            AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 4, rightInputRegister: arraySizeRegister, rightImmediateValue: 2)); // Calculate the new free pointer
+                            AddInstruction(Instruction.SetRegister(6, inputRegister: 4, immediateValue: 2)); // Initialize the pointer for clearing the array, leaving room for the type reference and array length
                             AddInstruction(Instruction.SetRegister(7, inputRegister: arraySizeRegister)); // Initialize the (decrementing) counter for clearing the array
                             AddInstruction(Instruction.PushRegister(4)); // Push the array reference onto the stack
-                            AddInstruction(Instruction.WriteMemory(addressRegister: 4, inputRegister: 3)); // Write the array length to the beginning of the array
+                            AddInstruction(Instruction.WriteMemory(addressRegister: 4, immediateValue: arrayTypeInfo.RuntimeTypeReference)); // Store the type reference
+                            AddInstruction(Instruction.WriteMemory(addressRegister: 4, addressValue: 1, inputRegister: 3)); // Write the array length to the beginning of the array
                             AddInstruction(Instruction.WriteMemory(addressValue: HeapAddress, inputRegister: 5)); // Allocate the array on the heap
 
                             // Loop to clear array
@@ -684,31 +847,46 @@ namespace Assembler
                             AddInstruction(Instruction.IncrementRegister(7, -1));
                             AddInstruction(Instruction.JumpIf(-3, conditionLeftRegister: 7, conditionOperator: ConditionOperator.GreaterThan));
                         }
+                        else if (opCodeValue == OpCodes.Ldlen.Value)
+                        {
+                            PushMemory(addressOffset: 1);
+                        }
                         else if (opCodeValue == OpCodes.Ldtoken.Value)
                         {
-                            var operand = (FieldInfo)ilInstruction.Operand;
-
-                            var arraySizeInstruction = ilInstructions[ilInstructionIndex - 3];
-                            var newArrayInstruction = ilInstructions[ilInstructionIndex - 2];
-
-                            int arraySize = GetConstantValue(arraySizeInstruction);
-                            var array = Array.CreateInstance((Type)newArrayInstruction.Operand, arraySize);
-                            RuntimeHelpers.InitializeArray(array, operand.FieldHandle);
-
-                            AddInstruction(Instruction.PushImmediateValue(Data.Count + 1)); // Push the token reference onto the stack
-
-                            int chunkSize;
-                            for (int chunkOffset = 0; chunkOffset < arraySize; chunkOffset += chunkSize)
+                            if (ilInstruction.Operand is FieldInfo)
                             {
-                                chunkSize = Math.Min(SignalUtils.MaxSignals, arraySize - chunkOffset);
-                                Data.Add(Enumerable.Range(0, chunkSize).ToDictionary(index => index + 1, index => (int)array.GetValue(chunkOffset + index)));
+                                var operand = (FieldInfo)ilInstruction.Operand;
+
+                                var arraySizeInstruction = ilInstructions[ilInstructionIndex - 3];
+                                var newArrayInstruction = ilInstructions[ilInstructionIndex - 2];
+
+                                int arraySize = GetConstantValue(arraySizeInstruction);
+                                var array = Array.CreateInstance((Type)newArrayInstruction.Operand, arraySize);
+                                RuntimeHelpers.InitializeArray(array, operand.FieldHandle);
+
+                                PushConstantArray(array);
                             }
+                            else if (ilInstruction.Operand is Type)
+                            {
+                                // TODO: implement
+                            }
+                            else
+                            {
+                                throw new NotImplementedException($"Loading tokens of type {ilInstruction.Operand.GetType()} is not currently supported");
+                            }
+                        }
+                        else if (opCodeValue == OpCodes.Ldstr.Value)
+                        {
+                            var operand = (string)ilInstruction.Operand;
+                            var typeInfo = GetTypeInfo(typeof(string));
+
+                            PushConstantArray(operand.ToCharArray(), typeInfo.RuntimeTypeReference);
                         }
                         else if (opCodeValue == OpCodes.Not.Value)
                         {
                             AddInstruction(Instruction.Pop(3));
                             AddInstructions(Instruction.NoOp(4));
-                            AddInstruction(Instruction.BinaryOperation(Operation.Xor, 4, leftInputRegister: 3, rightImmediateValue: -1));
+                            AddInstruction(Instruction.BinaryOperation(Operation.Xor, outputRegister: 4, leftInputRegister: 3, rightImmediateValue: -1));
                             AddInstructions(Instruction.NoOp(4));
                             AddInstruction(Instruction.Push(4));
                         }
@@ -883,6 +1061,12 @@ namespace Assembler
                         }
                         else if (opCodeValue == OpCodes.Call.Value)
                         {
+                            var operand = (MethodBase)ilInstruction.Operand;
+
+                            AddCallOrInlinedMethod(operand);
+                        }
+                        else if (opCodeValue == OpCodes.Callvirt.Value)
+                        {
                             var operand = (MethodInfo)ilInstruction.Operand;
 
                             AddCallOrInlinedMethod(operand);
@@ -1034,6 +1218,40 @@ namespace Assembler
                 }
             }
 
+            private void PushConstantArray(Array array, int? typeReference = null)
+            {
+                var elementType = array.GetType().GetElementType();
+                var size = GetVariableSize(elementType);
+
+                IEnumerable<int> GetValues()
+                {
+                    if (typeReference.HasValue)
+                    {
+                        yield return typeReference.Value;
+                    }
+
+                    foreach (var value in array)
+                    {
+                        if (size == 1)
+                        {
+                            yield return Convert.ToInt32(value);
+                        }
+                        else if (size == 2)
+                        {
+                            var longValue = Convert.ToInt64(value);
+                            yield return (int)(longValue & 0xFFFFFFFF);
+                            yield return (int)(longValue >> 32);
+                        }
+                        else
+                        {
+                            throw new NotImplementedException($"Unsupported constant array element size: {size}");
+                        }
+                    }
+                }
+
+                AddInstruction(Instruction.PushImmediateValue(AddData(GetValues()))); // Push the array reference onto the stack
+            }
+
             private void PushArrayElement(int size)
             {
                 AddInstruction(Instruction.Pop(4)); // Index
@@ -1048,7 +1266,7 @@ namespace Assembler
                     AddInstructions(Instruction.NoOp(4));
                 }
 
-                AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 3, rightInputRegister: 4, rightImmediateValue: 1)); // Calculate starting address
+                AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 3, rightInputRegister: 4, rightImmediateValue: 2)); // Calculate starting address
                 AddInstructions(Instruction.NoOp(4));
 
                 CopyData(size,
@@ -1067,7 +1285,7 @@ namespace Assembler
 
                     // TODO: check bounds
 
-                    AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 3, rightInputRegister: 4, rightImmediateValue: 1)); // Calculate address
+                    AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 3, rightInputRegister: 4, rightImmediateValue: 2)); // Calculate address
                     AddInstructions(Instruction.NoOp(4));
                     AddInstruction(Instruction.WriteMemory(addressRegister: 5, inputRegister: 6));
                 }
@@ -1150,6 +1368,11 @@ namespace Assembler
             private void PushArgument(int argumentIndex)
             {
                 PushVariable(methodContext.Parameters[argumentIndex], -methodContext.ParametersSize - (methodContext.IsInline ? 0 : 1)); // Adjust to take into account the return address
+            }
+
+            private void PopArgument(int argumentIndex)
+            {
+                PopVariable(methodContext.Parameters[argumentIndex], -methodContext.ParametersSize - (methodContext.IsInline ? 0 : 1)); // Adjust to take into account the return address
             }
 
             private void PushLocalVariable(int localIndex)
@@ -1360,6 +1583,21 @@ namespace Assembler
                 }
             }
 
+            private int AddData(IEnumerable<int> signals)
+            {
+                var reference = Data.Count + 1;
+
+                Data.AddRange(signals
+                    .Select((signal, index) => (signal, index))
+                    .GroupBy(entry => entry.index / SignalUtils.MaxSignals)
+                    .OrderBy(entry => entry.Key)
+                    .Select(group => group.ToDictionary(entry => entry.index % SignalUtils.MaxSignals + 1, entry => entry.signal)));
+
+                return reference;
+            }
+
+            private void SetData(int address, int index, int value) => Data[address - 1 + index / SignalUtils.MaxSignals][index % SignalUtils.MaxSignals + 1] = value;
+
             private int GetConstantValue(ILInstruction ilInstruction)
             {
                 var opCodeValue = ilInstruction.Code.Value;
@@ -1440,6 +1678,9 @@ namespace Assembler
         {
             public Dictionary<FieldInfo, VariableInfo> Fields { get; set; }
             public int Size { get; set; }
+            public int RuntimeTypeReference { get; set; }
+            public bool Initialize { get; set; }
+            public ConstructorInfo StaticConstructor { get; set; }
         }
 
         private class MethodParameterInfo
