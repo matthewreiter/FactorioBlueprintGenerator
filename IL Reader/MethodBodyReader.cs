@@ -56,17 +56,17 @@ namespace ILReader
                         break;
                     case OperandType.InlineField:
                         metadataToken = ReadInt32(il, ref position);
-                        instruction.Operand = module.ResolveField(metadataToken);
+                        instruction.Operand = module.ResolveField(metadataToken, method.DeclaringType.GetGenericArguments(), method.IsGenericMethod ? method.GetGenericArguments() : null);
                         break;
                     case OperandType.InlineMethod:
                         metadataToken = ReadInt32(il, ref position);
                         try
                         {
-                            instruction.Operand = module.ResolveMethod(metadataToken);
+                            instruction.Operand = module.ResolveMethod(metadataToken, method.DeclaringType.GetGenericArguments(), method.IsGenericMethod ? method.GetGenericArguments() : null);
                         }
                         catch
                         {
-                            instruction.Operand = module.ResolveMember(metadataToken);
+                            instruction.Operand = module.ResolveMember(metadataToken, method.DeclaringType.GetGenericArguments(), method.IsGenericMethod ? method.GetGenericArguments() : null);
                         }
                         break;
                     case OperandType.InlineSig:
@@ -75,11 +75,11 @@ namespace ILReader
                         break;
                     case OperandType.InlineTok:
                         metadataToken = ReadInt32(il, ref position);
-                        var member = module.ResolveMember(metadataToken);
+                        var member = module.ResolveMember(metadataToken, method.DeclaringType.GetGenericArguments(), method.IsGenericMethod ? method.GetGenericArguments() : null);
 
                         if (member.MemberType == MemberTypes.TypeInfo)
                         {
-                            instruction.Operand = module.ResolveType(metadataToken);
+                            instruction.Operand = module.ResolveType(metadataToken, method.DeclaringType.GetGenericArguments(), method.IsGenericMethod ? method.GetGenericArguments() : null);
                         }
                         else
                         {
