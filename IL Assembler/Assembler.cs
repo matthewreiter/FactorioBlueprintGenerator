@@ -712,11 +712,14 @@ namespace Assembler
                             AddInstructions(Instruction.NoOp(4));
                             AddInstruction(Instruction.Push(4));
                         }
-                        else if (opCodeValue == OpCodes.Mul.Value)
+                        else if (opCodeValue == OpCodes.Mul.Value ||
+                            opCodeValue == OpCodes.Mul_Ovf.Value ||
+                            opCodeValue == OpCodes.Mul_Ovf_Un.Value)
                         {
                             AddBinaryOperation(Operation.Multiply);
                         }
-                        else if (opCodeValue == OpCodes.Div.Value)
+                        else if (opCodeValue == OpCodes.Div.Value ||
+                            opCodeValue == OpCodes.Div_Un.Value)
                         {
                             AddBinaryOperation(Operation.Divide);
                         }
@@ -728,7 +731,8 @@ namespace Assembler
                         {
                             AddBinaryOperation(Operation.Subtract);
                         }
-                        else if (opCodeValue == OpCodes.Rem.Value)
+                        else if (opCodeValue == OpCodes.Rem.Value ||
+                            opCodeValue == OpCodes.Rem_Un.Value)
                         {
                             AddBinaryOperation(Operation.Mod);
                         }
@@ -736,7 +740,8 @@ namespace Assembler
                         {
                             AddBinaryOperation(Operation.LeftShift);
                         }
-                        else if (opCodeValue == OpCodes.Shr.Value)
+                        else if (opCodeValue == OpCodes.Shr.Value ||
+                            opCodeValue == OpCodes.Shr_Un.Value)
                         {
                             AddBinaryOperation(Operation.RightShift);
                         }
