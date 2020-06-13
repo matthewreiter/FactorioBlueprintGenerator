@@ -24,12 +24,15 @@ namespace MemoryInitializer
 
             if (program != null && program.Count > programRows * width)
             {
-                throw new Exception($"Program too large to fit in ROM ({program.Count} > {programRows * width})");
+                Console.WriteLine($"Program too large to fit in ROM ({program.Count} > {programRows * width})");
+                programRows = (program.Count - 1) / width + 1;
+                height = Math.Max(height, programRows + (data.Count - 1) / width + 1);
             }
 
             if (data != null && data.Count > (height - programRows) * width)
             {
-                throw new Exception($"Data too large to fit in ROM ({data.Count} > {(height - programRows) * width})");
+                Console.WriteLine($"Data too large to fit in ROM ({data.Count} > {(height - programRows) * width})");
+                height = programRows + (data.Count - 1) / width + 1;
             }
 
             var cellWidth = width + ((width + 7) / 16 + 1) * 2;
