@@ -184,9 +184,9 @@ namespace ILReader
         {
             return il[position++] | ((ulong)il[position++] << 8) | ((ulong)il[position++] << 0x10) | ((ulong)il[position++] << 0x18) | ((ulong)il[position++] << 0x20) | ((ulong)il[position++] << 0x28) | ((ulong)il[position++] << 0x30) | ((ulong)il[position++] << 0x38);
         }
-        private static double ReadDouble(byte[] il, ref int position)
+        private static ulong ReadDouble(byte[] il, ref int position)
         {
-            return il[position++] | ((ulong)il[position++] << 8) | ((ulong)il[position++] << 0x10) | ((ulong)il[position++] << 0x18) | ((ulong)il[position++] << 0x20) | ((ulong)il[position++] << 0x28) | ((ulong)il[position++] << 0x30) | ((ulong)il[position++] << 0x38);
+            return ReadInt64(il, ref position);
         }
         private static sbyte ReadSByte(byte[] il, ref int position)
         {
@@ -196,9 +196,9 @@ namespace ILReader
         {
             return il[position++];
         }
-        private static float ReadSingle(byte[] il, ref int position)
+        private static int ReadSingle(byte[] il, ref int position)
         {
-            return il[position++] | (il[position++] << 8) | (il[position++] << 0x10) | (il[position++] << 0x18);
+            return ReadInt32(il, ref position);
         }
 
         #endregion
