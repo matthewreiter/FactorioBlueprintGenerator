@@ -195,7 +195,7 @@ namespace Assembler
 
                     AddType(method.DeclaringType);
 
-                    if (method.GetCustomAttribute<CompilerGeneratedAttribute>() != null || method.GetCustomAttribute<InlineAttribute>() != null || ilInstructions.Count <= 10)
+                    if (method.GetCustomAttribute<CompilerGeneratedAttribute>() != null || method.GetCustomAttribute<InlineAttribute>() != null)// || ilInstructions.Count <= 10) // TODO: handle recursion
                     {
                         inlinedMethods.Add(method);
                     }
