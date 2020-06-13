@@ -775,6 +775,12 @@ namespace Assembler
                                 AddInstruction(Instruction.WriteMemory(addressRegister: 3, addressValue: index, immediateValue: 0));
                             }
                         }
+                        else if (opCodeValue == OpCodes.Ldftn.Value)
+                        {
+                            var operand = (MethodInfo)ilInstruction.Operand;
+
+                            // TODO: implement
+                        }
                         else if (opCodeValue == OpCodes.Box.Value)
                         {
                             var operand = (Type)ilInstruction.Operand;
