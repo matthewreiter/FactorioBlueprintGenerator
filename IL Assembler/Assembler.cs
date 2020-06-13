@@ -712,6 +712,14 @@ namespace Assembler
                             AddInstructions(Instruction.NoOp(4));
                             AddInstruction(Instruction.Push(4));
                         }
+                        else if (opCodeValue == OpCodes.Neg.Value)
+                        {
+                            AddInstruction(Instruction.Pop(3));
+                            AddInstructions(Instruction.NoOp(4));
+                            AddInstruction(Instruction.BinaryOperation(Operation.Subtract, outputRegister: 4, rightInputRegister: 3));
+                            AddInstructions(Instruction.NoOp(4));
+                            AddInstruction(Instruction.Push(4));
+                        }
                         else if (opCodeValue == OpCodes.Mul.Value ||
                             opCodeValue == OpCodes.Mul_Ovf.Value ||
                             opCodeValue == OpCodes.Mul_Ovf_Un.Value)
