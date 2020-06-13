@@ -68,6 +68,7 @@ namespace Assembler
         {
             public List<Instruction> Instructions { get; } = new List<Instruction>();
             public List<Dictionary<int, int>> Data { get; } = new List<Dictionary<int, int>>();
+            public List<string> Errors { get; } = new List<string>();
 
             private MethodContext methodContext = new MethodContext { InstructionIndex = 0 };
             private readonly Dictionary<MethodBase, MethodContext> methodContexts = new Dictionary<MethodBase, MethodContext>();
@@ -110,7 +111,24 @@ namespace Assembler
 
                 foreach (var (instruction, method) in calls)
                 {
-                    instruction.SetJumpTarget(methodContexts[method].InstructionIndex);
+                    if (methodContexts.TryGetValue(method, out var methodContext) && methodContext != null)
+                    {
+                        instruction.SetJumpTarget(methodContext.InstructionIndex);
+                    }
+                    else
+                    {
+                        Errors.Add($"Cannot call {method.DeclaringType.Name}.{method.Name} because it is not defined");
+                    }
+                }
+
+                if (Errors.Count > 0)
+                {
+                    instructionsWriter.WriteLine("Errors:");
+                    foreach (var error in Errors)
+                    {
+                        instructionsWriter.WriteLine(error);
+                    }
+                    instructionsWriter.WriteLine();
                 }
 
                 instructionsWriter.WriteLine("Types:");
