@@ -70,13 +70,13 @@ namespace Assembler
             public List<Dictionary<int, int>> Data { get; } = new List<Dictionary<int, int>>();
 
             private MethodContext methodContext = new MethodContext { InstructionIndex = 0 };
-            private readonly Dictionary<MethodInfo, MethodContext> methodContexts = new Dictionary<MethodInfo, MethodContext>();
-            private HashSet<MethodInfo> nonInlinedMethods;
+            private readonly Dictionary<MethodBase, MethodContext> methodContexts = new Dictionary<MethodBase, MethodContext>();
+            private HashSet<MethodBase> nonInlinedMethods;
             private readonly HashSet<Type> types = new HashSet<Type>();
             private readonly Dictionary<Type, TypeInfo> typeInfoCache = new Dictionary<Type, TypeInfo>();
             private readonly Dictionary<MethodBase, MethodParameterInfo> methodParameterInfoCache = new Dictionary<MethodBase, MethodParameterInfo>();
             private readonly Dictionary<FieldInfo, VariableInfo> staticFields = new Dictionary<FieldInfo, VariableInfo>();
-            private readonly List<(Instruction, MethodInfo)> calls = new List<(Instruction, MethodInfo)>();
+            private readonly List<(Instruction, MethodBase)> calls = new List<(Instruction, MethodBase)>();
             private int initialStackPointer;
 
             public void Build(Assembly assembly, StreamWriter instructionsWriter)
@@ -138,9 +138,9 @@ namespace Assembler
 
             private void Analyze(MethodInfo main)
             {
-                var callCounts = new Dictionary<MethodInfo, int>();
-                var inlinedMethods = new HashSet<MethodInfo>();
-                var methodsToVisit = new Queue<MethodInfo>();
+                var callCounts = new Dictionary<MethodBase, int>();
+                var inlinedMethods = new HashSet<MethodBase>();
+                var methodsToVisit = new Queue<MethodBase>();
 
                 methodsToVisit.Enqueue(main);
                 callCounts[main] = 1;
@@ -174,7 +174,7 @@ namespace Assembler
 
                         if (opCodeValue == OpCodes.Call.Value)
                         {
-                            var operand = (MethodInfo)ilInstruction.Operand;
+                            var operand = (MethodBase)ilInstruction.Operand;
 
                             if (callCounts.ContainsKey(operand))
                             {
@@ -326,7 +326,7 @@ namespace Assembler
                 {
                     InstructionIndex = Instructions.Count,
                     IsInline = inline,
-                    IsVoid = !(method is MethodInfo && ((MethodInfo)method).ReturnType != typeof(void)),
+                    IsVoid = method.GetReturnType() == typeof(void),
                     Parameters = methodParameterInfo.Parameters,
                     ParametersSize = methodParameterInfo.Size,
                     LocalVariables = localVariables,
@@ -899,7 +899,7 @@ namespace Assembler
                 }
             }
 
-            private void AddCompilerGeneratedMethod(MethodInfo method)
+            private void AddCompilerGeneratedMethod(MethodBase method)
             {
                 if (method.DeclaringType.Name == "Memory" && method.Name == "ReadSignal")
                 {
@@ -1137,7 +1137,7 @@ namespace Assembler
                 AddInstruction(Instruction.PushRegister(6));
             }
 
-            private void AddCallOrInlinedMethod(MethodInfo method)
+            private void AddCallOrInlinedMethod(MethodBase method)
             {
                 if (nonInlinedMethods.Contains(method))
                 {
@@ -1156,7 +1156,7 @@ namespace Assembler
 
                 methodContext.StackPointerOffset -= GetMethodParameterInfo(method).Size;
 
-                if (method.ReturnType != typeof(void))
+                if (method.GetReturnType() != typeof(void))
                 {
                     AddInstruction(Instruction.PushRegister(ReturnRegister));
                 }
