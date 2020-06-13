@@ -816,6 +816,64 @@ namespace Assembler
                         {
                             AddReturn();
                         }
+                        else if (opCodeValue == OpCodes.Throw.Value)
+                        {
+                            // TODO: implement
+                        }
+                        else if (opCodeValue == OpCodes.Rethrow.Value)
+                        {
+                            // TODO: implement
+                        }
+                        else if (opCodeValue == OpCodes.Endfilter.Value)
+                        {
+                            // TODO: implement
+                        }
+                        else if (opCodeValue == OpCodes.Endfinally.Value)
+                        {
+                            // TODO: implement
+                        }
+                        else if (opCodeValue == OpCodes.Localloc.Value)
+                        {
+                            AddInstruction(Instruction.Pop(3)); // Size
+
+                            // TODO: implement
+                        }
+                        else if (opCodeValue == OpCodes.Switch.Value)
+                        {
+                            // TODO: implement
+                        }
+                        else if (opCodeValue == OpCodes.Isinst.Value)
+                        {
+                            // TODO: implement
+                        }
+                        else if (opCodeValue == OpCodes.Conv_I1.Value ||
+                            opCodeValue == OpCodes.Conv_Ovf_I1.Value ||
+                            opCodeValue == OpCodes.Conv_U1.Value ||
+                            opCodeValue == OpCodes.Conv_Ovf_U1.Value ||
+                            opCodeValue == OpCodes.Conv_I2.Value ||
+                            opCodeValue == OpCodes.Conv_Ovf_I2.Value ||
+                            opCodeValue == OpCodes.Conv_U2.Value ||
+                            opCodeValue == OpCodes.Conv_Ovf_U2.Value ||
+                            opCodeValue == OpCodes.Conv_I4.Value ||
+                            opCodeValue == OpCodes.Conv_Ovf_I4.Value ||
+                            opCodeValue == OpCodes.Conv_U4.Value ||
+                            opCodeValue == OpCodes.Conv_Ovf_U4.Value ||
+                            opCodeValue == OpCodes.Conv_I8.Value ||
+                            opCodeValue == OpCodes.Conv_Ovf_I8.Value ||
+                            opCodeValue == OpCodes.Conv_U8.Value ||
+                            opCodeValue == OpCodes.Conv_Ovf_U8.Value ||
+                            opCodeValue == OpCodes.Conv_I.Value ||
+                            opCodeValue == OpCodes.Conv_Ovf_I.Value ||
+                            opCodeValue == OpCodes.Conv_U.Value ||
+                            opCodeValue == OpCodes.Conv_Ovf_U.Value ||
+                            opCodeValue == OpCodes.Conv_R4.Value ||
+                            opCodeValue == OpCodes.Conv_R8.Value ||
+                            opCodeValue == OpCodes.Castclass.Value ||
+                            opCodeValue == OpCodes.Constrained.Value ||
+                            opCodeValue == OpCodes.Volatile.Value)
+                        {
+                            // TODO: implement
+                        }
                         else if (opCodeValue != OpCodes.Nop.Value)
                         {
                             throw new NotImplementedException($"Unsupported opcode {ilInstruction.Code.Name}");
