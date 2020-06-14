@@ -1181,7 +1181,14 @@ namespace Assembler
 
                     foreach (var (instruction, offset) in jumps)
                     {
-                        instruction.SetJumpTarget(instructionOffsetToIndexMap[offset]);
+                        if (instructionOffsetToIndexMap.TryGetValue(offset, out var jumpTarget))
+                        {
+                            instruction.SetJumpTarget(jumpTarget);
+                        }
+                        else
+                        {
+                            Errors.Add("Invalid jump target");
+                        }
                     }
 
                     return methodContext;
