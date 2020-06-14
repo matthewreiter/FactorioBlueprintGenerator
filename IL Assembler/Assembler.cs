@@ -849,7 +849,7 @@ namespace Assembler
                             int arraySizeRegister;
                             if (size != 1)
                             {
-                                arraySizeRegister = 7;
+                                arraySizeRegister = 6;
                                 AddInstructions(Instruction.NoOp(3));
                                 AddInstruction(Instruction.BinaryOperation(Operation.Multiply, outputRegister: arraySizeRegister, leftInputRegister: 3, rightImmediateValue: size));
                             }
@@ -860,17 +860,22 @@ namespace Assembler
 
                             AddInstructions(Instruction.NoOp(4));
                             AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 4, rightInputRegister: arraySizeRegister, rightImmediateValue: 2)); // Calculate the new free pointer
-                            AddInstruction(Instruction.SetRegister(6, inputRegister: 4, immediateValue: 2)); // Initialize the pointer for clearing the array, leaving room for the type reference and array length
-                            AddInstruction(Instruction.SetRegister(7, inputRegister: arraySizeRegister)); // Initialize the (decrementing) counter for clearing the array
+
+                            if (arraySizeRegister != 6)
+                            {
+                                AddInstruction(Instruction.SetRegister(6, inputRegister: arraySizeRegister)); // Initialize the (decrementing) counter for clearing the array
+                            }
+
                             AddInstruction(Instruction.PushRegister(4)); // Push the array reference onto the stack
-                            AddInstruction(Instruction.WriteMemory(addressRegister: 4, immediateValue: arrayTypeInfo.RuntimeTypeReference)); // Store the type reference
-                            AddInstruction(Instruction.WriteMemory(addressRegister: 4, addressValue: 1, inputRegister: 3)); // Write the array length to the beginning of the array
-                            AddInstruction(Instruction.WriteMemory(addressValue: HeapAddress, inputRegister: 5)); // Allocate the array on the heap
+                            AddInstruction(Instruction.WriteMemory(addressRegister: 4, immediateValue: arrayTypeInfo.RuntimeTypeReference, autoIncrement: 1)); // Store the type reference
+                            AddInstruction(Instruction.WriteMemory(addressRegister: 4, inputRegister: 3, autoIncrement: 1)); // Write the array length to the beginning of the array
 
                             // Loop to clear array
-                            AddInstruction(Instruction.WriteMemory(addressRegister: 6, immediateValue: 0, autoIncrement: 1));
-                            AddInstruction(Instruction.IncrementRegister(7, -1));
-                            AddInstruction(Instruction.JumpIf(-3, conditionLeftRegister: 7, conditionOperator: ConditionOperator.GreaterThan));
+                            AddInstruction(Instruction.WriteMemory(addressRegister: 4, autoIncrement: 1)); // Leave room for the type reference and array length
+                            AddInstruction(Instruction.IncrementRegister(6, -1));
+                            AddInstruction(Instruction.JumpIf(-3, conditionLeftRegister: 6, conditionOperator: ConditionOperator.GreaterThan));
+
+                            AddInstruction(Instruction.WriteMemory(addressValue: HeapAddress, inputRegister: 5)); // Allocate the array on the heap
                         }
                         else if (opCodeValue == OpCodes.Ldlen.Value)
                         {
@@ -1230,7 +1235,7 @@ namespace Assembler
                     ReadArgument(0, outputRegister: 3); // Array
                     ReadArgument(1, outputRegister: 4); // Initial data
                     AddInstructions(Instruction.NoOp(3));
-                    AddInstruction(Instruction.ReadMemory(5, addressRegister: 3)); // Initialize overall counter to array length
+                    AddInstruction(Instruction.ReadMemory(5, addressRegister: 3, addressValue: 1)); // Initialize overall counter to array length
 
                     // Outer loop beginning
                     var outerLoopOffset = Instructions.Count;
@@ -1246,7 +1251,7 @@ namespace Assembler
                     AddInstruction(Instruction.IncrementRegister(6, 1)); // Increment the signal counter
                     AddInstructions(Instruction.NoOp(1));
                     AddInstruction(Instruction.IncrementRegister(7, -1)); // Decrement the inner loop counter
-                    AddInstruction(Instruction.WriteMemory(addressRegister: 3, addressValue: 1, inputRegister: 8, autoIncrement: 1)); // Write initial data to the array
+                    AddInstruction(Instruction.WriteMemory(addressRegister: 3, addressValue: 2, inputRegister: 8, autoIncrement: 1)); // Write initial data to the array
                     AddInstruction(Instruction.JumpIf(innerLoopOffset - (Instructions.Count + 1), conditionLeftRegister: 7, conditionRightImmediateValue: 0, ConditionOperator.GreaterThan)); // Jump to the beginning of the inner loop
 
                     // Outer loop end
@@ -1344,7 +1349,7 @@ namespace Assembler
 
                     AddInstruction(Instruction.BinaryOperation(Operation.Multiply, outputRegister: 4, leftInputRegister: 4, rightImmediateValue: size));
                     AddInstructions(Instruction.NoOp(4));
-                    AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 3, rightInputRegister: 4, rightImmediateValue: size)); // Calculate starting address
+                    AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 5, leftInputRegister: 3, rightInputRegister: 4, rightImmediateValue: size + 1)); // Calculate starting address
                     AddInstructions(Instruction.NoOp(4));
 
                     CopyData(size,
@@ -1615,7 +1620,6 @@ namespace Assembler
                 {
                     AddInstructions(Instruction.NoOp(4));
                 }
-                
 
                 return instruction;
             }
