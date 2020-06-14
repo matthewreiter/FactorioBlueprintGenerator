@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using SeeSharp.Runtime.Attributes;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -906,6 +907,23 @@ namespace Assembler
 
                             PushConstantArray(operand.ToCharArray(), typeInfo.RuntimeTypeReference);
                         }
+                        else if (opCodeValue == OpCodes.Isinst.Value)
+                        {
+                            var operand = (Type)ilInstruction.Operand;
+                            var typeInfo = GetTypeInfo(operand);
+
+                            AddInstruction(Instruction.Pop(3)); // Reference to check
+                            AddInstructions(Instruction.NoOp(4));
+                            AddInstruction(Instruction.ReadMemory(outputRegister: 4, addressRegister: 3));
+                            AddInstructions(Instruction.NoOp(3));
+                            AddInstruction(Instruction.SetRegisterToImmediateValue(5, 0));
+                            AddInstruction(Instruction.SetRegister(5, immediateValue: 1, conditionLeftRegister: 4, conditionRightImmediateValue: typeInfo.RuntimeTypeReference, conditionOperator: ConditionOperator.IsEqual));
+
+                            // TODO: check against parent classes
+
+                            AddInstructions(Instruction.NoOp(4));
+                            AddInstruction(Instruction.PushRegister(5));
+                        }
                         else if (opCodeValue == OpCodes.Not.Value)
                         {
                             AddInstruction(Instruction.Pop(3));
@@ -1122,10 +1140,6 @@ namespace Assembler
                             // TODO: implement
                         }
                         else if (opCodeValue == OpCodes.Switch.Value)
-                        {
-                            // TODO: implement
-                        }
-                        else if (opCodeValue == OpCodes.Isinst.Value)
                         {
                             // TODO: implement
                         }
