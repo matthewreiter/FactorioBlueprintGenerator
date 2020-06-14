@@ -9,6 +9,8 @@ namespace SeeSharpCompilerTest
         private static readonly int[] soManyInts = { 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42 };
         private static readonly int[] someMoreInts = { -2, -4, -6 };
         private static readonly Things[] someThings = new Things[] { new Things { Type = 67, Count = 89 }, new Things { }, new Things() };
+        private static readonly char[] stringish = new char[] { 'H', 'e', 'l', 'l', 'o' };
+        private static readonly string anActualString = "Hello";
         private static readonly int[] blank = new int[4];
 
         public static void Main()
@@ -36,6 +38,12 @@ namespace SeeSharpCompilerTest
             var copyOfThings = stuff.Things1;
             someThings[1] = copyOfThings;
             someThings[2] = someThings[1];
+
+            object maybeString = anActualString;
+            var isString = maybeString is string;
+            var isChar = maybeString is char;
+
+            //var helloGoodbye = anActualString + "Goodbye";
 
             for (int index = 0; index < 4; index++)
             {
