@@ -699,13 +699,13 @@ namespace Assembler
                             if (field.Size == 1)
                             {
                                 AddInstruction(Instruction.Pop(4)); // Value
-                                AddInstruction(Instruction.Pop(3)); // Pointer to beginning of structure
+                                AddInstruction(Instruction.Pop(3)); // Pointer to beginning of object
                                 AddInstructions(Instruction.NoOp(4));
                                 AddInstruction(Instruction.WriteMemory(addressRegister: 3, addressValue: field.Offset, inputRegister: 4));
                             }
                             else
                             {
-                                AddInstruction(Instruction.ReadStackValue(-field.Size - 1, 3)); // Pointer to beginning of structure
+                                AddInstruction(Instruction.ReadStackValue(-field.Size - 1, 3)); // Pointer to beginning of object
 
                                 // Start at the end of the variable since popping happens from right to left
                                 var baseOffset = field.Offset + field.Size - 1;
@@ -714,7 +714,7 @@ namespace Assembler
                                     (offset, index) => Instruction.Pop(4 + index),
                                     (offset, index) => Instruction.WriteMemory(addressRegister: 3, addressValue: baseOffset - offset, inputRegister: 4 + index));
 
-                                AddInstruction(Instruction.AdjustStackPointer(-1)); // Pop off the structure pointer
+                                AddInstruction(Instruction.AdjustStackPointer(-1)); // Pop off the object reference
                             }
                         }
                         else if (opCodeValue == OpCodes.Ldflda.Value)
@@ -822,13 +822,14 @@ namespace Assembler
                         else if (opCodeValue == OpCodes.Newobj.Value)
                         {
                             var operand = (ConstructorInfo)ilInstruction.Operand;
+                            var constructorParameterInfo = GetMethodParameterInfo(operand);
                             var typeInfo = GetTypeInfo(operand.DeclaringType);
 
                             AddInstruction(Instruction.ReadMemory(3, addressValue: HeapAddress));
                             AddInstructions(Instruction.NoOp(4));
                             AddInstruction(Instruction.WriteMemory(addressValue: HeapAddress, inputRegister: 3, immediateValue: typeInfo.Size)); // Allocate the object on the heap
-                            AddInstruction(Instruction.PushRegister(3)); // Push the object reference onto the stack
                             AddInstruction(Instruction.WriteMemory(addressRegister: 3, immediateValue: typeInfo.RuntimeTypeReference)); // Store the type reference
+                            AddInstruction(Instruction.PushRegister(3)); // Push the object reference onto the stack
 
                             // Clear fields
                             for (int offset = 1; offset < typeInfo.Size; offset++)
@@ -836,7 +837,24 @@ namespace Assembler
                                 AddInstruction(Instruction.WriteMemory(addressRegister: 3, addressValue: offset, immediateValue: 0));
                             }
 
+                            // Push constructor parameters
+                            AddInstruction(Instruction.PushRegister(3)); // The first parameter is the object reference
+
+                            var baseOffset = methodContext.StackPointerOffset - constructorParameterInfo.Size - 1;
+
+                            CopyData(constructorParameterInfo.Size - 1,
+                                (offset, index) => Instruction.ReadStackValue(baseOffset - methodContext.StackPointerOffset + offset, outputRegister: 4 + index),
+                                (offset, index) => Instruction.PushRegister(4 + index));
+
                             AddCallOrInlinedMethod(operand);
+
+                            // Remove the constructor parameters from the stack, leaving the object reference on top
+                            if (constructorParameterInfo.Size > 1)
+                            {
+                                AddInstruction(Instruction.Pop(3, additionalStackPointerAdjustment: constructorParameterInfo.Size - 1));
+                                AddInstructions(Instruction.NoOp(4));
+                                AddInstruction(Instruction.PushRegister(3));
+                            }
                         }
                         else if (opCodeValue == OpCodes.Newarr.Value)
                         {
