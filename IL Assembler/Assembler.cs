@@ -470,6 +470,8 @@ namespace Assembler
 
                         var opCodeValue = ilInstruction.Code.Value;
 
+                        // Opcode reference: https://docs.microsoft.com/en-us/dotnet/api/system.reflection.emit.opcodes?view=netcore-3.1
+
                         if (opCodeValue == OpCodes.Pop.Value)
                         {
                             AdjustStackPointer(-1);
@@ -922,7 +924,7 @@ namespace Assembler
                             AddInstruction(Instruction.ReadMemory(outputRegister: 4, addressRegister: 3));
                             AddInstructions(Instruction.NoOp(3));
                             AddInstruction(Instruction.SetRegisterToImmediateValue(5, 0));
-                            AddInstruction(Instruction.SetRegister(5, immediateValue: 1, conditionLeftRegister: 4, conditionRightImmediateValue: typeInfo.RuntimeTypeReference, conditionOperator: ConditionOperator.IsEqual));
+                            AddInstruction(Instruction.SetRegister(5, inputRegister: 3, conditionLeftRegister: 4, conditionRightImmediateValue: typeInfo.RuntimeTypeReference, conditionOperator: ConditionOperator.IsEqual));
 
                             // TODO: check against parent classes
 
