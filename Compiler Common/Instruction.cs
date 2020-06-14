@@ -120,6 +120,19 @@ namespace CompilerCommon
             }
         }
 
+        public string ToString(int address)
+        {
+            var builder = new StringBuilder();
+            builder.Append(this);
+
+            if (LeftInputRegister == SpecialRegisters.InstructionPointer && (OutputRegister == SpecialRegisters.InstructionPointer || AutoIncrement != 0))
+            {
+                builder.Append($" (jump to {address + AutoIncrement + RightImmediateValue + 3})");
+            }
+
+            return builder.ToString();
+        }
+
         public override string ToString()
         {
             var builder = new StringBuilder();

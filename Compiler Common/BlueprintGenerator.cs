@@ -21,7 +21,7 @@ namespace CompilerCommon
             {
                 if (instruction.OpCode != Operation.NoOp || instruction.AutoIncrement != 0 || address == compiledProgram.Instructions.Count)
                 {
-                    instructionsWriter.WriteLine($"{address}: {instruction}");
+                    instructionsWriter.WriteLine($"{address}: {instruction.ToString(address)}");
                     program.Add(new MemoryCell { Address = address, Filters = ConvertInstructionToFilters(instruction) });
                 }
 
