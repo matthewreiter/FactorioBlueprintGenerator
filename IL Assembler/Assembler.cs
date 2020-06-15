@@ -693,16 +693,28 @@ namespace Assembler
                             var typeInfo = GetTypeInfo(operand.DeclaringType);
                             var field = typeInfo.Fields[operand];
 
-                            if (field.Size == 1)
+                            if (operand.DeclaringType.IsValueType)
                             {
-                                AddInstruction(Instruction.ReadStackValue(field.Offset - typeInfo.Size, 3, stackPointerAdjustment: -typeInfo.Size));
-                                AddInstructions(Instruction.NoOp(4));
-                                AddInstruction(Instruction.PushRegister(3));
+                                if (field.Size == 1)
+                                {
+                                    AddInstruction(Instruction.ReadStackValue(field.Offset - typeInfo.Size, 3, stackPointerAdjustment: -typeInfo.Size));
+                                    AddInstructions(Instruction.NoOp(4));
+                                    AddInstruction(Instruction.PushRegister(3));
+                                }
+                                else
+                                {
+                                    AddInstruction(Instruction.AdjustStackPointer(-typeInfo.Size));
+                                    PushVariable(field, offsetRelativeToBase: methodContext.StackPointerOffset);
+                                }
                             }
                             else
                             {
-                                AddInstruction(Instruction.AdjustStackPointer(-typeInfo.Size));
-                                PushVariable(field, offsetRelativeToBase: methodContext.StackPointerOffset);
+                                AddInstruction(Instruction.Pop(3)); // Pointer to beginning of object
+                                AddInstructions(Instruction.NoOp(4));
+
+                                CopyData(field.Size,
+                                    (offset, index) => Instruction.ReadMemory(outputRegister: 4 + index, addressRegister: 3, addressValue: field.Offset + offset),
+                                    (offset, index) => Instruction.PushRegister(4 + index));
                             }
                         }
                         else if (opCodeValue == OpCodes.Stfld.Value)
