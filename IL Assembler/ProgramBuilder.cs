@@ -549,7 +549,8 @@ namespace Assembler
 
                         AddInstruction(Instruction.Push(inputRegister: SpecialRegisters.StackPointer, immediateValue: localVariables[operand].Offset - methodContext.StackPointerOffset));
                     }
-                    else if (opCodeValue == OpCodes.Ldind_I1.Value ||
+                    else if (opCodeValue == OpCodes.Ldind_I.Value ||
+                        opCodeValue == OpCodes.Ldind_I1.Value ||
                         opCodeValue == OpCodes.Ldind_U1.Value ||
                         opCodeValue == OpCodes.Ldind_I2.Value ||
                         opCodeValue == OpCodes.Ldind_U2.Value ||
@@ -560,7 +561,8 @@ namespace Assembler
                     {
                         PushMemory();
                     }
-                    else if (opCodeValue == OpCodes.Stind_I1.Value ||
+                    else if (opCodeValue == OpCodes.Stind_I.Value ||
+                        opCodeValue == OpCodes.Stind_I1.Value ||
                         opCodeValue == OpCodes.Stind_I2.Value ||
                         opCodeValue == OpCodes.Stind_I4.Value ||
                         opCodeValue == OpCodes.Stind_R4.Value ||
@@ -711,7 +713,8 @@ namespace Assembler
 
                         PushArrayElement(size);
                     }
-                    else if (opCodeValue == OpCodes.Ldelem_I1.Value ||
+                    else if (opCodeValue == OpCodes.Ldelem_I.Value ||
+                        opCodeValue == OpCodes.Ldelem_I1.Value ||
                         opCodeValue == OpCodes.Ldelem_U1.Value ||
                         opCodeValue == OpCodes.Ldelem_I2.Value ||
                         opCodeValue == OpCodes.Ldelem_U2.Value ||
@@ -721,6 +724,11 @@ namespace Assembler
                     {
                         PushArrayElement(1);
                     }
+                    else if (opCodeValue == OpCodes.Ldelem_I8.Value ||
+                        opCodeValue == OpCodes.Ldelem_R8.Value)
+                    {
+                        PushArrayElement(2);
+                    }
                     else if (opCodeValue == OpCodes.Stelem.Value)
                     {
                         var operand = (Type)ilInstruction.Operand;
@@ -728,12 +736,18 @@ namespace Assembler
 
                         PopArrayElement(size);
                     }
-                    else if (opCodeValue == OpCodes.Stelem_I1.Value ||
+                    else if (opCodeValue == OpCodes.Stelem_I.Value ||
+                        opCodeValue == OpCodes.Stelem_I1.Value ||
                         opCodeValue == OpCodes.Stelem_I2.Value ||
                         opCodeValue == OpCodes.Stelem_I4.Value ||
                         opCodeValue == OpCodes.Stelem_Ref.Value)
                     {
                         PopArrayElement(1);
+                    }
+                    else if (opCodeValue == OpCodes.Stelem_I8.Value ||
+                        opCodeValue == OpCodes.Stelem_R8.Value)
+                    {
+                        PopArrayElement(2);
                     }
                     else if (opCodeValue == OpCodes.Ldelema.Value)
                     {
@@ -954,7 +968,9 @@ namespace Assembler
                     {
                         AddBinaryOperation(Operation.Divide);
                     }
-                    else if (opCodeValue == OpCodes.Add.Value)
+                    else if (opCodeValue == OpCodes.Add.Value ||
+                        opCodeValue == OpCodes.Add_Ovf.Value ||
+                        opCodeValue == OpCodes.Add_Ovf_Un.Value)
                     {
                         AddBinaryOperation(Operation.Add);
                     }
@@ -1164,8 +1180,10 @@ namespace Assembler
                         opCodeValue == OpCodes.Conv_Ovf_U8.Value ||
                         opCodeValue == OpCodes.Conv_I.Value ||
                         opCodeValue == OpCodes.Conv_Ovf_I.Value ||
+                        opCodeValue == OpCodes.Conv_Ovf_I_Un.Value ||
                         opCodeValue == OpCodes.Conv_U.Value ||
                         opCodeValue == OpCodes.Conv_Ovf_U.Value ||
+                        opCodeValue == OpCodes.Conv_Ovf_U_Un.Value ||
                         opCodeValue == OpCodes.Conv_R4.Value ||
                         opCodeValue == OpCodes.Conv_R8.Value ||
                         opCodeValue == OpCodes.Castclass.Value ||
@@ -1268,7 +1286,23 @@ namespace Assembler
 
                 foreach (var value in array)
                 {
-                    if (size == 1)
+                    if (value is float floatValue)
+                    {
+                        yield return BitConverter.SingleToInt32Bits(floatValue);
+                    }
+                    else if (value is double doubleValue)
+                    {
+                        var longValue = BitConverter.DoubleToInt64Bits(doubleValue);
+                        yield return (int)(longValue & 0xFFFFFFFF);
+                        yield return (int)(longValue >> 32);
+                    }
+                    else if (value is ulong ulongValue)
+                    {
+                        var longValue = (long)ulongValue;
+                        yield return (int)(longValue & 0xFFFFFFFF);
+                        yield return (int)(longValue >> 32);
+                    }
+                    else if (size == 1)
                     {
                         yield return Convert.ToInt32(value);
                     }
@@ -1280,7 +1314,7 @@ namespace Assembler
                     }
                     else
                     {
-                        throw new NotImplementedException($"Unsupported constant array element size: {size}");
+                        throw new NotImplementedException($"Unsupported constant array element type: {value.GetType()}");
                     }
                 }
             }
