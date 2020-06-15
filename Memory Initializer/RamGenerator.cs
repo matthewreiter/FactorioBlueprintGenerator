@@ -11,12 +11,19 @@ namespace MemoryInitializer
     {
         public static Blueprint Generate(IConfigurationRoot configuration)
         {
-            var width = int.TryParse(configuration["Width"], out var widthValue) ? widthValue : 16;
-            var height = int.TryParse(configuration["Height"], out var heightValue) ? heightValue : 16;
-            var baseAddress = int.TryParse(configuration["BaseAddress"], out var baseAddressValue) ? baseAddressValue : 0;
-            var signal = char.TryParse(configuration["Signal"], out var signalValue) ? signalValue : '0';
+            return Generate(configuration.Get<RamConfiguration>());
+        }
 
-            var cellWidth = width + ((width + 7) / 16 + 1) * 2;
+        public static Blueprint Generate(RamConfiguration configuration)
+        {
+            var width = configuration.Width ?? 16;
+            var height = configuration.Height ?? 16;
+            var baseAddress = configuration.BaseAddress ?? 0;
+            var reverseAddresses = configuration.ReverseAddresses ?? false;
+            var signal = configuration.Signal ?? '0';
+            var includePower = configuration.IncludePower ?? true;
+
+            var cellWidth = width + (includePower ? ((width + 7) / 16 + 1) * 2 : 0);
             var cellHeight = height * 6;
             var xOffset = -cellWidth / 2;
             var yOffset = -cellHeight / 2;
@@ -27,9 +34,10 @@ namespace MemoryInitializer
             {
                 for (int column = 0; column < width; column++)
                 {
-                    var address = row * width + column + baseAddress + 1;
+                    var addressOffset = row * width + column;
+                    var address = (reverseAddresses ? height * width - addressOffset - 1 : addressOffset) + baseAddress + 1;
                     var memoryCellEntityNumber = (row * width + column) * 3 + 2;
-                    var memoryCellX = column + (column / 16 + 1) * 2 + xOffset;
+                    var memoryCellX = column + (includePower ? (column / 16 + 1) * 2 : 0) + xOffset;
                     var memoryCellY = (height - row - 1) * 6 + 2.5 + yOffset;
 
                     var adjacentMemoryCells = new List<int> { -1, 1 }
@@ -252,10 +260,13 @@ namespace MemoryInitializer
                 }
             }
 
-            var substationWidth = (width + 7) / 16 + 1;
-            var substationHeight = (cellHeight + 3) / 18 + 1;
+            if (includePower)
+            {
+                var substationWidth = (width + 7) / 16 + 1;
+                var substationHeight = (cellHeight + 3) / 18 + 1;
 
-            entities.AddRange(CreateSubstations(substationWidth, substationHeight, xOffset, yOffset, width * height * 3 + 1));
+                entities.AddRange(CreateSubstations(substationWidth, substationHeight, xOffset, yOffset, width * height * 3 + 1));
+            }
 
             return new Blueprint
             {
@@ -276,5 +287,15 @@ namespace MemoryInitializer
                 Version = BlueprintVersions.CurrentVersion
             };
         }
+    }
+
+    public class RamConfiguration
+    {
+        public int? Width { get; set; }
+        public int? Height { get; set; }
+        public int? BaseAddress { get; set; }
+        public bool? ReverseAddresses { get; set; }
+        public char? Signal { get; set; }
+        public bool? IncludePower { get; set; }
     }
 }
