@@ -12,6 +12,8 @@ namespace SeeSharpCompilerTest
         private static readonly char[] stringish = new char[] { 'H', 'e', 'l', 'l', 'o' };
         private static readonly string anActualString = "Hello";
         private static readonly int[] blank = new int[4];
+        private static readonly Wrapper<int> wrapper = new Wrapper<int> { Value = 5 };
+        private static readonly Wrapper<Things> thingWrapper = new Wrapper<Things> { Value = new Things {  Count = 8, Type = 16 } };
 
         public static void Main()
         {
@@ -38,6 +40,15 @@ namespace SeeSharpCompilerTest
             var copyOfThings = stuff.Things1;
             someThings[1] = copyOfThings;
             someThings[2] = someThings[1];
+
+            var custom = new Custom2(100, 200, 300, 400);
+
+            custom.Field3 += custom.Field2;
+            custom.Field5 = new Things { Count = 1, Type = 2 };
+            custom.Field6 = custom.Field5;
+
+            var wrappedValue = wrapper.Value;
+            var wrappedThing = thingWrapper.Value;
 
             object maybeString = anActualString;
             var isString = maybeString is string;
@@ -80,6 +91,37 @@ namespace SeeSharpCompilerTest
         {
             public int Type;
             public int Count;
+        }
+
+        private class Custom
+        {
+            public int Field1;
+            public int Field2;
+
+            public Custom(int field1, int field2)
+            {
+                Field1 = field1;
+                Field2 = field2;
+            }
+        }
+
+        private class Custom2 : Custom
+        {
+            public int Field3;
+            public int Field4;
+            public Things Field5;
+            public Things Field6;
+
+            public Custom2(int field1, int field2, int field3, int field4) : base(field1, field2)
+            {
+                Field3 = field3;
+                Field4 = field4;
+            }
+        }
+
+        private class Wrapper<T>
+        {
+            public T Value;
         }
     }
 }
