@@ -352,10 +352,25 @@ namespace Assembler
 
                     if (!type.IsValueType)
                     {
-                        currentOffset++; // Leave room for the type reference
+                        var baseTypeInfo = GetTypeInfo(type.BaseType);
+
+                        if (baseTypeInfo != null)
+                        {
+                            foreach (var entry in baseTypeInfo.Fields)
+                            {
+                                fields.Add(entry.Key, entry.Value);
+                            }
+
+                            currentOffset += baseTypeInfo.Size;
+                        }
+                        else
+                        {
+                            currentOffset++; // Leave room for the type reference
+                        }
                     }
 
-                    foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+                    foreach (var field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
+                        .OrderBy(field => field.Name))
                     {
                         var size = GetVariableSize(field.FieldType);
                         fields[field] = new VariableInfo { Offset = currentOffset, Size = size };
