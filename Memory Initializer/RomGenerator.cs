@@ -35,10 +35,15 @@ namespace MemoryInitializer
                 height = programRows + (data.Count - 1) / width + 1;
             }
 
-            var cellWidth = width + ((width + 7) / 16 + 1) * 2;
-            var cellHeight = height * 3;
-            var xOffset = -cellWidth / 2;
-            var yOffset = -cellHeight / 2;
+            const int entitiesPerCell = 2;
+            const int cellHeight = 3;
+
+            const int readerEntityOffset = 1;
+
+            var gridWidth = width + ((width + 7) / 16 + 1) * 2;
+            var gridHeight = height * cellHeight;
+            var xOffset = -gridWidth / 2;
+            var yOffset = -gridHeight / 2;
 
             var entities = new List<Entity>();
 
@@ -49,16 +54,16 @@ namespace MemoryInitializer
                     var memoryCell = row < programRows
                         ? program?.ElementAtOrDefault(row * width + column) ?? new MemoryCell { Address = row * width + column + 1 + GetAddressOffset(program) }
                         : data?.ElementAtOrDefault((row - programRows) * width + column) ?? new MemoryCell { Address = (row - programRows) * width + column + 1 + GetAddressOffset(data) };
-                    var memoryCellEntityNumber = (row * width + column) * 2 + 1;
+                    var memoryCellEntityNumber = (row * width + column) * entitiesPerCell + 1;
                     var memoryCellX = column + (column / 16 + 1) * 2 + xOffset;
-                    var memoryCellY = (height - row - 1) * 3 + yOffset;
+                    var memoryCellY = (height - row - 1) * cellHeight + yOffset;
 
                     var adjacentMemoryCells = new List<int> { -1, 1 }
                         .Where(offset => column + offset >= 0 && column + offset < width)
-                        .Select(offset => memoryCellEntityNumber + offset * 2)
+                        .Select(offset => memoryCellEntityNumber + offset * entitiesPerCell)
                         .Concat(new List<int> { -1, 1 }
                             .Where(offset => row + offset >= 0 && row + offset < height && (row < programRows == row + offset < programRows) && column == 0)
-                            .Select(offset => memoryCellEntityNumber + offset * width * 2)
+                            .Select(offset => memoryCellEntityNumber + offset * width * entitiesPerCell)
                         )
                         .ToList();
 
@@ -84,8 +89,8 @@ namespace MemoryInitializer
                                 // Connection to reader input
                                 new ConnectionData
                                 {
-                                    Entity_id = memoryCellEntityNumber + 1,
-                                    Circuit_id = 1
+                                    Entity_id = memoryCellEntityNumber + readerEntityOffset,
+                                    Circuit_id = CircuitIds.Input
                                 }
                             }
                         })
@@ -94,7 +99,7 @@ namespace MemoryInitializer
                     // Memory cell reader
                     entities.Add(new Entity
                     {
-                        Entity_number = memoryCellEntityNumber + 1,
+                        Entity_number = memoryCellEntityNumber + readerEntityOffset,
                         Name = ItemNames.DeciderCombinator,
                         Position = new Position
                         {
@@ -106,18 +111,10 @@ namespace MemoryInitializer
                         {
                             Decider_conditions = new DeciderConditions
                             {
-                                First_signal = new SignalID
-                                {
-                                    Type = SignalTypes.Virtual,
-                                    Name = VirtualSignalNames.Info
-                                },
+                                First_signal = SignalID.CreateVirtual(VirtualSignalNames.Info),
                                 Constant = memoryCell.Address,
                                 Comparator = Comparators.IsEqual,
-                                Output_signal = new SignalID
-                                {
-                                    Type = SignalTypes.Virtual,
-                                    Name = VirtualSignalNames.Everything
-                                },
+                                Output_signal = SignalID.CreateVirtual(VirtualSignalNames.Everything),
                                 Copy_count_from_input = true
                             }
                         },
@@ -126,8 +123,8 @@ namespace MemoryInitializer
                             // Connection to adjacent reader input (address line)
                             Red = adjacentMemoryCells.Select(entityNumber => new ConnectionData
                             {
-                                Entity_id = entityNumber + 1,
-                                Circuit_id = 1
+                                Entity_id = entityNumber + readerEntityOffset,
+                                Circuit_id = CircuitIds.Input
                             }).ToList(),
                             Green = new List<ConnectionData>
                             {
@@ -142,8 +139,8 @@ namespace MemoryInitializer
                             // Connection to adjacent reader output
                             Green = adjacentMemoryCells.Select(entityNumber => new ConnectionData
                             {
-                                Entity_id = entityNumber + 1,
-                                Circuit_id = 2
+                                Entity_id = entityNumber + readerEntityOffset,
+                                Circuit_id = CircuitIds.Output
                             }).ToList()
                         })
                     });
@@ -151,9 +148,9 @@ namespace MemoryInitializer
             }
 
             var substationWidth = (width + 7) / 16 + 1;
-            var substationHeight = (cellHeight + 3) / 18 + 1;
+            var substationHeight = (gridHeight + 3) / 18 + 1;
 
-            entities.AddRange(CreateSubstations(substationWidth, substationHeight, xOffset, yOffset, width * height * 2 + 1));
+            entities.AddRange(CreateSubstations(substationWidth, substationHeight, xOffset, yOffset, width * height * entitiesPerCell + 1));
 
             return new Blueprint
             {

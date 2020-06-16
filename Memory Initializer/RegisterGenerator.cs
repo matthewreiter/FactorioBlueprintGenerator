@@ -27,9 +27,11 @@ namespace MemoryInitializer
 
             const int entitiesPerRegister = 6;
             const int cellWidth = 8;
-            var cellHeight = registerCount * 2;
+            const int cellHeight = 2;
+
+            var gridHeight = registerCount * 2;
             var xOffset = -cellWidth / 2;
-            var yOffset = -cellHeight / 2;
+            var yOffset = -gridHeight / 2;
 
             var entities = new List<Entity>();
 
@@ -38,7 +40,7 @@ namespace MemoryInitializer
                 var address = row + 1;
                 var memoryCellEntityNumber = row * entitiesPerRegister + 3;
                 var memoryCellX = 2.5 + xOffset;
-                var memoryCellY = row * 2 + 1 + yOffset;
+                var memoryCellY = row * cellHeight + 1 + yOffset;
 
                 List<int> GetAdjacentMemoryCells(params int[] offsets) => offsets
                     .Where(offset => row + offset >= 0 && row + offset < registerCount)
@@ -64,18 +66,10 @@ namespace MemoryInitializer
                     {
                         Decider_conditions = new DeciderConditions
                         {
-                            First_signal = new SignalID
-                            {
-                                Type = SignalTypes.Virtual,
-                                Name = VirtualSignalNames.LetterOrDigit(writeSignal)
-                            },
+                            First_signal = SignalID.CreateLetterOrDigit(writeSignal),
                             Constant = address,
                             Comparator = Comparators.IsNotEqual,
-                            Output_signal = new SignalID
-                            {
-                                Type = SignalTypes.Virtual,
-                                Name = VirtualSignalNames.LetterOrDigit(memorySignal)
-                            },
+                            Output_signal = SignalID.CreateLetterOrDigit(memorySignal),
                             Copy_count_from_input = true
                         }
                     },
@@ -87,27 +81,27 @@ namespace MemoryInitializer
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber,
-                                Circuit_id = 2
+                                Circuit_id = CircuitIds.Output
                             },
                             // Connection to auto-increment output (data in)
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber + autoIncrementEntityOffset,
-                                Circuit_id = 2
+                                Circuit_id = CircuitIds.Output
                             }
                         },
                         // Connection to next writer input (address line)
                         Green = nextMemoryCell.Select(entityNumber => new ConnectionData
                         {
                             Entity_id = entityNumber + writerEntityOffset,
-                            Circuit_id = 1
+                            Circuit_id = CircuitIds.Input
                         }).Concat(new List<ConnectionData>
                         {
                             // Connection to writer input (address line)
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber + writerEntityOffset,
-                                Circuit_id = 1
+                                Circuit_id = CircuitIds.Input
                             }
                         }).ToList()
                     }, new ConnectionPoint
@@ -118,19 +112,19 @@ namespace MemoryInitializer
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber,
-                                Circuit_id = 1
+                                Circuit_id = CircuitIds.Input
                             },
                             // Connection to writer output (data in)
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber + writerEntityOffset,
-                                Circuit_id = 2
+                                Circuit_id = CircuitIds.Output
                             },
                             // Connection to right operand input (data out)
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber + rightOperandEntityOffset,
-                                Circuit_id = 1
+                                Circuit_id = CircuitIds.Input
                             }
                         }
                     })
@@ -151,18 +145,10 @@ namespace MemoryInitializer
                     {
                         Decider_conditions = new DeciderConditions
                         {
-                            First_signal = new SignalID
-                            {
-                                Type = SignalTypes.Virtual,
-                                Name = VirtualSignalNames.LetterOrDigit(writeSignal)
-                            },
+                            First_signal = SignalID.CreateLetterOrDigit(writeSignal),
                             Constant = address,
                             Comparator = Comparators.IsEqual,
-                            Output_signal = new SignalID
-                            {
-                                Type = SignalTypes.Virtual,
-                                Name = VirtualSignalNames.LetterOrDigit(memorySignal)
-                            },
+                            Output_signal = SignalID.CreateLetterOrDigit(memorySignal),
                             Copy_count_from_input = true
                         }
                     },
@@ -172,20 +158,20 @@ namespace MemoryInitializer
                         Red = adjacentMemoryCells.Select(entityNumber => new ConnectionData
                         {
                             Entity_id = entityNumber + writerEntityOffset,
-                            Circuit_id = 1
+                            Circuit_id = CircuitIds.Input
                         }).ToList(),
                         // Connection to previous memory cell input (address line)
                         Green = previousMemoryCell.Select(entityNumber => new ConnectionData
                         {
                             Entity_id = entityNumber,
-                            Circuit_id = 1
+                            Circuit_id = CircuitIds.Input
                         }).Concat(new List<ConnectionData>
                         {
                             // Connection to memory cell input (address line)
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber,
-                                Circuit_id = 1
+                                Circuit_id = CircuitIds.Input
                             }
                         }).ToList(),
                     }, new ConnectionPoint
@@ -196,7 +182,7 @@ namespace MemoryInitializer
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber,
-                                Circuit_id = 2
+                                Circuit_id = CircuitIds.Output
                             }
                         }
                     })
@@ -217,18 +203,10 @@ namespace MemoryInitializer
                     {
                         Decider_conditions = new DeciderConditions
                         {
-                            First_signal = new SignalID
-                            {
-                                Type = SignalTypes.Virtual,
-                                Name = VirtualSignalNames.LetterOrDigit(leftOperandSignal)
-                            },
+                            First_signal = SignalID.CreateLetterOrDigit(leftOperandSignal),
                             Constant = address,
                             Comparator = Comparators.IsEqual,
-                            Output_signal = new SignalID
-                            {
-                                Type = SignalTypes.Virtual,
-                                Name = VirtualSignalNames.LetterOrDigit(memorySignal)
-                            },
+                            Output_signal = SignalID.CreateLetterOrDigit(memorySignal),
                             Copy_count_from_input = true
                         }
                     },
@@ -238,7 +216,7 @@ namespace MemoryInitializer
                         Green = adjacentMemoryCells.Select(entityNumber => new ConnectionData
                         {
                             Entity_id = entityNumber + autoIncrementEntityOffset,
-                            Circuit_id = 1
+                            Circuit_id = CircuitIds.Input
                         }).ToList(),
                     }, new ConnectionPoint
                     {
@@ -248,7 +226,7 @@ namespace MemoryInitializer
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber,
-                                Circuit_id = 1
+                                Circuit_id = CircuitIds.Input
                             }
                         }
                     })
@@ -269,18 +247,10 @@ namespace MemoryInitializer
                     {
                         Decider_conditions = new DeciderConditions
                         {
-                            First_signal = new SignalID
-                            {
-                                Type = SignalTypes.Virtual,
-                                Name = VirtualSignalNames.LetterOrDigit(leftOperandSignal)
-                            },
+                            First_signal = SignalID.CreateLetterOrDigit(leftOperandSignal),
                             Constant = address,
                             Comparator = Comparators.IsEqual,
-                            Output_signal = new SignalID
-                            {
-                                Type = SignalTypes.Virtual,
-                                Name = VirtualSignalNames.LetterOrDigit(memorySignal)
-                            },
+                            Output_signal = SignalID.CreateLetterOrDigit(memorySignal),
                             Copy_count_from_input = true
                         }
                     },
@@ -292,33 +262,33 @@ namespace MemoryInitializer
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber + rightOperandEntityOffset,
-                                Circuit_id = 1
+                                Circuit_id = CircuitIds.Input
                             },
                             // Connection to condition input (data out)
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber + conditionEntityOffset,
-                                Circuit_id = 1
+                                Circuit_id = CircuitIds.Input
                             }
                         },
                         // Connection to previous right operand input (address line)
                         Green = previousMemoryCell.Select(entityNumber => new ConnectionData
                         {
                             Entity_id = entityNumber + rightOperandEntityOffset,
-                            Circuit_id = 1
+                            Circuit_id = CircuitIds.Input
                         }).Concat(new List<ConnectionData>
                         {
                             // Connection to right operand input (address line)
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber + rightOperandEntityOffset,
-                                Circuit_id = 1
+                                Circuit_id = CircuitIds.Input
                             },
                             // Connection to condition input (address line)
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber + conditionEntityOffset,
-                                Circuit_id = 1
+                                Circuit_id = CircuitIds.Input
                             }
                         }).ToList()
                     }, new ConnectionPoint
@@ -327,7 +297,7 @@ namespace MemoryInitializer
                         Red = adjacentMemoryCells.Select(entityNumber => new ConnectionData
                         {
                             Entity_id = entityNumber + leftOperandEntityOffset,
-                            Circuit_id = 2
+                            Circuit_id = CircuitIds.Output
                         }).ToList()
                     })
                 });
@@ -347,18 +317,10 @@ namespace MemoryInitializer
                     {
                         Decider_conditions = new DeciderConditions
                         {
-                            First_signal = new SignalID
-                            {
-                                Type = SignalTypes.Virtual,
-                                Name = VirtualSignalNames.LetterOrDigit(rightOperandSignal)
-                            },
+                            First_signal = SignalID.CreateLetterOrDigit(rightOperandSignal),
                             Constant = address,
                             Comparator = Comparators.IsEqual,
-                            Output_signal = new SignalID
-                            {
-                                Type = SignalTypes.Virtual,
-                                Name = VirtualSignalNames.LetterOrDigit(memorySignal)
-                            },
+                            Output_signal = SignalID.CreateLetterOrDigit(memorySignal),
                             Copy_count_from_input = true
                         }
                     },
@@ -370,21 +332,21 @@ namespace MemoryInitializer
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber,
-                                Circuit_id = 2
+                                Circuit_id = CircuitIds.Output
                             }
                         },
                         // Connection to next left operand input (address line)
                         Green = nextMemoryCell.Select(entityNumber => new ConnectionData
                         {
                             Entity_id = entityNumber + leftOperandEntityOffset,
-                            Circuit_id = 1
+                            Circuit_id = CircuitIds.Input
                         }).Concat(new List<ConnectionData>
                         {
                             // Connection to left operand input (address line)
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber + leftOperandEntityOffset,
-                                Circuit_id = 1
+                                Circuit_id = CircuitIds.Input
                             }
                         }).ToList()
                     }, new ConnectionPoint
@@ -393,7 +355,7 @@ namespace MemoryInitializer
                         Red = adjacentMemoryCells.Select(entityNumber => new ConnectionData
                         {
                             Entity_id = entityNumber + rightOperandEntityOffset,
-                            Circuit_id = 2
+                            Circuit_id = CircuitIds.Output
                         }).ToList()
                     })
                 });
@@ -413,18 +375,10 @@ namespace MemoryInitializer
                     {
                         Decider_conditions = new DeciderConditions
                         {
-                            First_signal = new SignalID
-                            {
-                                Type = SignalTypes.Virtual,
-                                Name = VirtualSignalNames.LetterOrDigit(conditionSignal)
-                            },
+                            First_signal = SignalID.CreateLetterOrDigit(conditionSignal),
                             Constant = address,
                             Comparator = Comparators.IsEqual,
-                            Output_signal = new SignalID
-                            {
-                                Type = SignalTypes.Virtual,
-                                Name = VirtualSignalNames.LetterOrDigit(memorySignal)
-                            },
+                            Output_signal = SignalID.CreateLetterOrDigit(memorySignal),
                             Copy_count_from_input = true
                         }
                     },
@@ -436,7 +390,7 @@ namespace MemoryInitializer
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber + leftOperandEntityOffset,
-                                Circuit_id = 1
+                                Circuit_id = CircuitIds.Input
                             }
                         },
                         Green = new List<ConnectionData>
@@ -445,7 +399,7 @@ namespace MemoryInitializer
                             new ConnectionData
                             {
                                 Entity_id = memoryCellEntityNumber + leftOperandEntityOffset,
-                                Circuit_id = 1
+                                Circuit_id = CircuitIds.Input
                             }
                         }
                     }, new ConnectionPoint
@@ -454,7 +408,7 @@ namespace MemoryInitializer
                         Red = adjacentMemoryCells.Select(entityNumber => new ConnectionData
                         {
                             Entity_id = entityNumber + conditionEntityOffset,
-                            Circuit_id = 2
+                            Circuit_id = CircuitIds.Output
                         }).ToList()
                     })
                 });

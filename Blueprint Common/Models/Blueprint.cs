@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using BlueprintCommon.Constants;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace BlueprintCommon.Models
@@ -73,6 +74,16 @@ namespace BlueprintCommon.Models
         /// Name of the signal prototype this signal is set to.
         /// </summary>
         public string Name { get; set; }
+
+        public static SignalID CreateVirtual(string name)
+        {
+            return new SignalID { Type = SignalTypes.Virtual, Name = name };
+        }
+
+        public static SignalID CreateLetterOrDigit(char letterOrDigit)
+        {
+            return CreateVirtual(VirtualSignalNames.LetterOrDigit(letterOrDigit));
+        }
     }
 
     public class Entity
