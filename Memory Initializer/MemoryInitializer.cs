@@ -18,6 +18,7 @@ namespace MemoryInitializer
                 "ROM" => RomGenerator.Generate(configuration),
                 "RAM" => RamGenerator.Generate(configuration),
                 "Registers" => RegisterGenerator.Generate(configuration),
+                "Speaker" => SpeakerGenerator.Generate(configuration),
                 _ => throw new Exception($"Unsupported memory type: {memoryType}")
             };
 

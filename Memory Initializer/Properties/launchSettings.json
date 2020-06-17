@@ -14,7 +14,7 @@
     },
     "SpeakerRegisters": {
       "commandName": "Project",
-      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/speakerRegisters.txt\" --OutputJson=\"$(ProjectDir)/Test/speakerRegisters.json\" --MemoryType=RAM --Width=42 --Height=1 --BaseAddress=33793 --ReverseAddresses=true --IncludePower=false"
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/speakerRegisters.txt\" --OutputJson=\"$(ProjectDir)/Test/speakerRegisters.json\" --MemoryType=Speaker --Height=6 --SpeakersPerConfiguration=6 --VolumeLevels=4 --BaseAddress=33793 --ReverseAddressY=true --IncludePower=true"
     }
   }
 }

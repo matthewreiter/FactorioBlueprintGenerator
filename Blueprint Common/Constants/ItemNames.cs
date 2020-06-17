@@ -50,7 +50,9 @@
         public const string ChemicalSciencePack = "chemical-science-pack";
 
         public const string Substation = "substation";
-        public const string ConstantCombinator = "constant-combinator";
+        public const string ArithmeticCombinator = "arithmetic-combinator";
         public const string DeciderCombinator = "decider-combinator";
+        public const string ConstantCombinator = "constant-combinator";
+        public const string ProgrammableSpeaker = "programmable-speaker";
     }
 }
