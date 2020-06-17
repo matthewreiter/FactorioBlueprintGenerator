@@ -20,6 +20,8 @@ namespace MemoryInitializer
 
             var speakersPerConfiguration = configuration.SpeakersPerConfiguration ?? 6;
             var volumeLevels = configuration.VolumeLevels ?? 1;
+            var minVolume = configuration.MinVolume ?? 0;
+            var maxVolume = configuration.MaxVolume ?? 1;
             var baseAddress = configuration.BaseAddress ?? 0;
             var reverseAddressX = configuration.ReverseAddressX ?? false;
             var reverseAddressY = configuration.ReverseAddressY ?? false;
@@ -409,7 +411,7 @@ namespace MemoryInitializer
                         }),
                         Parameters = new SpeakerParameter
                         {
-                            Playback_volume = 1 - (double)(relativeAddress / speakersPerVolumeLevel) / volumeLevels,
+                            Playback_volume = maxVolume - (double)(relativeAddress / speakersPerVolumeLevel) / (volumeLevels - 1) * (maxVolume - minVolume),
                             Playback_globally = true,
                             Allow_polyphony = true
                         },
@@ -456,6 +458,8 @@ namespace MemoryInitializer
         public int? Height { get; set; }
         public int? SpeakersPerConfiguration { get; set; }
         public int? VolumeLevels { get; set; }
+        public double? MinVolume { get; set; }
+        public double? MaxVolume { get; set; }
         public int? BaseAddress { get; set; }
         public bool? ReverseAddressX { get; set; }
         public bool? ReverseAddressY { get; set; }
