@@ -150,7 +150,7 @@ namespace MemoryInitializer
             var substationWidth = (width + 7) / 16 + 1;
             var substationHeight = (gridHeight + 3) / 18 + 1;
 
-            entities.AddRange(CreateSubstations(substationWidth, substationHeight, xOffset, yOffset, width * height * entitiesPerCell + 1));
+            entities.AddRange(CreateSubstations(substationWidth, substationHeight, xOffset, gridHeight % 18 - 6 + yOffset, width * height * entitiesPerCell + 1));
 
             return new Blueprint
             {

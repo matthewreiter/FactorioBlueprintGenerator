@@ -19,7 +19,6 @@ namespace MemoryInitializer
             var width = configuration.Width ?? 16;
             var height = configuration.Height ?? 16;
             var baseAddress = configuration.BaseAddress ?? 0;
-            var reverseAddresses = configuration.ReverseAddresses ?? false;
             var signal = configuration.Signal ?? '0';
             var includePower = configuration.IncludePower ?? true;
 
@@ -40,8 +39,7 @@ namespace MemoryInitializer
             {
                 for (int column = 0; column < width; column++)
                 {
-                    var addressOffset = row * width + column;
-                    var address = (reverseAddresses ? height * width - addressOffset - 1 : addressOffset) + baseAddress + 1;
+                    var address = row * width + column + baseAddress + 1;
                     var memoryCellEntityNumber = (row * width + column) * entitiesPerCell + 2;
                     var memoryCellX = column + (includePower ? (column / 16 + 1) * 2 : 0) + xOffset;
                     var memoryCellY = (height - row - 1) * cellHeight + 2.5 + yOffset;
@@ -247,7 +245,7 @@ namespace MemoryInitializer
                 var substationWidth = (width + 7) / 16 + 1;
                 var substationHeight = (gridHeight + 3) / 18 + 1;
 
-                entities.AddRange(CreateSubstations(substationWidth, substationHeight, xOffset, yOffset, width * height * entitiesPerCell + 1));
+                entities.AddRange(CreateSubstations(substationWidth, substationHeight, xOffset, gridHeight % 18 - 6 + yOffset, width * height * entitiesPerCell + 1));
             }
 
             return new Blueprint
@@ -276,7 +274,6 @@ namespace MemoryInitializer
         public int? Width { get; set; }
         public int? Height { get; set; }
         public int? BaseAddress { get; set; }
-        public bool? ReverseAddresses { get; set; }
         public char? Signal { get; set; }
         public bool? IncludePower { get; set; }
     }
