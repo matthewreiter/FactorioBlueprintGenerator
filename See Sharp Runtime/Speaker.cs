@@ -1,4 +1,5 @@
 ﻿using SeeSharp.Runtime.Attributes;
+using System;
 
 namespace SeeSharp.Runtime
 {
@@ -8,11 +9,19 @@ namespace SeeSharp.Runtime
         private const int GoAddress = BaseAddress;
         private const int BaseChannelAddress = BaseAddress + 1;
         private const int ChannelCount = 6;
+        private const int InstrumentCount = 12;
+        private const int SpeakersPerVolumeLevel = ChannelCount * InstrumentCount;
 
         [Inline]
         public static void SetChannel(Instrument instrument, int channel, int value)
         {
             Memory.Write((int)instrument + channel, value);
+        }
+
+        [Inline]
+        public static void SetChannel(Instrument instrument, int channel, int value, Volume volume)
+        {
+            Memory.Write((int)instrument + channel + (int)volume, value);
         }
 
         [Inline]
@@ -22,9 +31,35 @@ namespace SeeSharp.Runtime
         }
 
         [Inline]
-        public static void Go()
+        public static void SetDrum(int channel, Drum drum, Volume volume)
         {
-            Memory.Write(GoAddress, 1);
+            Memory.Write((int)Instrument.Drumkit + channel + (int)volume, (int)drum);
+        }
+
+        [Inline]
+        public static void Clear()
+        {
+            Memory.Write(GoAddress, (int)ExecutionFlags.Clear);
+        }
+
+        [Inline]
+        public static void Play()
+        {
+            Memory.Write(GoAddress, (int)ExecutionFlags.Play);
+        }
+
+        [Inline]
+        public static void PlayAndClear()
+        {
+            Memory.Write(GoAddress, (int)(ExecutionFlags.Clear | ExecutionFlags.Play));
+        }
+
+        public enum Volume
+        {
+            Max = 0,
+            High = SpeakersPerVolumeLevel,
+            Medium = SpeakersPerVolumeLevel * 2,
+            Low = SpeakersPerVolumeLevel * 3,
         }
 
         public enum Instrument
@@ -35,7 +70,12 @@ namespace SeeSharp.Runtime
             Piano = BaseChannelAddress + ChannelCount * 3,
             Base = BaseChannelAddress + ChannelCount * 4,
             Lead = BaseChannelAddress + ChannelCount * 5,
-            Sawtooth = BaseChannelAddress + ChannelCount * 6
+            Sawtooth = BaseChannelAddress + ChannelCount * 6,
+            Square = BaseChannelAddress + ChannelCount * 7,
+            Celesta = BaseChannelAddress + ChannelCount * 8,
+            Vibraphone = BaseChannelAddress + ChannelCount * 9,
+            PluckedStrings = BaseChannelAddress + ChannelCount * 10,
+            SteelDrum = BaseChannelAddress + ChannelCount * 11
         }
 
         public enum Drum
@@ -57,6 +97,13 @@ namespace SeeSharp.Runtime
             Shaker,
             Cowbell,
             Triangle
+        }
+
+        [Flags]
+        private enum ExecutionFlags
+        {
+            Clear = 1,
+            Play = 2
         }
     }
 }
