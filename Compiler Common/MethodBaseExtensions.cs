@@ -5,6 +5,8 @@ namespace CompilerCommon
 {
     public static class MethodBaseExtensions
     {
-        public static Type GetReturnType(this MethodBase method) => method is MethodInfo ? ((MethodInfo)method).ReturnType : typeof(void);
+        public static Type GetReturnType(this MethodBase method) => method is MethodInfo methodInfo ? methodInfo.ReturnType : typeof(void);
+
+        public static bool IsVoid(this MethodBase method) => method.GetReturnType() == typeof(void);
     }
 }

@@ -3,6 +3,7 @@ using ILReader;
 using SeeSharp.Runtime.Attributes;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -24,6 +25,7 @@ namespace Assembler
 
         private MethodContext methodContext = new MethodContext { InstructionIndex = 0 };
         private readonly Dictionary<MethodBase, MethodContext> methodContexts = new Dictionary<MethodBase, MethodContext>();
+        private readonly Dictionary<MethodBase, MethodAnalysis> methodAnalyses = new Dictionary<MethodBase, MethodAnalysis>();
         private HashSet<MethodBase> nonInlinedMethods;
         private readonly HashSet<Type> types = new HashSet<Type>();
         private readonly Dictionary<Type, TypeInfo> typeInfoCache = new Dictionary<Type, TypeInfo>();
@@ -31,6 +33,11 @@ namespace Assembler
         private readonly Dictionary<FieldInfo, VariableInfo> staticFields = new Dictionary<FieldInfo, VariableInfo>();
         private readonly List<(Instruction, MethodBase)> calls = new List<(Instruction, MethodBase)>();
         private int initialStackPointer;
+
+        public ProgramBuilder()
+        {
+            InitializeCompilerGeneratedMethods();
+        }
 
         public void Build(Assembly assembly, StreamWriter instructionsWriter)
         {
@@ -161,11 +168,14 @@ namespace Assembler
             while (methodsToVisit.Count > 0)
             {
                 var method = methodsToVisit.Dequeue();
-                var ilInstructions = method.GetInstructions();
+                var isCompilerGenerated = IsCompilerGenerated(method);
+                var ilInstructions = !isCompilerGenerated ? method.GetInstructions() : new List<ILInstruction> { };
+                var nonInlineableParameters = new HashSet<int>();
+                var methodCalls = new HashSet<ILInstruction>();
 
                 AddType(method.DeclaringType);
 
-                if (method.GetCustomAttribute<CompilerGeneratedAttribute>() != null || method.GetCustomAttribute<InlineAttribute>() != null)// || ilInstructions.Count <= 10) // TODO: handle recursion
+                if (method.GetCustomAttribute<InlineAttribute>() != null)// || ilInstructions.Count <= 10) // TODO: handle recursion
                 {
                     inlinedMethods.Add(method);
                 }
@@ -204,6 +214,8 @@ namespace Assembler
                             callCounts[operand] = 1;
                             methodsToVisit.Enqueue(operand);
                         }
+
+                        methodCalls.Add(ilInstruction);
                     }
                     else if (opCodeValue == OpCodes.Ldstr.Value)
                     {
@@ -214,14 +226,116 @@ namespace Assembler
                         var operand = (Type)ilInstruction.Operand;
 
                         AddType(operand.MakeArrayType());
+                    } else if (opCodeValue == OpCodes.Starg.Value ||
+                        opCodeValue == OpCodes.Starg_S.Value ||
+                        opCodeValue == OpCodes.Ldarga.Value ||
+                        opCodeValue == OpCodes.Ldarga_S.Value)
+                    {
+                        var operand = Convert.ToInt32(ilInstruction.Operand);
+
+                        nonInlineableParameters.Add(operand);
                     }
                 }
+
+                methodAnalyses[method] = new MethodAnalysis
+                {
+                    ILInstructions = ilInstructions,
+                    IsCompilerGenerated = isCompilerGenerated,
+                    SourceSinkMap = GenerateSourceSinkMap(ilInstructions),
+                    NonInlineableParameters = nonInlineableParameters,
+                    MethodCalls = methodCalls
+                };
             }
 
             nonInlinedMethods = callCounts
                 .Where(entry => entry.Value > 1 && !inlinedMethods.Contains(entry.Key))
                 .Select(entry => entry.Key)
                 .ToHashSet();
+        }
+
+        private Dictionary<ILInstruction, Sink> GenerateSourceSinkMap(List<ILInstruction> ilInstructions)
+        {
+            var stack = ImmutableStack<ILInstruction>.Empty;
+            var stackSnapshots = new Dictionary<ILInstruction, IImmutableStack<ILInstruction>>();
+            var sourceSinkMap = new Dictionary<ILInstruction, Sink>();
+
+            foreach (var ilInstruction in ilInstructions)
+            {
+                var opCode = ilInstruction.Code;
+                var opCodeValue = opCode.Value;
+
+                var popCount = opCode.StackBehaviourPop switch
+                {
+                    StackBehaviour.Pop1 => 1,
+                    StackBehaviour.Pop1_pop1 => 2,
+                    StackBehaviour.Popi => 1,
+                    StackBehaviour.Popi_pop1 => 2,
+                    StackBehaviour.Popi_popi => 2,
+                    StackBehaviour.Popi_popi8 => 2,
+                    StackBehaviour.Popi_popi_popi => 3,
+                    StackBehaviour.Popi_popr4 => 2,
+                    StackBehaviour.Popi_popr8 => 2,
+                    StackBehaviour.Popref => 1,
+                    StackBehaviour.Popref_pop1 => 2,
+                    StackBehaviour.Popref_popi => 2,
+                    StackBehaviour.Popref_popi_pop1 => 3,
+                    StackBehaviour.Popref_popi_popi => 3,
+                    StackBehaviour.Popref_popi_popi8 => 3,
+                    StackBehaviour.Popref_popi_popr4 => 3,
+                    StackBehaviour.Popref_popi_popr8 => 3,
+                    StackBehaviour.Popref_popi_popref => 3,
+                    _ => 0
+                };
+
+                var pushCount = opCode.StackBehaviourPush switch
+                {
+                    StackBehaviour.Push1 => 1,
+                    StackBehaviour.Push1_push1 => 2,
+                    StackBehaviour.Pushi => 1,
+                    StackBehaviour.Pushi8 => 1,
+                    StackBehaviour.Pushr4 => 1,
+                    StackBehaviour.Pushr8 => 1,
+                    StackBehaviour.Pushref => 1,
+                    _ => 0
+                };
+
+                for (int index = 0; index < popCount; index++)
+                {
+                    stack = stack.Pop(out var sourceInstruction);
+
+                    sourceSinkMap[sourceInstruction] = new Sink { Instruction = ilInstruction };
+                }
+
+                for (int index = 0; index < pushCount; index++)
+                {
+                    stack = stack.Push(ilInstruction);
+                }
+
+                if (opCodeValue == OpCodes.Call.Value ||
+                    opCodeValue == OpCodes.Callvirt.Value ||
+                    opCodeValue == OpCodes.Newobj.Value)
+                {
+                    var operand = (MethodBase)ilInstruction.Operand;
+                    var parameters = operand.GetParameters();
+                    var parameterSources = new Dictionary<ParameterInfo, ILInstruction>();
+
+                    foreach (var parameter in parameters.Reverse())
+                    {
+                        stack = stack.Pop(out var sourceInstruction);
+
+                        sourceSinkMap[sourceInstruction] = new Sink { Instruction = ilInstruction, Parameter = parameter };
+                    }
+
+                    if (!operand.IsVoid())
+                    {
+                        stack = stack.Push(ilInstruction);
+                    }
+                }
+
+                stackSnapshots[ilInstruction] = stack;
+            }
+
+            return sourceSinkMap;
         }
 
         private void AllocateStaticFields()
@@ -253,17 +367,20 @@ namespace Assembler
             var variables = new Dictionary<int, VariableInfo>();
             var currentOffset = 0;
 
-            foreach (var localVariable in localVariables)
+            if (localVariables != null)
             {
-                var size = GetVariableSize(localVariable.LocalType);
-                variables[localVariable.LocalIndex] = new VariableInfo { Offset = currentOffset, Size = size };
-                currentOffset += size;
+                foreach (var localVariable in localVariables)
+                {
+                    var size = GetVariableSize(localVariable.LocalType);
+                    variables[localVariable.LocalIndex] = new VariableInfo { Offset = currentOffset, Size = size };
+                    currentOffset += size;
+                }
             }
 
             return (variables, currentOffset);
         }
 
-        private MethodParameterInfo GetMethodParameterInfo(MethodBase method)
+        private MethodParameterInfo GetMethodParameterInfo(MethodBase method, ICollection<int> inlinedParameters = null)
         {
             if (!methodParameterInfoCache.TryGetValue(method, out var methodParameterInfo))
             {
@@ -278,7 +395,8 @@ namespace Assembler
 
                 foreach (var parameter in method.GetParameters())
                 {
-                    var size = GetVariableSize(parameter.ParameterType);
+                    var isInline = inlinedParameters?.Contains(parameter.Position) ?? false;
+                    var size = !isInline ? GetVariableSize(parameter.ParameterType) : 0;
                     parameters[parameter.Position + positionOffset] = new VariableInfo { Offset = currentOffset, Size = size };
                     currentOffset += size;
                 }
@@ -382,12 +500,12 @@ namespace Assembler
 
                 if (staticConstructor != null)
                 {
-                    AddMethod(staticConstructor, inline: true);
+                    AddMethod(staticConstructor, isInline: true);
                 }
             }
         }
 
-        private MethodContext AddMethod(MethodBase method, bool inline = false)
+        private MethodContext AddMethod(MethodBase method, bool isInline = false, Dictionary<int, int> inlinedParameterValues = null)
         {
             // Stack frame layout:
             // Parameters
@@ -395,39 +513,55 @@ namespace Assembler
             // Local variables (stack pointer offset is relative to first local variable)
             // Evaluation stack
 
-            if (method == ((Action<Array, RuntimeFieldHandle>)RuntimeHelpers.InitializeArray).Method)
-            {
-                return AddArrayInitializer(method, inline);
-            }
-
-            var methodBody = method.GetMethodBody();
-
-            if (methodBody == null)
-            {
-                return null;
-            }
-
             var previousMethodContext = methodContext;
-            var ilInstructions = method.GetInstructions();
-            var methodParameterInfo = GetMethodParameterInfo(method);
-            var (localVariables, localVariablesSize) = AllocateLocalVariables(methodBody.LocalVariables);
+            var analysis = methodAnalyses[method];
+            var ilInstructions = analysis.ILInstructions;
+            var methodParameterInfo = GetMethodParameterInfo(method, inlinedParameterValues?.Keys);
+            var (localVariables, localVariablesSize) = AllocateLocalVariables(!analysis.IsCompilerGenerated ? method.GetMethodBody()?.LocalVariables : null);
             var instructionOffsetToIndexMap = new Dictionary<int, int>();
             var jumps = new List<(Instruction, int)>();
 
             methodContext = new MethodContext
             {
+                Method = method,
                 InstructionIndex = Instructions.Count,
-                IsInline = inline,
-                IsVoid = method.GetReturnType() == typeof(void),
+                IsInline = isInline,
+                IsVoid = method.IsVoid(),
                 Parameters = methodParameterInfo.Parameters,
                 ParametersSize = methodParameterInfo.Size,
                 LocalVariables = localVariables,
-                LocalVariablesSize = localVariablesSize
+                LocalVariablesSize = localVariablesSize,
+                Analysis = analysis,
+                InlinedParameterValues = inlinedParameterValues
             };
+
+            var inlinedMethodCalls = analysis.MethodCalls
+                .Where(callInstruction => !nonInlinedMethods.Contains((MethodBase)callInstruction.Operand))
+                .ToDictionary(callInstruction => callInstruction, callInstruction =>
+                {
+                    var calledMethodAnalysis = methodAnalyses[(MethodBase)callInstruction.Operand];
+                    var inlinedParameters = methodContext.Analysis.SourceSinkMap
+                        .Where(entry => entry.Value.Instruction == callInstruction && !calledMethodAnalysis.NonInlineableParameters.Contains(entry.Value.Parameter.Position))
+                        .Select(entry => new { entry.Value.Parameter.Position, Source = entry.Key, Value = GetConstantValueForInlinedMethod(entry.Key) })
+                        .Where(entry => entry.Value.HasValue);
+
+                    return new
+                    {
+                        InlinedParameterValues = inlinedParameters.ToDictionary(entry => entry.Position, entry => entry.Value.Value),
+                        Sources = inlinedParameters.Select(entry => entry.Source)
+                    };
+                });
+
+            var inlinedParameterSources = inlinedMethodCalls.Values.SelectMany(inlinedMethodCall => inlinedMethodCall.Sources).ToHashSet();
 
             try
             {
                 AdjustStackPointer(localVariablesSize);
+
+                if (analysis.IsCompilerGenerated)
+                {
+                    AddCompilerGeneratedMethod(method);
+                }
 
                 var ilInstructionIndex = 0;
                 foreach (var ilInstruction in ilInstructions)
@@ -435,6 +569,7 @@ namespace Assembler
                     instructionOffsetToIndexMap[ilInstruction.Offset] = Instructions.Count;
 
                     var opCodeValue = ilInstruction.Code.Value;
+                    var isInlinedParameterSource = inlinedParameterSources.Contains(ilInstruction);
 
                     // Opcode reference: https://docs.microsoft.com/en-us/dotnet/api/system.reflection.emit.opcodes?view=netcore-3.1
 
@@ -448,22 +583,12 @@ namespace Assembler
                         AddInstructions(Instruction.NoOp(4));
                         AddInstruction(Instruction.PushRegister(3));
                     }
-                    else if (opCodeValue == OpCodes.Ldc_I4_M1.Value ||
-                        opCodeValue == OpCodes.Ldc_I4_0.Value ||
-                        opCodeValue == OpCodes.Ldc_I4_1.Value ||
-                        opCodeValue == OpCodes.Ldc_I4_2.Value ||
-                        opCodeValue == OpCodes.Ldc_I4_3.Value ||
-                        opCodeValue == OpCodes.Ldc_I4_4.Value ||
-                        opCodeValue == OpCodes.Ldc_I4_5.Value ||
-                        opCodeValue == OpCodes.Ldc_I4_6.Value ||
-                        opCodeValue == OpCodes.Ldc_I4_7.Value ||
-                        opCodeValue == OpCodes.Ldc_I4_8.Value ||
-                        opCodeValue == OpCodes.Ldc_I4.Value ||
-                        opCodeValue == OpCodes.Ldc_I4_S.Value ||
-                        opCodeValue == OpCodes.Ldc_R4.Value ||
-                        opCodeValue == OpCodes.Ldnull.Value)
+                    else if (IsLoadSingleWordConstant(opCodeValue))
                     {
-                        AddInstruction(Instruction.PushImmediateValue(GetConstantValue(ilInstruction)));
+                        if (!isInlinedParameterSource)
+                        {
+                            AddInstruction(Instruction.PushImmediateValue(GetConstantValue(ilInstruction)));
+                        }
                     }
                     else if (opCodeValue == OpCodes.Ldc_I8.Value ||
                         opCodeValue == OpCodes.Ldc_R8.Value)
@@ -473,25 +598,12 @@ namespace Assembler
                         AddInstruction(Instruction.PushImmediateValue((int)operand));
                         AddInstruction(Instruction.PushImmediateValue((int)(operand >> 32)));
                     }
-                    else if (opCodeValue == OpCodes.Ldarg_0.Value)
+                    else if (IsLoadArgument(opCodeValue))
                     {
-                        PushArgument(0);
-                    }
-                    else if (opCodeValue == OpCodes.Ldarg_1.Value)
-                    {
-                        PushArgument(1);
-                    }
-                    else if (opCodeValue == OpCodes.Ldarg_2.Value)
-                    {
-                        PushArgument(2);
-                    }
-                    else if (opCodeValue == OpCodes.Ldarg_3.Value)
-                    {
-                        PushArgument(3);
-                    }
-                    else if (opCodeValue == OpCodes.Ldarg_S.Value)
-                    {
-                        PushArgument((byte)ilInstruction.Operand);
+                        if (!isInlinedParameterSource)
+                        {
+                            PushArgument(GetLoadArgumentPosition(ilInstruction));
+                        }
                     }
                     else if (opCodeValue == OpCodes.Starg_S.Value)
                     {
@@ -1120,17 +1232,13 @@ namespace Assembler
 
                         AddBinaryJumpIf(operand, ConditionOperator.LessThanOrEqual, jumps, unsigned: true);
                     }
-                    else if (opCodeValue == OpCodes.Call.Value)
+                    else if (opCodeValue == OpCodes.Call.Value ||
+                        opCodeValue == OpCodes.Callvirt.Value)
                     {
                         var operand = (MethodBase)ilInstruction.Operand;
+                        var parameterValues = inlinedMethodCalls.TryGetValue(ilInstruction, out var inlinedMethodCall) ? inlinedMethodCall.InlinedParameterValues : null;
 
-                        AddCallOrInlinedMethod(operand);
-                    }
-                    else if (opCodeValue == OpCodes.Callvirt.Value)
-                    {
-                        var operand = (MethodInfo)ilInstruction.Operand;
-
-                        AddCallOrInlinedMethod(operand);
+                        AddCallOrInlinedMethod(operand, inlinedParameterValues: parameterValues);
                     }
                     else if (opCodeValue == OpCodes.Ret.Value)
                     {
@@ -1211,58 +1319,6 @@ namespace Assembler
                         Errors.Add("Invalid jump target");
                     }
                 }
-
-                return methodContext;
-            }
-            finally
-            {
-                methodContext = previousMethodContext;
-            }
-        }
-
-        private MethodContext AddArrayInitializer(MethodBase method, bool inline)
-        {
-            var previousMethodContext = methodContext;
-            var methodParameterInfo = GetMethodParameterInfo(method);
-
-            methodContext = new MethodContext
-            {
-                InstructionIndex = Instructions.Count,
-                IsInline = inline,
-                IsVoid = true,
-                Parameters = methodParameterInfo.Parameters,
-                ParametersSize = methodParameterInfo.Size
-            };
-
-            try
-            {
-                ReadArgument(0, outputRegister: 3); // Array
-                ReadArgument(1, outputRegister: 4); // Initial data
-                AddInstructions(Instruction.NoOp(3));
-                AddInstruction(Instruction.ReadMemory(5, addressRegister: 3, addressValue: 1)); // Initialize overall counter to array length
-
-                // Outer loop beginning
-                var outerLoopOffset = Instructions.Count;
-                AddInstruction(Instruction.SetRegisterToImmediateValue(6, 1)); // Initialize signal counter
-                AddInstruction(Instruction.SetRegisterToImmediateValue(7, SignalUtils.MaxSignals)); // Initialize the inner loop count
-                AddInstructions(Instruction.NoOp(2));
-                AddInstruction(Instruction.SetRegister(7, inputRegister: 5, conditionLeftRegister: 5, conditionRightImmediateValue: SignalUtils.MaxSignals, conditionOperator: ConditionOperator.LessThan)); // If there is less data remaining than the signal count, use that instead
-
-                // Inner loop
-                var innerLoopOffset = Instructions.Count;
-                AddInstruction(Instruction.ReadSignal(outputRegister: 8, addressRegister: 4, signalRegister: 6)); // Read initial data from ROM
-                AddInstruction(Instruction.IncrementRegister(5, -1)); // Decrement the overall counter
-                AddInstruction(Instruction.IncrementRegister(6, 1)); // Increment the signal counter
-                AddInstructions(Instruction.NoOp(1));
-                AddInstruction(Instruction.IncrementRegister(7, -1)); // Decrement the inner loop counter
-                AddInstruction(Instruction.WriteMemory(addressRegister: 3, addressValue: 2, inputRegister: 8, autoIncrement: 1)); // Write initial data to the array
-                AddInstruction(Instruction.JumpIf(innerLoopOffset - (Instructions.Count + 1), conditionLeftRegister: 7, conditionRightImmediateValue: 0, ConditionOperator.GreaterThan)); // Jump to the beginning of the inner loop
-
-                // Outer loop end
-                AddInstruction(Instruction.IncrementRegister(4, 1)); // Increment the source pointer
-                AddInstruction(Instruction.JumpIf(outerLoopOffset - (Instructions.Count + 1), conditionLeftRegister: 5, conditionRightImmediateValue: 0, ConditionOperator.GreaterThan)); // Jump to the beginning of the outer loop
-
-                AddReturn();
 
                 return methodContext;
             }
@@ -1432,12 +1488,26 @@ namespace Assembler
 
         private void ReadArgument(int argumentIndex, int outputRegister)
         {
-            AddInstruction(Instruction.ReadStackValue(methodContext.Parameters[argumentIndex].Offset - methodContext.ParametersSize - (methodContext.IsInline ? 0 : 1) - methodContext.StackPointerOffset, outputRegister));
+            if (methodContext.InlinedParameterValues.TryGetValue(argumentIndex, out var value))
+            {
+                AddInstruction(Instruction.SetRegisterToImmediateValue(outputRegister, value));
+            }
+            else
+            {
+                AddInstruction(Instruction.ReadStackValue(methodContext.Parameters[argumentIndex].Offset - methodContext.ParametersSize - (methodContext.IsInline ? 0 : 1) - methodContext.StackPointerOffset, outputRegister));
+            }
         }
 
         private void PushArgument(int argumentIndex)
         {
-            PushVariable(methodContext.Parameters[argumentIndex], -methodContext.ParametersSize - (methodContext.IsInline ? 0 : 1)); // Adjust to take into account the return address
+            if (methodContext.InlinedParameterValues.TryGetValue(argumentIndex, out var value))
+            {
+                AddInstruction(Instruction.PushImmediateValue(value));
+            }
+            else
+            {
+                PushVariable(methodContext.Parameters[argumentIndex], -methodContext.ParametersSize - (methodContext.IsInline ? 0 : 1)); // Adjust to take into account the return address
+            }
         }
 
         private void PopArgument(int argumentIndex)
@@ -1498,11 +1568,16 @@ namespace Assembler
             }
         }
 
-        private void AdjustStackPointer(int offset)
+        private bool AdjustStackPointer(int offset)
         {
             if (offset != 0)
             {
                 AddInstruction(Instruction.AdjustStackPointer(offset));
+                return true;
+            }
+            else
+            {
+                return false;
             }
         }
 
@@ -1531,26 +1606,21 @@ namespace Assembler
             AddInstruction(Instruction.PushRegister(6));
         }
 
-        private void AddCallOrInlinedMethod(MethodBase method)
+        private void AddCallOrInlinedMethod(MethodBase method, Dictionary<int, int> inlinedParameterValues = null)
         {
             if (nonInlinedMethods.Contains(method))
             {
                 AddInstruction(Instruction.Push(inputRegister: SpecialRegisters.InstructionPointer, immediateValue: 3)); // Takes into account push, jump and 4 no-ops to skip minus 3 cycles of overhead
                 calls.Add((AddInstruction(Instruction.Jump(-(Instructions.Count + 1))), method));
-                methodContext.StackPointerOffset--; // Record the effect of the return statement popping the return address off the stack
-            }
-            else if (method.GetCustomAttribute<CompilerGeneratedAttribute>() != null)
-            {
-                AddCompilerGeneratedMethod(method);
+                methodContext.StackPointerOffset -= GetMethodParameterInfo(method).Size + 1; // The `+ 1` is due to the return statement popping the return address off the stack
             }
             else
             {
-                AddMethod(method, inline: true);
+                var calledMethodContext = AddMethod(method, isInline: true, inlinedParameterValues: inlinedParameterValues);
+                methodContext.StackPointerOffset -= calledMethodContext.ParametersSize;
             }
 
-            methodContext.StackPointerOffset -= GetMethodParameterInfo(method).Size;
-
-            if (method.GetReturnType() != typeof(void))
+            if (!method.IsVoid())
             {
                 AddInstruction(Instruction.PushRegister(ReturnRegister));
             }
@@ -1667,6 +1737,24 @@ namespace Assembler
 
         private void SetData(int address, int index, int value) => Data[address - 1 + index / SignalUtils.MaxSignals][index % SignalUtils.MaxSignals + 1] = value;
 
+        private static bool IsLoadSingleWordConstant(short opCodeValue)
+        {
+            return opCodeValue == OpCodes.Ldc_I4_M1.Value ||
+                opCodeValue == OpCodes.Ldc_I4_0.Value ||
+                opCodeValue == OpCodes.Ldc_I4_1.Value ||
+                opCodeValue == OpCodes.Ldc_I4_2.Value ||
+                opCodeValue == OpCodes.Ldc_I4_3.Value ||
+                opCodeValue == OpCodes.Ldc_I4_4.Value ||
+                opCodeValue == OpCodes.Ldc_I4_5.Value ||
+                opCodeValue == OpCodes.Ldc_I4_6.Value ||
+                opCodeValue == OpCodes.Ldc_I4_7.Value ||
+                opCodeValue == OpCodes.Ldc_I4_8.Value ||
+                opCodeValue == OpCodes.Ldc_I4.Value ||
+                opCodeValue == OpCodes.Ldc_I4_S.Value ||
+                opCodeValue == OpCodes.Ldc_R4.Value ||
+                opCodeValue == OpCodes.Ldnull.Value;
+        }
+
         private int GetConstantValue(ILInstruction ilInstruction)
         {
             var opCodeValue = ilInstruction.Code.Value;
@@ -1730,8 +1818,71 @@ namespace Assembler
             }
         }
 
+        private static bool IsLoadArgument(short opCodeValue)
+        {
+            return opCodeValue == OpCodes.Ldarg_0.Value ||
+                opCodeValue == OpCodes.Ldarg_1.Value ||
+                opCodeValue == OpCodes.Ldarg_2.Value ||
+                opCodeValue == OpCodes.Ldarg_3.Value ||
+                opCodeValue == OpCodes.Ldarg.Value ||
+                opCodeValue == OpCodes.Ldarg_S.Value;
+        }
+
+        public static int GetLoadArgumentPosition(ILInstruction ilInstruction)
+        {
+            var opCodeValue = ilInstruction.Code.Value;
+
+            if (opCodeValue == OpCodes.Ldarg_0.Value)
+            {
+                return 0;
+            }
+            else if (opCodeValue == OpCodes.Ldarg_1.Value)
+            {
+                return 1;
+            }
+            else if (opCodeValue == OpCodes.Ldarg_2.Value)
+            {
+                return 2;
+            }
+            else if (opCodeValue == OpCodes.Ldarg_3.Value)
+            {
+                return 3;
+            }
+            else if (opCodeValue == OpCodes.Ldarg.Value)
+            {
+                return (int)ilInstruction.Operand;
+            }
+            else if (opCodeValue == OpCodes.Ldarg_S.Value)
+            {
+                return (byte)ilInstruction.Operand;
+            }
+            else
+            {
+                throw new Exception($"Cannot get argument position from {ilInstruction.Code}");
+            }
+        }
+
+        private int? GetConstantValueForInlinedMethod(ILInstruction ilInstruction)
+        {
+            var opCodeValue = ilInstruction.Code.Value;
+
+            if (IsLoadSingleWordConstant(opCodeValue))
+            {
+                return GetConstantValue(ilInstruction);
+            }
+            else if (IsLoadArgument(opCodeValue))
+            {
+                return methodContext.InlinedParameterValues.TryGetValue(GetLoadArgumentPosition(ilInstruction), out var value) ? value : (int?)null;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
         private class MethodContext
         {
+            public MethodBase Method { get; set; }
             public int InstructionIndex { get; set; }
             public bool IsInline { get; set; }
             public bool IsVoid { get; set; }
@@ -1739,7 +1890,18 @@ namespace Assembler
             public int ParametersSize { get; set; }
             public Dictionary<int, VariableInfo> LocalVariables { get; set; }
             public int LocalVariablesSize { get; set; }
+            public MethodAnalysis Analysis { get; set; }
+            public Dictionary<int, int> InlinedParameterValues { get; set; }
             public int StackPointerOffset { get; set; } = 0;
+        }
+
+        private class MethodAnalysis
+        {
+            public List<ILInstruction> ILInstructions { get; set; }
+            public bool IsCompilerGenerated { get; set; }
+            public Dictionary<ILInstruction, Sink> SourceSinkMap { get; set; }
+            public HashSet<int> NonInlineableParameters { get; set; }
+            public HashSet<ILInstruction> MethodCalls { get; set; }
         }
 
         private class TypeInfo
@@ -1761,6 +1923,12 @@ namespace Assembler
         {
             public int Offset { get; set; }
             public int Size { get; set; }
+        }
+
+        private class Sink
+        {
+            public ILInstruction Instruction { get; set; }
+            public ParameterInfo Parameter { get; set; }
         }
     }
 }
