@@ -532,7 +532,7 @@ namespace Assembler
                 LocalVariables = localVariables,
                 LocalVariablesSize = localVariablesSize,
                 Analysis = analysis,
-                InlinedParameterValues = inlinedParameterValues
+                InlinedParameterValues = inlinedParameterValues ?? new Dictionary<int, int>()
             };
 
             var inlinedMethodCalls = analysis.MethodCalls
