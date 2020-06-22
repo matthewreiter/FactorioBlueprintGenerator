@@ -332,12 +332,18 @@ namespace Assembler
                     var operand = (MethodBase)ilInstruction.Operand;
                     var parameters = operand.GetParameters();
                     var parameterSources = new Dictionary<ParameterInfo, ILInstruction>();
+                    var parameterOffset = operand.IsStatic ? 0 : 1;
 
                     foreach (var parameter in parameters.Reverse())
                     {
                         stack = stack.Pop(out var sourceInstruction);
 
-                        sourceSinkMap[sourceInstruction] = new Sink { Instruction = ilInstruction, Parameter = parameter };
+                        sourceSinkMap[sourceInstruction] = new Sink { Instruction = ilInstruction, Parameter = parameter.Position + parameterOffset };
+                    }
+
+                    if (!operand.IsStatic && opCodeValue != OpCodes.Newobj.Value)
+                    {
+                        stack = stack.Pop();
                     }
 
                     if (!operand.IsVoid())
@@ -555,13 +561,13 @@ namespace Assembler
                 {
                     var calledMethodAnalysis = methodAnalyses[(MethodBase)callInstruction.Operand];
                     var inlinedParameters = methodContext.Analysis.SourceSinkMap
-                        .Where(entry => entry.Value.Instruction == callInstruction && !calledMethodAnalysis.NonInlineableParameters.Contains(entry.Value.Parameter.Position))
-                        .Select(entry => new { entry.Value.Parameter.Position, Source = entry.Key, Value = GetConstantValueForInlinedMethod(entry.Key) })
+                        .Where(entry => entry.Value.Instruction == callInstruction && !calledMethodAnalysis.NonInlineableParameters.Contains(entry.Value.Parameter))
+                        .Select(entry => new { entry.Value.Parameter, Source = entry.Key, Value = GetConstantValueForInlinedMethod(entry.Key) })
                         .Where(entry => entry.Value.HasValue);
 
                     return new
                     {
-                        InlinedParameterValues = inlinedParameters.ToDictionary(entry => entry.Position, entry => entry.Value.Value),
+                        InlinedParameterValues = inlinedParameters.ToDictionary(entry => entry.Parameter, entry => entry.Value.Value),
                         Sources = inlinedParameters.Select(entry => entry.Source)
                     };
                 });
@@ -1958,7 +1964,7 @@ namespace Assembler
         private class Sink
         {
             public ILInstruction Instruction { get; set; }
-            public ParameterInfo Parameter { get; set; }
+            public int Parameter { get; set; }
         }
     }
 }
