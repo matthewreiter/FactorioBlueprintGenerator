@@ -1,6 +1,5 @@
 ﻿using CompilerCommon;
 using ILReader;
-using SeeSharp.Runtime.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -172,7 +171,8 @@ namespace Assembler
 
                 AddType(method.DeclaringType);
 
-                if (method.GetCustomAttribute<InlineAttribute>() != null)// || ilInstructions.Count <= 10) // TODO: handle recursion
+                var methodImpl = method.GetCustomAttribute<MethodImplAttribute>();
+                if (methodImpl != null && methodImpl.Value.HasFlag(MethodImplOptions.AggressiveInlining)) // || ilInstructions.Count <= 10) // TODO: handle recursion
                 {
                     inlinedMethods.Add(method);
                 }
