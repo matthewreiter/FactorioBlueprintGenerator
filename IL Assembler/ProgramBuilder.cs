@@ -99,18 +99,14 @@ namespace Assembler
             }
             instructionsWriter.WriteLine();
 
-            if (nonInlinedMethods.Count > 0)
+            instructionsWriter.WriteLine("Method addresses:");
+            foreach (var entry in methodAnalyses)
             {
-                instructionsWriter.WriteLine("Method addresses:");
-                foreach (var method in nonInlinedMethods)
-                {
-                    if (methodContexts.TryGetValue(method, out var methodContext) && methodContext != null)
-                    {
-                        instructionsWriter.WriteLine($"{method.DeclaringType.Name}.{method.Name}: {methodContext.InstructionIndex + 1}");
-                    }
-                }
-                instructionsWriter.WriteLine();
+                var method = entry.Key;
+                var address = methodContexts.TryGetValue(method, out var methodContext) && methodContext != null ? $"{methodContext.InstructionIndex + 1}" : "inline";
+                instructionsWriter.WriteLine($"{method.DeclaringType.Name}.{method.Name}: {address}");
             }
+            instructionsWriter.WriteLine();
 
             if (staticFields.Count > 0)
             {
