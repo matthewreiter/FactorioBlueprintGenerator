@@ -2,6 +2,7 @@
 using SeeSharp.Runtime;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
@@ -13,6 +14,8 @@ namespace Assembler
 
         private void InitializeCompilerGeneratedMethods()
         {
+            var throwHelper = Type.GetType("System.ThrowHelper");
+
             compilerGeneratedMethods = new Dictionary<Type, Dictionary<string, Action>>
             {
                 {
@@ -86,6 +89,16 @@ namespace Assembler
                             }
                         }
                     }
+                },
+                {
+                    throwHelper, throwHelper.GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
+                    .Select(method => method.Name)
+                    .Distinct()
+                    .Where(name => name.StartsWith("Throw"))
+                    .ToDictionary(name => name, name => (Action)(() =>
+                    {
+                        AddReturn();
+                    }))
                 }
             };
         }
