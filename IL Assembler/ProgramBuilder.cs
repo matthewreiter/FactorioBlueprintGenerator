@@ -1143,6 +1143,11 @@ namespace Assembler
                     {
                         var operand = (int)ilInstruction.Operand;
 
+                        if (opCodeValue == OpCodes.Leave.Value || opCodeValue == OpCodes.Leave_S.Value)
+                        {
+                            AdjustStackPointer(localVariablesSize - methodContext.StackPointerOffset); // Clear any operands off the stack
+                        }
+
                         if (operand != ilInstructions.ElementAtOrDefault(ilInstructionIndex + 1)?.Offset)
                         {
                             jumps.Add((AddInstruction(Instruction.Jump(-(Instructions.Count + 1))), operand));
