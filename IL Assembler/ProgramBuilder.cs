@@ -25,6 +25,7 @@ namespace Assembler
         private MethodContext methodContext = new MethodContext { InstructionIndex = 0 };
         private readonly Dictionary<MethodBase, MethodContext> methodContexts = new Dictionary<MethodBase, MethodContext>();
         private readonly Dictionary<MethodBase, MethodAnalysis> methodAnalyses = new Dictionary<MethodBase, MethodAnalysis>();
+        private readonly Dictionary<MethodBase, List<(int, int)>> methodRanges = new Dictionary<MethodBase, List<(int, int)>>();
         private HashSet<MethodBase> nonInlinedMethods;
         private readonly HashSet<Type> types = new HashSet<Type>();
         private readonly Dictionary<Type, TypeInfo> typeInfoCache = new Dictionary<Type, TypeInfo>();
@@ -99,11 +100,10 @@ namespace Assembler
             instructionsWriter.WriteLine();
 
             instructionsWriter.WriteLine("Method addresses:");
-            foreach (var entry in methodAnalyses)
+            foreach (var entry in methodRanges)
             {
                 var method = entry.Key;
-                var address = methodContexts.TryGetValue(method, out var methodContext) && methodContext != null ? $"{methodContext.InstructionIndex + 1}" : "inline";
-                instructionsWriter.WriteLine($"{method.DeclaringType.Name}.{method.Name}: {address}");
+                instructionsWriter.WriteLine($"{method.DeclaringType.Name}.{method.Name}: {string.Join(", ", entry.Value.Select(range => $"{range.Item1 + 1}-{range.Item2 + 1}"))}");
             }
             instructionsWriter.WriteLine();
 
@@ -1337,6 +1337,17 @@ namespace Assembler
                     {
                         Errors.Add("Invalid jump target");
                     }
+                }
+
+                if (Instructions.Count > methodContext.InstructionIndex)
+                {
+                    if (!methodRanges.TryGetValue(method, out var methodRangeList))
+                    {
+                        methodRangeList = new List<(int, int)>();
+                        methodRanges[method] = methodRangeList;
+                    }
+
+                    methodRangeList.Add((methodContext.InstructionIndex, Instructions.Count));
                 }
 
                 return methodContext;
