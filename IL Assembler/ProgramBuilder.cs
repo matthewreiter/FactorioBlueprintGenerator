@@ -166,6 +166,7 @@ namespace Assembler
                 var method = methodsToVisit.Dequeue();
                 var isCompilerGenerated = IsCompilerGenerated(method);
                 var ilInstructions = !isCompilerGenerated ? method.GetInstructions() : new List<ILInstruction> { };
+                var methodBody = !isCompilerGenerated ? method.GetMethodBody() : null;
                 var nonInlineableParameters = new HashSet<int>();
                 var methodCalls = new HashSet<ILInstruction>();
 
@@ -237,7 +238,7 @@ namespace Assembler
                 {
                     ILInstructions = ilInstructions,
                     IsCompilerGenerated = isCompilerGenerated,
-                    SourceSinkMap = GenerateSourceSinkMap(ilInstructions),
+                    SourceSinkMap = GenerateSourceSinkMap(ilInstructions, methodBody),
                     NonInlineableParameters = nonInlineableParameters,
                     MethodCalls = methodCalls
                 };
@@ -249,16 +250,25 @@ namespace Assembler
                 .ToHashSet();
         }
 
-        private Dictionary<ILInstruction, Sink> GenerateSourceSinkMap(List<ILInstruction> ilInstructions)
+        private Dictionary<ILInstruction, Sink> GenerateSourceSinkMap(List<ILInstruction> ilInstructions, MethodBody methodBody)
         {
             var stack = ImmutableStack<ILInstruction>.Empty;
             var stackSnapshots = new Dictionary<ILInstruction, IImmutableStack<ILInstruction>>();
             var sourceSinkMap = new Dictionary<ILInstruction, Sink>();
 
+            var exceptionHandlingClauses = methodBody?.ExceptionHandlingClauses;
+            var exceptionHandlerOffsets = exceptionHandlingClauses != null
+                ? exceptionHandlingClauses
+                    .Where(clause => clause.Flags.HasFlag(ExceptionHandlingClauseOptions.Clause))
+                    .Select(clause => clause.HandlerOffset)
+                    .ToHashSet()
+                : new HashSet<int>();
+
             foreach (var ilInstruction in ilInstructions)
             {
                 var opCode = ilInstruction.Code;
                 var opCodeValue = opCode.Value;
+                var offset = ilInstruction.Offset;
 
                 var popCount = opCode.StackBehaviourPop switch
                 {
@@ -295,11 +305,19 @@ namespace Assembler
                     _ => 0
                 };
 
+                if (exceptionHandlerOffsets.Contains(offset))
+                {
+                    stack = stack.Push(null);
+                }
+
                 for (int index = 0; index < popCount; index++)
                 {
                     stack = stack.Pop(out var sourceInstruction);
 
-                    sourceSinkMap[sourceInstruction] = new Sink { Instruction = ilInstruction };
+                    if (sourceInstruction != null)
+                    {
+                        sourceSinkMap[sourceInstruction] = new Sink { Instruction = ilInstruction };
+                    }
                 }
 
                 for (int index = 0; index < pushCount; index++)
