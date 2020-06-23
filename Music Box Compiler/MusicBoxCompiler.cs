@@ -191,7 +191,7 @@ namespace MusicBoxCompiler
                                 }
 
                                 var note = filter.Count - 1;
-                                return $"{instrument} {Notes[note % Notes.Count]}{(note + 8) / Notes.Count + 1}";
+                                return $"{instrument} {Notes[note % Notes.Count]}{(note + 5) / Notes.Count + 1}";
                             }
                             else if ((match = DrumSignalRegex.Match(signalName)).Success)
                             {
