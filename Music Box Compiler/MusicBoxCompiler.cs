@@ -24,16 +24,21 @@ namespace MusicBoxCompiler
 
         public static void Run(IConfigurationRoot configuration)
         {
-            var inputBlueprintFile = configuration["InputBlueprint"];
-            var inputSpreadsheetFile = configuration["InputSpreadsheet"];
-            var outputBlueprintFile = configuration["OutputBlueprint"];
-            var outputJsonFile = configuration["OutputJson"];
-            var outputUpdatedJsonFile = configuration["OutputUpdatedJson"];
-            var outputCommandsFile = configuration["OutputCommands"];
-            var outputUpdatedCommandsFile = configuration["OutputUpdatedCommands"];
-            var baseAddress = int.TryParse(configuration["BaseAddress"], out var baseAddressValue) ? baseAddressValue : 0;
-            var songAlignment = int.TryParse(configuration["SongAlignment"], out var songAlignmentValue) ? songAlignmentValue : 1;
-            var spreadsheetTabs = StringUtil.SplitString(configuration["SpreadsheetTabs"], ',');
+            Run(configuration.Get<MusicConfiguration>());
+        }
+
+        public static void Run(MusicConfiguration configuration)
+        {
+            var inputBlueprintFile = configuration.InputBlueprint;
+            var inputSpreadsheetFile = configuration.InputSpreadsheet;
+            var outputBlueprintFile = configuration.OutputBlueprint;
+            var outputJsonFile = configuration.OutputJson;
+            var outputUpdatedJsonFile = configuration.OutputUpdatedJson;
+            var outputCommandsFile = configuration.OutputCommands;
+            var outputUpdatedCommandsFile = configuration.OutputUpdatedCommands;
+            var baseAddress = configuration.BaseAddress ?? 0;
+            var songAlignment = configuration.SongAlignment ?? 1;
+            var spreadsheetTabs = StringUtil.SplitString(configuration.SpreadsheetTabs, ',');
 
             var json = BlueprintUtil.ReadBlueprintFileAsJson(inputBlueprintFile);
             var jsonObj = JsonSerializer.Deserialize<object>(json);
@@ -226,5 +231,19 @@ namespace MusicBoxCompiler
         {
             return new Filter { Signal = new SignalID { Name = VirtualSignalNames.LetterOrDigit(signal), Type = SignalTypes.Virtual }, Count = count };
         }
+    }
+
+    public class MusicConfiguration
+    {
+        public string InputBlueprint { get; set; }
+        public string InputSpreadsheet { get; set; }
+        public string OutputBlueprint { get; set; }
+        public string OutputJson { get; set; }
+        public string OutputUpdatedJson { get; set; }
+        public string OutputCommands { get; set; }
+        public string OutputUpdatedCommands { get; set; }
+        public int? BaseAddress { get; set; }
+        public int? SongAlignment { get; set; }
+        public string SpreadsheetTabs { get; set; }
     }
 }
