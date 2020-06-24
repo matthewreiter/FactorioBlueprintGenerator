@@ -20,7 +20,7 @@ namespace MusicBoxCompiler
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance); // Required for reading from Excel spreadsheets from .NET Core apps
         }
 
-        public static List<List<NoteGroup>> ReadSongsFromSpreadsheet(string inputSpreadsheetFile, string[] spreadsheetTabs)
+        public static List<List<NoteGroup>> ReadSongsFromSpreadsheet(string inputSpreadsheetFile, string[] spreadsheetTabs, StreamWriter midiEventWriter)
         {
             var songs = new List<List<NoteGroup>>();
 
@@ -37,7 +37,7 @@ namespace MusicBoxCompiler
                     {
                         if (spreadsheetTabs.Contains(reader.Name))
                         {
-                            songs.Add(ReadSongFromSpreadsheet(reader));
+                            songs.AddRange(ReadSongsFromSpreadsheetTab(reader, midiEventWriter));
                         }
                     }
                 }
@@ -50,13 +50,14 @@ namespace MusicBoxCompiler
             return songs;
         }
 
-        private static List<NoteGroup> ReadSongFromSpreadsheet(IExcelDataReader reader)
+        private static List<List<NoteGroup>> ReadSongsFromSpreadsheetTab(IExcelDataReader reader, StreamWriter midiEventWriter)
         {
             var row = 0;
             var currentLines = new List<List<List<List<Note>>>>();
             var noteGroups = new List<NoteGroup>();
             var instrumentMappings = new List<InstrumentMapping>();
             var instrumentOffsets = new Dictionary<Instrument, int>();
+            var midiFiles = new List<string>();
 
             while (reader.Read())
             {
@@ -122,7 +123,7 @@ namespace MusicBoxCompiler
                         switch (reader.GetString(0))
                         {
                             case "Instrument Mappings":
-                                foreach (var column in Enumerable.Range(2, reader.FieldCount - 2))
+                                foreach (var column in Enumerable.Range(1, reader.FieldCount - 1))
                                 {
                                     var value = reader.GetValue(column);
                                     if (value == null)
@@ -148,7 +149,7 @@ namespace MusicBoxCompiler
 
                                 break;
                             case "Instrument Offsets":
-                                foreach (var column in Enumerable.Range(2, reader.FieldCount - 2))
+                                foreach (var column in Enumerable.Range(1, reader.FieldCount - 1))
                                 {
                                     var value = reader.GetValue(column);
                                     if (value == null)
@@ -172,15 +173,40 @@ namespace MusicBoxCompiler
                                 }
 
                                 break;
+                            case "Midi File":
+                                foreach (var column in Enumerable.Range(1, reader.FieldCount - 1))
+                                {
+                                    var value = reader.GetValue(column);
+                                    if (value == null)
+                                    {
+                                        continue;
+                                    }
+
+                                    midiFiles.Add(Convert.ToString(value));
+                                }
+
+                                break;
                         }
                     }
                 }
             }
 
+            var songs = new List<List<NoteGroup>>();
+
+            if (noteGroups.Count > 0)
+            {
+                songs.Add(noteGroups);
+            }
+
             // Process any remaining lines
             ProcessSpreadsheetLines(currentLines, noteGroups);
 
-            return noteGroups;
+            foreach (var midiFile in midiFiles)
+            {
+                songs.Add(MidiReader.ReadSong(midiFile, midiEventWriter, instrumentOffsets));
+            }
+
+            return songs;
         }
 
         private static void ProcessSpreadsheetLines(List<List<List<List<Note>>>> currentLines, List<NoteGroup> noteGroups)

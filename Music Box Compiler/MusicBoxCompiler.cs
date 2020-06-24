@@ -31,11 +31,13 @@ namespace MusicBoxCompiler
         {
             var inputBlueprintFile = configuration.InputBlueprint;
             var inputSpreadsheetFile = configuration.InputSpreadsheet;
+            var inputMidiFiles = StringUtil.SplitString(configuration.InputMidiFiles, ',');
             var outputBlueprintFile = configuration.OutputBlueprint;
             var outputJsonFile = configuration.OutputJson;
             var outputUpdatedJsonFile = configuration.OutputUpdatedJson;
             var outputCommandsFile = configuration.OutputCommands;
             var outputUpdatedCommandsFile = configuration.OutputUpdatedCommands;
+            var outputMidiEventsFile = configuration.OutputMidiEvents;
             var baseAddress = configuration.BaseAddress ?? 0;
             var songAlignment = configuration.SongAlignment ?? 1;
             var spreadsheetTabs = StringUtil.SplitString(configuration.SpreadsheetTabs, ',');
@@ -52,7 +54,10 @@ namespace MusicBoxCompiler
             BlueprintUtil.WriteOutJson(outputJsonFile, jsonObj);
             WriteOutCommands(outputCommandsFile, memoryCells);
 
-            var songs = SpreadsheetReader.ReadSongsFromSpreadsheet(inputSpreadsheetFile, spreadsheetTabs);
+            using var midiEventWriter = outputMidiEventsFile != null ? new StreamWriter(outputMidiEventsFile) : null;
+            var songs = SpreadsheetReader.ReadSongsFromSpreadsheet(inputSpreadsheetFile, spreadsheetTabs, midiEventWriter)
+                .Concat(inputMidiFiles.Select(midiFile => MidiReader.ReadSong(midiFile, midiEventWriter)))
+                .ToList();
 
             UpdateMemoryCellsFromSongs(memoryCells, songs, baseAddress, songAlignment);
             BlueprintUtil.PopulateIndices(blueprintWrapper.Blueprint);
@@ -237,11 +242,13 @@ namespace MusicBoxCompiler
     {
         public string InputBlueprint { get; set; }
         public string InputSpreadsheet { get; set; }
+        public string InputMidiFiles { get; set; }
         public string OutputBlueprint { get; set; }
         public string OutputJson { get; set; }
         public string OutputUpdatedJson { get; set; }
         public string OutputCommands { get; set; }
         public string OutputUpdatedCommands { get; set; }
+        public string OutputMidiEvents { get; set; }
         public int? BaseAddress { get; set; }
         public int? SongAlignment { get; set; }
         public string SpreadsheetTabs { get; set; }

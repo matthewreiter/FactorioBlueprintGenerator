@@ -2,7 +2,7 @@
   "profiles": {
     "Music Box Compiler": {
       "commandName": "Project",
-      "commandLineArgs": "--InputBlueprint=\"$(ProjectDir)/Test/blueprint.txt\" --InputSpreadsheet=\"C:/Users/Matthew Reiter/Documents/Office Documents/Factorio.xlsx\" --OutputBlueprint=\"$(ProjectDir)/Test/blueprintUpdated.txt\" --OutputJson=\"$(ProjectDir)/Test/blueprint.json\" --OutputUpdatedJson=\"$(ProjectDir)/Test/blueprintUpdated.json\" --OutputCommands=\"$(ProjectDir)/Test/blueprintCommands.txt\" --OutputUpdatedCommands=\"$(ProjectDir)/Test/blueprintUpdatedCommands.txt\" --SpreadsheetTabs=\"Ode to Joy,Imagine\" --SongAlignment=64"
+      "commandLineArgs": "--InputBlueprint=\"$(ProjectDir)/Test/blueprint.txt\" --InputSpreadsheet=\"C:/Users/Matthew Reiter/Documents/Office Documents/Factorio.xlsx\" --OutputBlueprint=\"$(ProjectDir)/Test/blueprintUpdated.txt\" --OutputJson=\"$(ProjectDir)/Test/blueprint.json\" --OutputUpdatedJson=\"$(ProjectDir)/Test/blueprintUpdated.json\" --OutputCommands=\"$(ProjectDir)/Test/blueprintCommands.txt\" --OutputUpdatedCommands=\"$(ProjectDir)/Test/blueprintUpdatedCommands.txt\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --SpreadsheetTabs=\"Ode to Joy,Imagine,Moonlight Sonata\" --SongAlignment=64"
     },
     "Verify updated blueprint": {
       "commandName": "Project",
