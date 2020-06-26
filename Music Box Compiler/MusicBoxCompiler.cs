@@ -1,6 +1,7 @@
 ﻿using BlueprintCommon;
 using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
+using MemoryInitializer;
 using Microsoft.Extensions.Configuration;
 using MusicBoxCompiler.Models;
 using System;
@@ -24,51 +25,44 @@ namespace MusicBoxCompiler
 
         public static void Run(IConfigurationRoot configuration)
         {
-            Run(configuration.Get<MusicConfiguration>());
+            Run(configuration.Get<MusicBoxConfiguration>());
         }
 
-        public static void Run(MusicConfiguration configuration)
+        public static void Run(MusicBoxConfiguration configuration)
         {
-            var inputBlueprintFile = configuration.InputBlueprint;
             var inputSpreadsheetFile = configuration.InputSpreadsheet;
             var inputMidiFiles = StringUtil.SplitString(configuration.InputMidiFiles, ',');
             var outputBlueprintFile = configuration.OutputBlueprint;
             var outputJsonFile = configuration.OutputJson;
-            var outputUpdatedJsonFile = configuration.OutputUpdatedJson;
             var outputCommandsFile = configuration.OutputCommands;
-            var outputUpdatedCommandsFile = configuration.OutputUpdatedCommands;
             var outputMidiEventsFile = configuration.OutputMidiEvents;
             var baseAddress = configuration.BaseAddress ?? 0;
-            var songAlignment = configuration.SongAlignment ?? 1;
+            var width = configuration.Width ?? 16;
+            var height = configuration.Height ?? 16;
             var spreadsheetTabs = StringUtil.SplitString(configuration.SpreadsheetTabs, ',');
-
-            var json = BlueprintUtil.ReadBlueprintFileAsJson(inputBlueprintFile);
-            var jsonObj = JsonSerializer.Deserialize<object>(json);
-            var blueprintWrapper = BlueprintUtil.DeserializeBlueprintWrapper(json);
-
-            var memoryCells = blueprintWrapper.Blueprint.Entities
-                .Where(entity => entity.Name == ItemNames.ConstantCombinator)
-                .OrderBy(entity => entity.Position.X - entity.Position.Y * 1000000)
-                .ToList();
-
-            BlueprintUtil.WriteOutJson(outputJsonFile, jsonObj);
-            WriteOutCommands(outputCommandsFile, memoryCells);
 
             using var midiEventWriter = outputMidiEventsFile != null ? new StreamWriter(outputMidiEventsFile) : null;
             var songs = SpreadsheetReader.ReadSongsFromSpreadsheet(inputSpreadsheetFile, spreadsheetTabs, midiEventWriter)
                 .Concat(inputMidiFiles.Select(midiFile => MidiReader.ReadSong(midiFile, midiEventWriter)))
                 .ToList();
 
-            UpdateMemoryCellsFromSongs(memoryCells, songs, baseAddress, songAlignment);
-            BlueprintUtil.PopulateIndices(blueprintWrapper.Blueprint);
+            var blueprint = CreateBlueprintFromSongs(songs, baseAddress, width, height);
+            BlueprintUtil.PopulateIndices(blueprint);
+
+            var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
+            var memoryCells = blueprint.Entities
+                .Where(entity => entity.Name == ItemNames.ConstantCombinator)
+                .OrderBy(entity => entity.Position.X - entity.Position.Y * 1000000)
+                .ToList();
 
             BlueprintUtil.WriteOutBlueprint(outputBlueprintFile, blueprintWrapper);
-            BlueprintUtil.WriteOutJson(outputUpdatedJsonFile, blueprintWrapper);
-            WriteOutCommands(outputUpdatedCommandsFile, memoryCells);
+            BlueprintUtil.WriteOutJson(outputJsonFile, blueprintWrapper);
+            WriteOutCommands(outputCommandsFile, memoryCells);
         }
 
-        private static void UpdateMemoryCellsFromSongs(List<Entity> memoryCells, List<List<NoteGroup>> songs, int baseAddress, int songAlignment)
+        private static Blueprint CreateBlueprintFromSongs(List<List<NoteGroup>> songs, int baseAddress, int width, int height)
         {
+            var memoryCells = new List<MemoryCell>();
             var currentAddress = baseAddress;
 
             Filter CreateJumpFilter(int targetAddress)
@@ -76,14 +70,14 @@ namespace MusicBoxCompiler
                 return CreateFilter('U', targetAddress - (currentAddress + 1));
             }
 
-            void UpdateMemoryCell(List<Filter> filters, bool isEnabled = true)
+            void AddMemoryCell(List<Filter> filters, bool isEnabled = true)
             {
-                memoryCells[currentAddress++].Control_behavior = new ControlBehavior { Filters = filters, Is_on = isEnabled ? (bool?)null : false };
+                memoryCells.Add(new MemoryCell { Address = currentAddress++, Filters = filters, IsEnabled = isEnabled });
             }
 
             void ClearMemoryCell()
             {
-                memoryCells[currentAddress++].Control_behavior = null;
+                AddMemoryCell(null);
             }
 
             foreach (var noteGroups in songs)
@@ -99,14 +93,14 @@ namespace MusicBoxCompiler
                     }
 
                     var currentSignals = new Dictionary<Instrument, char>
-                            {
-                                { Instrument.Piano, '0' },
-                                { Instrument.LeadGuitar, 'A' },
-                                { Instrument.BassGuitar, 'G' },
-                                { Instrument.Drum, 'K' },
-                                { Instrument.Celesta, 'N' },
-                                { Instrument.SteelDrum, 'O' }
-                            };
+                    {
+                        { Instrument.Piano, '0' },
+                        { Instrument.LeadGuitar, 'A' },
+                        { Instrument.BassGuitar, 'G' },
+                        { Instrument.Drum, 'K' },
+                        { Instrument.Celesta, 'N' },
+                        { Instrument.SteelDrum, 'O' }
+                    };
 
                     var filters = noteGroup.Notes
                         .OrderBy(note => InstrumentOrder[note.Instrument] * 100 + note.Number)
@@ -115,15 +109,15 @@ namespace MusicBoxCompiler
                         .Append(CreateFilter('Y', GetHistogram(noteGroup.Notes)))
                         .ToList();
 
-                    UpdateMemoryCell(filters);
+                    AddMemoryCell(filters);
                 }
 
                 // Create a disabled jump back to the beginning of the song
-                UpdateMemoryCell(new List<Filter> { CreateJumpFilter(songAddress) }, isEnabled: false);
+                AddMemoryCell(new List<Filter> { CreateJumpFilter(songAddress) }, isEnabled: false);
 
                 // Jump to the next song, which starts at the beginning of the next line of memory
-                var nextSongAddress = (currentAddress / songAlignment + 1) * songAlignment;
-                UpdateMemoryCell(new List<Filter> { CreateJumpFilter(nextSongAddress) });
+                var nextSongAddress = (currentAddress / width + 1) * width;
+                AddMemoryCell(new List<Filter> { CreateJumpFilter(nextSongAddress) });
 
                 // Blank all memory up to the next song
                 while (currentAddress < nextSongAddress)
@@ -133,7 +127,21 @@ namespace MusicBoxCompiler
             }
 
             // Jump back to the beginning
-            UpdateMemoryCell(new List<Filter> { CreateJumpFilter(0) });
+            AddMemoryCell(new List<Filter> { CreateJumpFilter(0) });
+
+            var romUsed = memoryCells.Count;
+            var totalRom = width * height;
+
+            Console.WriteLine($"ROM usage: {romUsed}/{totalRom} ({(double)romUsed / totalRom * 100:F1}%)");
+
+            return RomGenerator.Generate(new RomConfiguration
+            {
+                Width = width,
+                Height = height,
+                ProgramRows = height,
+                ProgramName = "Songs",
+                IconItemNames = new List<string> { ItemNames.ElectronicCircuit, ItemNames.ProgrammableSpeaker }
+            }, memoryCells);
         }
 
         private static int GetHistogram(List<Note> notes)
@@ -157,10 +165,10 @@ namespace MusicBoxCompiler
                 .Select(entityWithIndex =>
                 {
                     var (entity, address) = entityWithIndex;
-                    var isEnabled = entity.Control_behavior.Is_on ?? true;
+                    var isEnabled = entity.Control_behavior?.Is_on ?? true;
 
-                    var signals = entity.Control_behavior.Filters
-                        .Select(filter =>
+                    var signals = entity.Control_behavior?.Filters
+                        ?.Select(filter =>
                         {
                             var signalName = filter.Signal.Name;
 
@@ -220,10 +228,11 @@ namespace MusicBoxCompiler
                                 return null;
                             }
                         })
-                        .Where(note => note != null);
+                        ?.Where(note => note != null);
 
-                    return $"{address:D4}: {string.Join(", ", signals)}{(!isEnabled ? " (disabled)" : "")}";
-                });
+                    return signals != null ? $"{address:D4}: {string.Join(", ", signals)}{(!isEnabled ? " (disabled)" : "")}" : null;
+                })
+                .Where(command => command != null);
 
             using var outputStream = new StreamWriter(outputCommandsFile);
             foreach (var command in commands)
@@ -238,19 +247,17 @@ namespace MusicBoxCompiler
         }
     }
 
-    public class MusicConfiguration
+    public class MusicBoxConfiguration
     {
-        public string InputBlueprint { get; set; }
         public string InputSpreadsheet { get; set; }
         public string InputMidiFiles { get; set; }
         public string OutputBlueprint { get; set; }
         public string OutputJson { get; set; }
-        public string OutputUpdatedJson { get; set; }
         public string OutputCommands { get; set; }
-        public string OutputUpdatedCommands { get; set; }
         public string OutputMidiEvents { get; set; }
         public int? BaseAddress { get; set; }
-        public int? SongAlignment { get; set; }
+        public int? Width { get; set; }
+        public int? Height { get; set; }
         public string SpreadsheetTabs { get; set; }
     }
 }

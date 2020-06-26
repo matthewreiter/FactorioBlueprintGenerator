@@ -21,6 +21,7 @@ namespace MemoryInitializer
             var height = configuration.Height ?? 16;
             var programRows = configuration.ProgramRows ?? (program != null ? (program.Count - 1) / width + 1 : height / 2);
             var programName = configuration.ProgramName;
+            var iconItemNames = configuration.IconItemNames ?? new List<string> { ItemNames.ElectronicCircuit };
 
             if (program != null && program.Count > programRows * width)
             {
@@ -156,17 +157,14 @@ namespace MemoryInitializer
             return new Blueprint
             {
                 Label = $"{width}x{height} ROM{(programName != null ? $": {programName}": "")}",
-                Icons = new List<Icon>
+                Icons = iconItemNames.Select(name => new Icon
                 {
-                    new Icon
+                    Signal = new SignalID
                     {
-                        Signal = new SignalID
-                        {
-                            Type = SignalTypes.Item,
-                            Name = ItemNames.ElectronicCircuit
-                        }
+                        Type = SignalTypes.Item,
+                        Name = name
                     }
-                },
+                }).ToList(),
                 Entities = entities,
                 Item = ItemNames.Blueprint,
                 Version = BlueprintVersions.CurrentVersion
@@ -183,6 +181,7 @@ namespace MemoryInitializer
         public int? Height { get; set; }
         public int? ProgramRows { get; set; }
         public string ProgramName { get; set; }
+        public List<string> IconItemNames { get; set; }
     }
 
     public class MemoryCell
