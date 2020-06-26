@@ -73,7 +73,7 @@ namespace MusicBoxCompiler
 
                         if (isNoteInRange)
                         {
-                            if (timeDelta < TimeSpan.FromMilliseconds(100))
+                            if (timeDelta < TimeSpan.FromMilliseconds(80))
                             {
                                 timeDelta = TimeSpan.Zero;
                             }
