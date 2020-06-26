@@ -26,7 +26,7 @@ namespace MemoryInitializer
             {
                 Console.WriteLine($"Program too large to fit in ROM ({program.Count} > {programRows * width})");
                 programRows = (program.Count - 1) / width + 1;
-                height = Math.Max(height, programRows + (data.Count - 1) / width + 1);
+                height = Math.Max(height, programRows + ((data?.Count ?? 0) - 1) / width + 1);
             }
 
             if (data != null && data.Count > (height - programRows) * width)
@@ -80,7 +80,8 @@ namespace MemoryInitializer
                         Direction = 4,
                         Control_behavior = new ControlBehavior
                         {
-                            Filters = memoryCell.Filters
+                            Filters = memoryCell.Filters,
+                            Is_on = memoryCell.IsEnabled ? (bool?)null : false
                         },
                         Connections = CreateConnections(new ConnectionPoint
                         {
@@ -188,5 +189,6 @@ namespace MemoryInitializer
     {
         public int Address { get; set; }
         public List<Filter> Filters { get; set; }
+        public bool IsEnabled { get; set; } = true;
     }
 }
