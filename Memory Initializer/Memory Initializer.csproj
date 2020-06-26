@@ -17,8 +17,4 @@
     <ProjectReference Include="..\Blueprint Common\Blueprint Common.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Test\" />
-  </ItemGroup>
-
 </Project>

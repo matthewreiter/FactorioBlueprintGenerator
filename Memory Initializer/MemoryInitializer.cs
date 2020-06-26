@@ -19,6 +19,7 @@ namespace MemoryInitializer
                 "RAM" => RamGenerator.Generate(configuration),
                 "Registers" => RegisterGenerator.Generate(configuration),
                 "Speaker" => SpeakerGenerator.Generate(configuration),
+                "MusicBoxSpeaker" => MusicBoxSpeakerGenerator.Generate(configuration),
                 _ => throw new Exception($"Unsupported memory type: {memoryType}")
             };
 

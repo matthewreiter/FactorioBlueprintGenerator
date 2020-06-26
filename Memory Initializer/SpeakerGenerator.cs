@@ -55,7 +55,7 @@ namespace MemoryInitializer
                 {
                     var relativeAddress = (reverseAddressY ? (height - row - 1) : row) * width + (reverseAddressX ? (width - column - 1) : column);
                     var address = relativeAddress + baseAddress + 1;
-                    var memoryCellEntityNumber = (row * width + column) * entitiesPerCell + 2;
+                    var memoryCellEntityNumber = (row * width + column) * entitiesPerCell + 3;
                     var memoryCellX = column + (includePower ? (column / 16 + 1) * 2 : 0) + xOffset;
                     var memoryCellY = (height - row - 1) * cellHeight + 4.5 + yOffset;
 

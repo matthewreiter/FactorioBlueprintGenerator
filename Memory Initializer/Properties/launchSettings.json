@@ -12,9 +12,13 @@
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/registers.txt\" --OutputJson=\"$(ProjectDir)/Test/registers.json\" --MemoryType=Registers --RegisterCount=32"
     },
-    "SpeakerRegisters": {
+    "Speakers": {
       "commandName": "Project",
-      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/speakerRegisters.txt\" --OutputJson=\"$(ProjectDir)/Test/speakerRegisters.json\" --MemoryType=Speaker --Height=6 --SpeakersPerConfiguration=6 --VolumeLevels=4 --MinVolume=0.5 --BaseAddress=33793 --ReverseAddressY=true --IncludePower=true"
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/speakers.txt\" --OutputJson=\"$(ProjectDir)/Test/speakers.json\" --MemoryType=Speaker --Height=6 --SpeakersPerConfiguration=6 --VolumeLevels=4 --MinVolume=0.5 --BaseAddress=33793 --ReverseAddressY=true --IncludePower=true"
+    },
+    "MusicBoxSpeakers": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/musicBoxSpeakers.txt\" --OutputJson=\"$(ProjectDir)/Test/musicBoxSpeakers.json\" --MemoryType=MusicBoxSpeaker --Height=10 --SpeakersPerConfiguration=10 --VolumeLevels=4 --MinVolume=0.5 --BaseAddress=1 --ReverseAddressY=true --IncludePower=true"
     }
   }
 }
