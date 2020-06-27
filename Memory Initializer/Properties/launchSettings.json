@@ -18,7 +18,7 @@
     },
     "MusicBoxSpeakers": {
       "commandName": "Project",
-      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/musicBoxSpeakers.txt\" --OutputJson=\"$(ProjectDir)/Test/musicBoxSpeakers.json\" --MemoryType=MusicBoxSpeaker --Height=10 --SpeakersPerConfiguration=10 --VolumeLevels=4 --MinVolume=0.5 --BaseAddress=1 --ReverseAddressY=true --IncludePower=true"
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/musicBoxSpeakers.txt\" --OutputJson=\"$(ProjectDir)/Test/musicBoxSpeakers.json\" --MemoryType=MusicBoxSpeaker --Width=48 --SpeakersPerConfiguration=10 --VolumeLevels=10 --MinVolume=0.1 --BaseAddress=1 --ReverseAddressY=true --IncludePower=true"
     }
   }
 }
