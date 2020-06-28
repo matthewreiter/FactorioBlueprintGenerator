@@ -75,7 +75,7 @@ namespace MusicBoxCompiler
                 .ToDictionary(entry => entry.channel, entry => entry.Instrument);
         }
 
-        public static List<NoteGroup> ReadSong(string midiFile, StreamWriter midiEventWriter, Dictionary<Instrument, int> instrumentOffsets = null, double volume = 1)
+        public static List<NoteGroup> ReadSong(string midiFile, StreamWriter midiEventWriter, Dictionary<Instrument, int> instrumentOffsets = null, double masterVolume = 1, Dictionary<Instrument, double> instrumentVolumes = null)
         {
             using var fileReader = File.OpenRead(midiFile);
             var music = MidiMusic.Read(fileReader);
@@ -117,6 +117,7 @@ namespace MusicBoxCompiler
                         {
                             var baseNoteOffset = BaseInstrumentOffsets.TryGetValue(instrument, out var baseOffsetValue) ? baseOffsetValue : 0;
                             var noteOffset = instrumentOffsets != null && instrumentOffsets.TryGetValue(instrument, out var offsetValue) ? offsetValue : 0;
+                            var instrumentVolume = instrumentVolumes != null && instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
                             var timeDelta = currentTime - lastTime;
 
                             var effectiveNoteNumber = isPercussion
@@ -144,7 +145,7 @@ namespace MusicBoxCompiler
                                     Instrument = instrument,
                                     Number = effectiveNoteNumber,
                                     Pitch = effectiveNoteNumber,
-                                    Volume = Math.Min(velocity / 127d * volume, 1)
+                                    Volume = Math.Min(velocity / 127d * instrumentVolume * masterVolume, 1)
                                 });
                             }
                         }

@@ -12,8 +12,9 @@ namespace MusicBoxCompiler
     public static class SpreadsheetReader
     {
         private static readonly Regex SpreadsheetNoteRegex = new Regex(@"^((?:\d|[.])+)([#b]?)([BR]?)$");
-        private static readonly Regex InstrumentMappingRegex = new Regex(@"^(.*?): (\d+)-(\d+)$");
-        private static readonly Regex InstrumentOffsetRegex = new Regex(@"^(.*?): (-?\d+)$");
+        private static readonly Regex InstrumentMappingRegex = new Regex(@"^(.+?): (\d+)-(\d+)$");
+        private static readonly Regex InstrumentOffsetRegex = new Regex(@"^(.+?): (-?\d+)$");
+        private static readonly Regex VolumeLevelRegex = new Regex(@"^(?:(.+?): )?(-?\d+(?:\.\d+)?)$");
 
         static SpreadsheetReader()
         {
@@ -58,7 +59,8 @@ namespace MusicBoxCompiler
             var instrumentMappings = new List<InstrumentMapping>();
             var instrumentOffsets = new Dictionary<Instrument, int>();
             var midiFiles = new List<string>();
-            var volume = 1d;
+            var instrumentVolumes = new Dictionary<Instrument, double>();
+            var masterVolume = 1d;
 
             while (reader.Read())
             {
@@ -99,6 +101,7 @@ namespace MusicBoxCompiler
                                                 _ => instrumentMappings.FirstOrDefault(mapping => mapping.RangeStart <= effectiveNoteNumber && effectiveNoteNumber <= mapping.RangeEnd)?.Instrument ?? Instrument.Piano
                                             };
                                         var noteOffset = instrumentOffsets.TryGetValue(instrument, out var offsetValue) ? offsetValue : 0;
+                                        var instrumentVolume = instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
 
                                         return new Note
                                         {
@@ -106,7 +109,7 @@ namespace MusicBoxCompiler
                                             Number = effectiveNoteNumber + noteOffset,
                                             Pitch = isDrum ? effectiveNoteNumber * 5 : effectiveNoteNumber,
                                             Name = isDrum ? noteName : $"{noteName[0]}{sharpOrFlat}{noteName.Substring(1)}",
-                                            Volume = volume,
+                                            Volume = instrumentVolume * masterVolume,
                                             Length = length
                                         };
                                     }
@@ -180,10 +183,36 @@ namespace MusicBoxCompiler
 
                                 break;
                             case "Volume":
-                                var volumeValue = Enumerable.Range(1, reader.FieldCount - 1).Select(column => reader.GetValue(column)).FirstOrDefault(value => value != null);
-                                if (volumeValue != null)
+                                foreach (var column in Enumerable.Range(1, reader.FieldCount - 1))
                                 {
-                                    volume = Convert.ToDouble(volumeValue) / 100;
+                                    var value = reader.GetValue(column);
+                                    if (value == null)
+                                    {
+                                        continue;
+                                    }
+
+                                    var match = VolumeLevelRegex.Match(Convert.ToString(value));
+
+                                    if (match.Success)
+                                    {
+                                        var instrumentName = match.Groups[1].Value;
+                                        var volume = double.Parse(match.Groups[2].Value) / 100;
+
+                                        if (instrumentName.Length > 0)
+                                        {
+                                            var instrument = ParseInstrument(instrumentName);
+
+                                            instrumentVolumes[instrument] = volume;
+                                        }
+                                        else
+                                        {
+                                            masterVolume = volume;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Console.Error.WriteLine($"Unable to parse volume level on sheet {reader.Name} row {row} column {column}");
+                                    }
                                 }
 
                                 break;
@@ -217,7 +246,7 @@ namespace MusicBoxCompiler
 
             foreach (var midiFile in midiFiles)
             {
-                songs.Add(MidiReader.ReadSong(midiFile, midiEventWriter, instrumentOffsets, volume));
+                songs.Add(MidiReader.ReadSong(midiFile, midiEventWriter, instrumentOffsets, masterVolume, instrumentVolumes));
             }
 
             return songs;
