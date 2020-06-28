@@ -169,7 +169,7 @@ namespace MusicBoxCompiler
                                     _ => $"{instrument} {Notes[note % Notes.Count]}{(note + 5) / Notes.Count + 1}"
                                 };
                                 var volume = maxVolume - (double)encodedVolume / (volumeLevels - 1) * (maxVolume - minVolume);
-                                return $"{instrumentAndNote} at {volume * 100}% volume";
+                                return $"{instrumentAndNote} at {(int)(volume * 100)}% volume";
                             }
                             else if (signalName == VirtualSignalNames.LetterOrDigit('U'))
                             {
