@@ -3,11 +3,17 @@
     public enum Instrument
     {
         Unknown,
+        Alarms,
+        Miscellaneous,
+        Drumkit,
         Piano,
-        LeadGuitar,
         BassGuitar,
-        Drum,
-        SteelDrum,
-        Celesta
+        LeadGuitar,
+        Sawtooth,
+        Square,
+        Celesta,
+        Vibraphone,
+        PluckedStrings,
+        SteelDrum
     }
 }

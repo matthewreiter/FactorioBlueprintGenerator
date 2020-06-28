@@ -8,20 +8,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace MusicBoxCompiler
 {
     public static class MusicBoxCompiler
     {
+        private const int InstrumentCount = 12;
         private static readonly List<string> Notes = new List<string> { "F", "F#", "G", "G#", "A", "A#", "B", "C", "C#", "D", "D#", "E" };
-        private static readonly Regex NoteSignalRegex = new Regex(@"^signal-(\d|[A-JN-R])$");
-        private static readonly Regex DrumSignalRegex = new Regex(@"^signal-([K-M])$");
-
-        private static readonly Dictionary<Instrument, int> InstrumentOrder = new List<Instrument> { Instrument.Drum, Instrument.BassGuitar, Instrument.LeadGuitar, Instrument.Piano, Instrument.Celesta, Instrument.SteelDrum }
-            .Select((instrument, index) => new { instrument, index })
-            .ToDictionary(instrumentWithIndex => instrumentWithIndex.instrument, instrumentWithIndex => instrumentWithIndex.index);
+        private static readonly Regex NoteSignalRegex = new Regex(@"^signal-(\d)$");
 
         public static void Run(IConfigurationRoot configuration)
         {
@@ -39,6 +34,9 @@ namespace MusicBoxCompiler
             var baseAddress = configuration.BaseAddress ?? 0;
             var width = configuration.Width ?? 16;
             var height = configuration.Height ?? 16;
+            var volumeLevels = configuration.VolumeLevels ?? 10;
+            var minVolume = configuration.MinVolume ?? 0.1;
+            var maxVolume = configuration.MaxVolume ?? 1;
             var spreadsheetTabs = StringUtil.SplitString(configuration.SpreadsheetTabs, ',');
 
             using var midiEventWriter = outputMidiEventsFile != null ? new StreamWriter(outputMidiEventsFile) : null;
@@ -46,7 +44,7 @@ namespace MusicBoxCompiler
                 .Concat(inputMidiFiles.Select(midiFile => MidiReader.ReadSong(midiFile, midiEventWriter)))
                 .ToList();
 
-            var blueprint = CreateBlueprintFromSongs(songs, baseAddress, width, height);
+            var blueprint = CreateBlueprintFromSongs(songs, baseAddress, width, height, volumeLevels, minVolume, maxVolume);
             BlueprintUtil.PopulateIndices(blueprint);
 
             var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
@@ -57,27 +55,28 @@ namespace MusicBoxCompiler
 
             BlueprintUtil.WriteOutBlueprint(outputBlueprintFile, blueprintWrapper);
             BlueprintUtil.WriteOutJson(outputJsonFile, blueprintWrapper);
-            WriteOutCommands(outputCommandsFile, memoryCells);
+            WriteOutCommands(outputCommandsFile, memoryCells, volumeLevels, minVolume, maxVolume);
         }
 
-        private static Blueprint CreateBlueprintFromSongs(List<List<NoteGroup>> songs, int baseAddress, int width, int height)
+        private static Blueprint CreateBlueprintFromSongs(List<List<NoteGroup>> songs, int baseAddress, int width, int height, int volumeLevels, double minVolume, double maxVolume)
         {
             var memoryCells = new List<MemoryCell>();
             var currentAddress = baseAddress;
 
             Filter CreateJumpFilter(int targetAddress)
             {
-                return CreateFilter('U', targetAddress - (currentAddress + 1));
+                return CreateFilter('U', targetAddress - (currentAddress + 3));
             }
 
-            void AddMemoryCell(List<Filter> filters, bool isEnabled = true)
+            void AddMemoryCell(List<Filter> filters, int length = 1, bool isEnabled = true)
             {
-                memoryCells.Add(new MemoryCell { Address = currentAddress++, Filters = filters, IsEnabled = isEnabled });
+                memoryCells.Add(new MemoryCell { Address = currentAddress, Filters = filters, IsEnabled = isEnabled });
+                currentAddress += length;
             }
 
-            void ClearMemoryCell()
+            int EncodeVolume(double volume)
             {
-                AddMemoryCell(null);
+                return (int)((maxVolume - volume) / (maxVolume - minVolume) * (volumeLevels - 1));
             }
 
             foreach (var noteGroups in songs)
@@ -92,42 +91,26 @@ namespace MusicBoxCompiler
                         currentBeatsPerMinute = noteGroup.BeatsPerMinute.Value;
                     }
 
-                    var currentSignals = new Dictionary<Instrument, char>
-                    {
-                        { Instrument.Piano, '0' },
-                        { Instrument.LeadGuitar, 'A' },
-                        { Instrument.BassGuitar, 'G' },
-                        { Instrument.Drum, 'K' },
-                        { Instrument.Celesta, 'N' },
-                        { Instrument.SteelDrum, 'O' }
-                    };
-
                     var filters = noteGroup.Notes
-                        .OrderBy(note => InstrumentOrder[note.Instrument] * 100 + note.Number)
-                        .Select(note => CreateFilter(currentSignals[note.Instrument]++, note.Number))
-                        .Append(CreateFilter('Z', (int)(14400 / currentBeatsPerMinute / noteGroup.Length)))
-                        .Append(CreateFilter('Y', GetHistogram(noteGroup.Notes)))
+                        .OrderBy(note => (int)note.Instrument * 100 + note.Number)
+                        .Select((note, index) => CreateFilter((char)('0' + index), note.Number + ((int)note.Instrument + EncodeVolume(note.Volume) * InstrumentCount) * 256))
+                        .Append(CreateFilter('Z', GetHistogram(noteGroup.Notes)))
                         .ToList();
 
-                    AddMemoryCell(filters);
+                    var length = (int)(14400 / currentBeatsPerMinute / noteGroup.Length);
+
+                    AddMemoryCell(filters, length: length);
                 }
 
                 // Create a disabled jump back to the beginning of the song
-                AddMemoryCell(new List<Filter> { CreateJumpFilter(songAddress) }, isEnabled: false);
+                AddMemoryCell(new List<Filter> { CreateJumpFilter(songAddress) }, length: 4, isEnabled: false);
 
-                // Jump to the next song, which starts at the beginning of the next line of memory
-                var nextSongAddress = (currentAddress / width + 1) * width;
-                AddMemoryCell(new List<Filter> { CreateJumpFilter(nextSongAddress) });
-
-                // Blank all memory up to the next song
-                while (currentAddress < nextSongAddress)
-                {
-                    ClearMemoryCell();
-                }
+                // Add a gap between songs
+                AddMemoryCell(null);
             }
 
             // Jump back to the beginning
-            AddMemoryCell(new List<Filter> { CreateJumpFilter(0) });
+            AddMemoryCell(new List<Filter> { CreateJumpFilter(0) }, length: 4);
 
             var romUsed = memoryCells.Count;
             var totalRom = width * height;
@@ -148,11 +131,11 @@ namespace MusicBoxCompiler
         {
             return notes
                 .GroupBy(note => note.Pitch / 5)
-                .Select(group => Math.Min(group.Count(), 3) << (group.Key * 2))
+                .Select(group => Math.Min((int)Math.Ceiling(group.Sum(note => note.Volume)), 3) << (group.Key * 2))
                 .Sum();
         }
 
-        private static void WriteOutCommands(string outputCommandsFile, List<Entity> memoryCells)
+        private static void WriteOutCommands(string outputCommandsFile, List<Entity> memoryCells, int volumeLevels, double minVolume, double maxVolume)
         {
             if (outputCommandsFile == null)
             {
@@ -175,53 +158,26 @@ namespace MusicBoxCompiler
                             Match match;
                             if ((match = NoteSignalRegex.Match(signalName)).Success)
                             {
-                                var signal = match.Groups[1].Value[0];
+                                var configuration = filter.Count / 256 - 1;
+                                var instrument = (Instrument)(configuration % InstrumentCount + 1);
+                                var encodedVolume = configuration / InstrumentCount;
 
-                                Instrument instrument;
-                                if (signal >= '0' && signal <= '9')
+                                var note = filter.Count % 256 - 1;
+                                var instrumentAndNote = instrument switch
                                 {
-                                    instrument = Instrument.Piano;
-                                }
-                                else if (signal >= 'A' && signal <= 'F')
-                                {
-                                    instrument = Instrument.LeadGuitar;
-                                }
-                                else if (signal >= 'G' && signal <= 'J')
-                                {
-                                    instrument = Instrument.BassGuitar;
-                                }
-                                else if (signal == 'N')
-                                {
-                                    instrument = Instrument.Celesta;
-                                }
-                                else if (signal >= 'O' && signal <= 'R')
-                                {
-                                    instrument = Instrument.SteelDrum;
-                                }
-                                else
-                                {
-                                    instrument = Instrument.Unknown;
-                                }
-
-                                var note = filter.Count - 1;
-                                return $"{instrument} {Notes[note % Notes.Count]}{(note + 5) / Notes.Count + 1}";
-                            }
-                            else if ((match = DrumSignalRegex.Match(signalName)).Success)
-                            {
-                                var drum = filter.Count - 1;
-                                return Constants.Drums[drum];
+                                    Instrument.Drumkit => Constants.Drums[note],
+                                    _ => $"{instrument} {Notes[note % Notes.Count]}{(note + 5) / Notes.Count + 1}"
+                                };
+                                var volume = maxVolume - (double)encodedVolume / (volumeLevels - 1) * (maxVolume - minVolume);
+                                return $"{instrumentAndNote} at {volume * 100}% volume";
                             }
                             else if (signalName == VirtualSignalNames.LetterOrDigit('U'))
                             {
                                 return $"jump by {filter.Count} to {address + 1 + filter.Count}";
                             }
-                            else if (signalName == VirtualSignalNames.LetterOrDigit('Y'))
-                            {
-                                return $"histogram {filter.Count:X}";
-                            }
                             else if (signalName == VirtualSignalNames.LetterOrDigit('Z'))
                             {
-                                return $"duration {filter.Count / 60f}";
+                                return $"histogram {filter.Count:X}";
                             }
                             else
                             {
@@ -258,6 +214,9 @@ namespace MusicBoxCompiler
         public int? BaseAddress { get; set; }
         public int? Width { get; set; }
         public int? Height { get; set; }
+        public int? VolumeLevels { get; set; }
+        public double? MinVolume { get; set; }
+        public double? MaxVolume { get; set; }
         public string SpreadsheetTabs { get; set; }
     }
 }
