@@ -302,7 +302,7 @@ namespace MusicBoxCompiler
 
         private static Instrument ParseInstrument(string text)
         {
-            return Enum.TryParse(typeof(Instrument), text.Replace(" ", ""), true, out var instrumentValue) ? (Instrument)instrumentValue : Instrument.Unknown;
+            return Enum.TryParse(typeof(Instrument), text.Replace(" ", ""), true, out var instrumentValue) ? (Instrument)instrumentValue : throw new Exception($"Unknown instrument: {text}");
         }
     }
 }
