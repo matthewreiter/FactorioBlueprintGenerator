@@ -105,8 +105,8 @@ namespace MusicBoxCompiler
                 // Create a disabled jump back to the beginning of the song
                 AddMemoryCell(new List<Filter> { CreateJumpFilter(songAddress) }, length: 4, isEnabled: false);
 
-                // Add a gap between songs
-                AddMemoryCell(null);
+                // Add a pause between songs
+                AddMemoryCell(null, length: 120);
             }
 
             // Jump back to the beginning
