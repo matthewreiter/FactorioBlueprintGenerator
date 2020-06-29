@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
 using GMInst = Commons.Music.Midi.GeneralMidi.Instruments;
 using Percussions = Commons.Music.Midi.GeneralMidi.Percussions;
 
@@ -78,12 +77,10 @@ namespace MusicBoxCompiler
         public static List<NoteGroup> ReadSong(string midiFile, StreamWriter midiEventWriter, Dictionary<Instrument, int> instrumentOffsets = null, double masterVolume = 1, Dictionary<Instrument, double> instrumentVolumes = null)
         {
             using var fileReader = File.OpenRead(midiFile);
-            var music = MidiMusic.Read(fileReader);
-
-            var timeManager = new TimeManager();
-            var player = new MidiPlayer(music, timeManager);
+            var music = SmfTrackMerger.Merge(MidiMusic.Read(fileReader));
             var machine = new MidiMachine();
 
+            var currentTimeTicks = 0;
             var lastTime = TimeSpan.Zero;
             var currentNotes = new List<Note>();
             var noteGroups = new List<NoteGroup>();
@@ -93,15 +90,18 @@ namespace MusicBoxCompiler
                 midiEventWriter.WriteLine(midiFile);
             }
 
-            player.EventReceived += midiEvent =>
+            foreach (var midiMessage in music.Tracks[0].Messages)
             {
+                currentTimeTicks += midiMessage.DeltaTime;
+                var currentTime = TimeSpan.FromMilliseconds(music.GetTimePositionInMillisecondsForTick(currentTimeTicks));
+
+                var midiEvent = midiMessage.Event;
                 var channel = machine.Channels[midiEvent.Channel];
 
                 machine.ProcessEvent(midiEvent);
 
                 if (midiEvent.EventType == MidiEvent.NoteOn)
                 {
-                    var currentTime = player.PositionInTime;
                     var noteNumber = midiEvent.Msb;
                     var velocity = midiEvent.Lsb;
                     var isPercussion = midiEvent.Channel == PercussionMidiChannel;
@@ -160,16 +160,7 @@ namespace MusicBoxCompiler
                         }
                     }
                 }
-            };
-
-            var doneEvent = new AutoResetEvent(false);
-            player.Finished += () =>
-            {
-                doneEvent.Set();
-            };
-
-            player.Play();
-            doneEvent.WaitOne();
+            }
 
             if (midiEventWriter != null)
             {
@@ -177,11 +168,6 @@ namespace MusicBoxCompiler
             }
 
             return noteGroups;
-        }
-
-        private class TimeManager : IMidiPlayerTimeManager
-        {
-            public void WaitBy(int addedMilliseconds) { }
         }
     }
 }
