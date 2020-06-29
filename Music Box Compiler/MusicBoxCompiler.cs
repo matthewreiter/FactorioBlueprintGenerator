@@ -173,7 +173,8 @@ namespace MusicBoxCompiler
                             }
                             else if (signalName == VirtualSignalNames.LetterOrDigit('U'))
                             {
-                                return $"jump by {filter.Count} to {address + 1 + filter.Count}";
+                                //return $"jump by {filter.Count} to {address + 1 + filter.Count}";
+                                return $"jump by {filter.Count}";
                             }
                             else if (signalName == VirtualSignalNames.LetterOrDigit('Z'))
                             {
