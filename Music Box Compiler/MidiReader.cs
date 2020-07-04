@@ -23,6 +23,7 @@ namespace MusicBoxCompiler
             new InstrumentMapping { Instrument = Instrument.LeadGuitar, RangeStart = GMInst.AcousticGuitarNylon, RangeEnd = GMInst.Guitarharmonics },
             new InstrumentMapping { Instrument = Instrument.BassGuitar, RangeStart = GMInst.AcousticBass, RangeEnd = GMInst.SynthBass2 },
             new InstrumentMapping { Instrument = Instrument.PluckedStrings, RangeStart = GMInst.Violin, RangeEnd = GMInst.SynthStrings2 },
+            new InstrumentMapping { Instrument = Instrument.Celesta, RangeStart = GMInst.ChoirAahs, RangeEnd = GMInst.SynthVoice },
             new InstrumentMapping { Instrument = Instrument.Square, RangeStart = GMInst.SopranoSax, RangeEnd = GMInst.Clarinet },
             new InstrumentMapping { Instrument = Instrument.Celesta, RangeStart = GMInst.Piccolo, RangeEnd = GMInst.Ocarina },
             new InstrumentMapping { Instrument = Instrument.Square, RangeStart = GMInst.LeadSquare, RangeEnd = GMInst.LeadSquare },
@@ -34,8 +35,10 @@ namespace MusicBoxCompiler
         {
             { Percussions.AcousticBassDrum, Drum.Kick1 },
             { Percussions.BassDrum1, Drum.Kick2 },
+            { Percussions.SideStick, Drum.Percussion1 },
             { Percussions.AcousticSnare, Drum.Snare1 },
             { Percussions.ElectricSnare, Drum.Snare2 },
+            { Percussions.HandClap, Drum.Clap },
             { Percussions.LowFloorTom, Drum.Snare1 },
             { Percussions.ClosedHiHat, Drum.HiHat2 },
             { Percussions.HighFloorTom, Drum.Snare1 },
