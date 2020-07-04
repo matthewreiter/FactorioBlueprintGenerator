@@ -167,6 +167,11 @@ namespace MusicBoxCompiler
                 }
             }
 
+            if (currentNotes.Count > 0)
+            {
+                noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = 4, BeatsPerMinute = 60 });
+            }
+
             if (midiEventWriter != null)
             {
                 midiEventWriter.WriteLine();
