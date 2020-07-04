@@ -2,7 +2,7 @@
 {
     public enum Drum
     {
-        Kick1,
+        Kick1 = 1,
         Kick2,
         Snare1,
         Snare2,
