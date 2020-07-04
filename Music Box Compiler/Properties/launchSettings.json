@@ -2,7 +2,7 @@
   "profiles": {
     "Music Box Compiler": {
       "commandName": "Project",
-      "commandLineArgs": "--InputSpreadsheet=\"C:/Users/Matthew Reiter/Documents/Office Documents/Factorio.xlsx\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputCommands=\"$(ProjectDir)/Test/commands.txt\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --SpreadsheetTabs=\"Ode to Joy,Imagine,Moonlight Sonata,Yesterday\" --Width=96 --Height=32 --BaseAddress=1"
+      "commandLineArgs": "--InputSpreadsheet=\"C:/Users/Matthew Reiter/Documents/Office Documents/Factorio.xlsx\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputCommands=\"$(ProjectDir)/Test/commands.txt\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --SpreadsheetTabs=\"Ode to Joy,Imagine,Moonlight Sonata,Yesterday,Friends\" --Width=128 --Height=32 --BaseAddress=1"
     }
   }
 }
