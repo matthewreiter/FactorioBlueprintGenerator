@@ -8,7 +8,9 @@
 
   <ItemGroup>
     <PackageReference Include="System.Text.Json" Version="4.7.1" />
-    <PackageReference Include="zlib.net" Version="1.0.4" />
+    <PackageReference Include="zlib.net" Version="1.0.4">
+      <NoWarn>NU1701</NoWarn>
+    </PackageReference>
   </ItemGroup>
 
 </Project>
