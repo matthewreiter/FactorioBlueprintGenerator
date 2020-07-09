@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Configuration;
-using SeeSharp.Runtime.Attributes;
+using SeeSharp.Runtime;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -58,7 +58,7 @@ namespace SeeSharpCompiler
                 .AddSyntaxTrees(CSharpSyntaxTree.ParseText(File.ReadAllText(inputProgramFile), path: inputProgramFile))
                 .AddReferences(
                     MetadataReference.CreateFromFile("C:/Program Files/dotnet/packs/Microsoft.NETCore.App.Ref/3.1.0/ref/netcoreapp3.1/System.Runtime.dll"),
-                    MetadataReference.CreateFromFile(typeof(InlineAttribute).Assembly.Location)
+                    MetadataReference.CreateFromFile(typeof(Memory).Assembly.Location)
                 );
 
             var syntaxTree = compilation.SyntaxTrees[0];
@@ -219,7 +219,7 @@ namespace SeeSharpCompiler
                     var arguments = node.ArgumentList.Arguments;
                     Visit(arguments);
 
-                    if (GetAttribute<InlineAttribute>(symbol) != null)
+                    if (GetAttribute<MethodImplAttribute>(symbol) != null)
                     {
                         var containingType = GetTypeForSymbol(symbol.ContainingType);
 
