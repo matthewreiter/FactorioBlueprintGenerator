@@ -20,6 +20,7 @@ namespace MusicBoxCompiler
             new InstrumentMapping { Instrument = Instrument.Piano, RangeStart = GMInst.AcousticGrandPiano, RangeEnd = GMInst.Clavi },
             new InstrumentMapping { Instrument = Instrument.Celesta, RangeStart = GMInst.Celesta, RangeEnd = GMInst.MusicBox },
             new InstrumentMapping { Instrument = Instrument.Vibraphone, RangeStart = GMInst.Vibraphone, RangeEnd = GMInst.Dulcimer },
+            new InstrumentMapping { Instrument = Instrument.Piano, RangeStart = GMInst.DrawbarOrgan, RangeEnd = GMInst.TangoAccordion },
             new InstrumentMapping { Instrument = Instrument.LeadGuitar, RangeStart = GMInst.AcousticGuitarNylon, RangeEnd = GMInst.Guitarharmonics },
             new InstrumentMapping { Instrument = Instrument.BassGuitar, RangeStart = GMInst.AcousticBass, RangeEnd = GMInst.SynthBass2 },
             new InstrumentMapping { Instrument = Instrument.PluckedStrings, RangeStart = GMInst.Violin, RangeEnd = GMInst.SynthStrings2 },
@@ -79,7 +80,7 @@ namespace MusicBoxCompiler
                 .ToDictionary(entry => entry.channel, entry => entry.Instrument);
         }
 
-        public static List<NoteGroup> ReadSong(string midiFile, StreamWriter midiEventWriter, Dictionary<Instrument, int> instrumentOffsets = null, double masterVolume = 1, Dictionary<Instrument, double> instrumentVolumes = null)
+        public static Song ReadSong(string midiFile, StreamWriter midiEventWriter, Dictionary<Instrument, int> instrumentOffsets = null, double masterVolume = 1, Dictionary<Instrument, double> instrumentVolumes = null, bool loop = false)
         {
             using var fileReader = File.OpenRead(midiFile);
             var music = SmfTrackMerger.Merge(MidiMusic.Read(fileReader));
@@ -169,7 +170,10 @@ namespace MusicBoxCompiler
 
             if (currentNotes.Count > 0)
             {
-                noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = 4, BeatsPerMinute = 60 });
+                var currentTime = TimeSpan.FromMilliseconds(music.GetTotalPlayTimeMilliseconds());
+                var timeDelta = currentTime - lastTime;
+
+                noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = 4 / timeDelta.TotalMinutes, BeatsPerMinute = 1 });
             }
 
             if (midiEventWriter != null)
@@ -177,7 +181,11 @@ namespace MusicBoxCompiler
                 midiEventWriter.WriteLine();
             }
 
-            return noteGroups;
+            return new Song
+            {
+                NoteGroups = noteGroups,
+                Loop = loop
+            };
         }
     }
 }

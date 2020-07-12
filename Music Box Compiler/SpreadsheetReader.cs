@@ -21,9 +21,9 @@ namespace MusicBoxCompiler
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance); // Required for reading from Excel spreadsheets from .NET Core apps
         }
 
-        public static List<List<NoteGroup>> ReadSongsFromSpreadsheet(string inputSpreadsheetFile, string[] spreadsheetTabs, StreamWriter midiEventWriter)
+        public static List<Song> ReadSongsFromSpreadsheet(string inputSpreadsheetFile, string[] spreadsheetTabs, StreamWriter midiEventWriter)
         {
-            var songs = new List<List<NoteGroup>>();
+            var songs = new List<Song>();
 
             if (inputSpreadsheetFile != null)
             {
@@ -51,7 +51,7 @@ namespace MusicBoxCompiler
             return songs;
         }
 
-        private static List<List<NoteGroup>> ReadSongsFromSpreadsheetTab(IExcelDataReader reader, StreamWriter midiEventWriter)
+        private static List<Song> ReadSongsFromSpreadsheetTab(IExcelDataReader reader, StreamWriter midiEventWriter)
         {
             var row = 0;
             var currentLines = new List<List<List<List<Note>>>>();
@@ -61,6 +61,7 @@ namespace MusicBoxCompiler
             var midiFiles = new List<string>();
             var instrumentVolumes = new Dictionary<Instrument, double>();
             var masterVolume = 1d;
+            var loop = false;
 
             while (reader.Read())
             {
@@ -216,6 +217,19 @@ namespace MusicBoxCompiler
                                 }
 
                                 break;
+                            case "Loop":
+                                var loopValue = Enumerable
+                                    .Range(1, reader.FieldCount - 1)
+                                    .Select(column => reader.GetValue(column))
+                                    .Where(value => value != null)
+                                    .FirstOrDefault();
+
+                                if (loopValue != null)
+                                {
+                                    loop = Convert.ToBoolean(loopValue);
+                                }
+
+                                break;
                             case "Midi File":
                                 foreach (var column in Enumerable.Range(1, reader.FieldCount - 1))
                                 {
@@ -234,19 +248,23 @@ namespace MusicBoxCompiler
                 }
             }
 
-            var songs = new List<List<NoteGroup>>();
-
-            if (noteGroups.Count > 0)
-            {
-                songs.Add(noteGroups);
-            }
-
             // Process any remaining lines
             ProcessSpreadsheetLines(currentLines, noteGroups);
 
+            var songs = new List<Song>();
+
+            if (noteGroups.Count > 0)
+            {
+                songs.Add(new Song
+                {
+                    NoteGroups = noteGroups,
+                    Loop = loop
+                });
+            }
+
             foreach (var midiFile in midiFiles)
             {
-                songs.Add(MidiReader.ReadSong(midiFile, midiEventWriter, instrumentOffsets, masterVolume, instrumentVolumes));
+                songs.Add(MidiReader.ReadSong(midiFile, midiEventWriter, instrumentOffsets, masterVolume, instrumentVolumes, loop));
             }
 
             return songs;

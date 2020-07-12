@@ -58,7 +58,7 @@ namespace MusicBoxCompiler
             WriteOutCommands(outputCommandsFile, memoryCells, volumeLevels, minVolume, maxVolume);
         }
 
-        private static Blueprint CreateBlueprintFromSongs(List<List<NoteGroup>> songs, int baseAddress, int width, int height, int volumeLevels, double minVolume, double maxVolume)
+        private static Blueprint CreateBlueprintFromSongs(List<Song> songs, int baseAddress, int width, int height, int volumeLevels, double minVolume, double maxVolume)
         {
             var memoryCells = new List<MemoryCell>();
             var currentAddress = baseAddress;
@@ -79,12 +79,12 @@ namespace MusicBoxCompiler
                 return (int)((maxVolume - volume) / (maxVolume - minVolume) * (volumeLevels - 1));
             }
 
-            foreach (var noteGroups in songs)
+            foreach (var song in songs)
             {
                 var songAddress = currentAddress;
                 int currentBeatsPerMinute = 60;
 
-                foreach (var noteGroup in noteGroups)
+                foreach (var noteGroup in song.NoteGroups)
                 {
                     if (noteGroup.BeatsPerMinute.HasValue)
                     {
@@ -102,8 +102,8 @@ namespace MusicBoxCompiler
                     AddMemoryCell(filters, length: length);
                 }
 
-                // Create a disabled jump back to the beginning of the song
-                AddMemoryCell(new List<Filter> { CreateJumpFilter(songAddress) }, length: 4, isEnabled: false);
+                // Create a jump back to the beginning of the song
+                AddMemoryCell(new List<Filter> { CreateJumpFilter(songAddress) }, length: 4, isEnabled: song.Loop);
 
                 // Add a pause between songs
                 AddMemoryCell(null, length: 120);
