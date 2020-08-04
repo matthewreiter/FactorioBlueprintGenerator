@@ -9,6 +9,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using YamlDotNet.Core.Tokens;
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace MusicBoxCompiler
 {
@@ -25,8 +28,7 @@ namespace MusicBoxCompiler
 
         public static void Run(MusicBoxConfiguration configuration)
         {
-            var inputSpreadsheetFile = configuration.InputSpreadsheet;
-            var inputMidiFiles = StringUtil.SplitString(configuration.InputMidiFiles, ',');
+            var configFile = configuration.ConfigFile;
             var outputBlueprintFile = configuration.OutputBlueprint;
             var outputJsonFile = configuration.OutputJson;
             var outputCommandsFile = configuration.OutputCommands;
@@ -37,14 +39,32 @@ namespace MusicBoxCompiler
             var volumeLevels = configuration.VolumeLevels ?? 10;
             var minVolume = configuration.MinVolume ?? 0.1;
             var maxVolume = configuration.MaxVolume ?? 1;
-            var spreadsheetTabs = StringUtil.SplitString(configuration.SpreadsheetTabs, ',');
+
+            var config = LoadConfig(configFile);
 
             using var midiEventWriter = outputMidiEventsFile != null ? new StreamWriter(outputMidiEventsFile) : null;
-            var songs = SpreadsheetReader.ReadSongsFromSpreadsheet(inputSpreadsheetFile, spreadsheetTabs, midiEventWriter)
-                .Concat(inputMidiFiles.Select(midiFile => MidiReader.ReadSong(midiFile, midiEventWriter)))
+
+            var playlists = config.Playlists
+                .Select(playlistConfig =>
+                    new Playlist
+                    {
+                        Songs = playlistConfig.Songs
+                            .Where(songConfig => !songConfig.Disabled)
+                            .SelectMany(songConfig =>
+                                Path.GetExtension(songConfig.Source) switch
+                                {
+                                    ".xlsx" => SpreadsheetReader.ReadSongsFromSpreadsheet(songConfig.Source, new string[] { songConfig.SpreadsheetTab }, midiEventWriter),
+                                    ".mid" => new List<Song> { MidiReader.ReadSong(songConfig.Source, midiEventWriter, songConfig.InstrumentOffsets, ProcessMasterVolume(songConfig.Volume), ProcessInstrumentVolumes(songConfig.InstrumentVolumes), songConfig.Loop) },
+                                    _ => throw new Exception($"Unsupported source file extension for {songConfig.Source}")
+                                }
+                            )
+                            .ToList(),
+                        Loop = playlistConfig.Loop
+                    }
+                )
                 .ToList();
 
-            var blueprint = CreateBlueprintFromSongs(songs, baseAddress, width, height, volumeLevels, minVolume, maxVolume);
+            var blueprint = CreateBlueprintFromPlaylists(playlists, baseAddress, width, height, volumeLevels, minVolume, maxVolume);
             BlueprintUtil.PopulateIndices(blueprint);
 
             var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
@@ -58,10 +78,25 @@ namespace MusicBoxCompiler
             WriteOutCommands(outputCommandsFile, memoryCells, volumeLevels, minVolume, maxVolume);
         }
 
-        private static Blueprint CreateBlueprintFromSongs(List<Song> songs, int baseAddress, int width, int height, int volumeLevels, double minVolume, double maxVolume)
+        private static MusicConfig LoadConfig(string configFile)
+        {
+            using var reader = new StreamReader(configFile);
+            var deserializer = new DeserializerBuilder()
+                .WithNamingConvention(CamelCaseNamingConvention.Instance)
+                .Build();
+            return deserializer.Deserialize<MusicConfig>(reader);
+        }
+
+        private static double ProcessMasterVolume(double? masterVolume) => (masterVolume ?? 100) / 100;
+
+        private static Dictionary<Instrument, double> ProcessInstrumentVolumes(Dictionary<Instrument, double> instrumentVolumes) =>
+            instrumentVolumes?.Select(entry => (entry.Key, Value: entry.Value / 100))?.ToDictionary(entry => entry.Key, entry => entry.Value);
+
+        private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, int width, int height, int volumeLevels, double minVolume, double maxVolume)
         {
             var memoryCells = new List<MemoryCell>();
             var currentAddress = baseAddress;
+            var songContexts = new Dictionary<Song, (Filter jumpFilter, int returnAddress)>();
 
             Filter CreateJumpFilter(int targetAddress)
             {
@@ -74,43 +109,78 @@ namespace MusicBoxCompiler
                 currentAddress += length;
             }
 
+            Filter AddJump(int targetAddress, bool isEnabled = true)
+            {
+                var jumpFilter = CreateJumpFilter(targetAddress);
+                AddMemoryCell(new List<Filter> { jumpFilter }, length: 4, isEnabled: isEnabled);
+                return jumpFilter;
+            }
+
             int EncodeVolume(double volume)
             {
                 return (int)((maxVolume - volume) / (maxVolume - minVolume) * (volumeLevels - 1));
             }
 
-            foreach (var song in songs)
+            // Create the jump table
+            foreach (var playlist in playlists)
             {
-                var songAddress = currentAddress;
-                int currentBeatsPerMinute = 60;
+                var playlistAddress = currentAddress;
 
-                foreach (var noteGroup in song.NoteGroups)
+                foreach (var song in playlist.Songs)
                 {
-                    if (noteGroup.BeatsPerMinute.HasValue)
-                    {
-                        currentBeatsPerMinute = noteGroup.BeatsPerMinute.Value;
-                    }
+                    var jumpFilter = AddJump(0);
 
-                    var filters = noteGroup.Notes
-                        .OrderBy(note => (int)note.Instrument * 100 + note.Number)
-                        .Select((note, index) => CreateFilter((char)('0' + index), note.Number + ((int)note.Instrument + EncodeVolume(note.Volume) * InstrumentCount) * 256))
-                        .Append(CreateFilter('Z', GetHistogram(noteGroup.Notes)))
-                        .ToList();
-
-                    var length = (int)(14400 / currentBeatsPerMinute / noteGroup.Length);
-
-                    AddMemoryCell(filters, length: length);
+                    songContexts[song] = (jumpFilter, currentAddress);
                 }
 
-                // Create a jump back to the beginning of the song
-                AddMemoryCell(new List<Filter> { CreateJumpFilter(songAddress) }, length: 4, isEnabled: song.Loop);
-
-                // Add a pause between songs
-                AddMemoryCell(null, length: 120);
+                // Create a jump back to the beginning of the playlist
+                AddJump(playlistAddress, isEnabled: playlist.Loop);
             }
 
             // Jump back to the beginning
-            AddMemoryCell(new List<Filter> { CreateJumpFilter(0) }, length: 4);
+            AddJump(0);
+
+            // Add the songs
+            foreach (var playlist in playlists)
+            {
+                foreach (var song in playlist.Songs)
+                {
+                    var songAddress = currentAddress;
+                    var (jumpFilter, returnAddress) = songContexts[song];
+                    int currentBeatsPerMinute = 60;
+
+                    // Update the jump table entry to point at the song
+                    jumpFilter.Count += songAddress;
+
+                    // Add the notes for the song
+                    foreach (var noteGroup in song.NoteGroups)
+                    {
+                        if (noteGroup.BeatsPerMinute.HasValue)
+                        {
+                            currentBeatsPerMinute = noteGroup.BeatsPerMinute.Value;
+                        }
+
+                        var filters = noteGroup.Notes
+                            .OrderBy(note => (int)note.Instrument * 100 + note.Number)
+                            .Select((note, index) => CreateFilter((char)('0' + index), note.Number + ((int)note.Instrument + EncodeVolume(note.Volume) * InstrumentCount) * 256))
+                            .Append(CreateFilter('Z', GetHistogram(noteGroup.Notes)))
+                            .ToList();
+
+                        var length = (int)(14400 / currentBeatsPerMinute / noteGroup.Length);
+
+                        AddMemoryCell(filters, length: length);
+                    }
+
+                    // Create a jump back to the beginning of the song
+                    AddJump(songAddress, isEnabled: song.Loop);
+
+                    // Add a pause between songs
+                    AddMemoryCell(null, length: 120);
+
+                    // Jump to the next song
+                    AddJump(returnAddress);
+                }
+            }
 
             var romUsed = memoryCells.Count;
             var totalRom = width * height;
@@ -206,8 +276,7 @@ namespace MusicBoxCompiler
 
     public class MusicBoxConfiguration
     {
-        public string InputSpreadsheet { get; set; }
-        public string InputMidiFiles { get; set; }
+        public string ConfigFile { get; set; }
         public string OutputBlueprint { get; set; }
         public string OutputJson { get; set; }
         public string OutputCommands { get; set; }
@@ -218,6 +287,5 @@ namespace MusicBoxCompiler
         public int? VolumeLevels { get; set; }
         public double? MinVolume { get; set; }
         public double? MaxVolume { get; set; }
-        public string SpreadsheetTabs { get; set; }
     }
 }
