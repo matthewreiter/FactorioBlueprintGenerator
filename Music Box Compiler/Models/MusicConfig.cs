@@ -9,12 +9,14 @@ namespace MusicBoxCompiler.Models
 
     public class PlaylistConfig
     {
+        public string Name { get; set; }
         public List<SongConfig> Songs { get; set; }
         public bool Loop { get; set; }
     }
 
     public class SongConfig
     {
+        public string Name { get; set; }
         public string Source { get; set; }
         public string SpreadsheetTab { get; set; }
         public Dictionary<Instrument, int> InstrumentOffsets { get; set; }

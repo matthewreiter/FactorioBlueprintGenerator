@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using YamlDotNet.Core.Tokens;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -31,6 +30,7 @@ namespace MusicBoxCompiler
             var configFile = configuration.ConfigFile;
             var outputBlueprintFile = configuration.OutputBlueprint;
             var outputJsonFile = configuration.OutputJson;
+            var outputConstantsFile = configuration.OutputConstants;
             var outputCommandsFile = configuration.OutputCommands;
             var outputMidiEventsFile = configuration.OutputMidiEvents;
             var baseAddress = configuration.BaseAddress ?? 0;
@@ -39,6 +39,7 @@ namespace MusicBoxCompiler
             var volumeLevels = configuration.VolumeLevels ?? 10;
             var minVolume = configuration.MinVolume ?? 0.1;
             var maxVolume = configuration.MaxVolume ?? 1;
+            var constantsNamespace = configuration.ConstantsNamespace ?? "Music";
 
             var config = LoadConfig(configFile);
 
@@ -48,13 +49,14 @@ namespace MusicBoxCompiler
                 .Select(playlistConfig =>
                     new Playlist
                     {
+                        Name = playlistConfig.Name,
                         Songs = playlistConfig.Songs
                             .Where(songConfig => !songConfig.Disabled)
                             .SelectMany(songConfig =>
                                 Path.GetExtension(songConfig.Source) switch
                                 {
-                                    ".xlsx" => SpreadsheetReader.ReadSongsFromSpreadsheet(songConfig.Source, new string[] { songConfig.SpreadsheetTab }, midiEventWriter),
-                                    ".mid" => new List<Song> { MidiReader.ReadSong(songConfig.Source, midiEventWriter, songConfig.InstrumentOffsets, ProcessMasterVolume(songConfig.Volume), ProcessInstrumentVolumes(songConfig.InstrumentVolumes), songConfig.Loop) },
+                                    ".xlsx" => SpreadsheetReader.ReadSongsFromSpreadsheet(songConfig.Source, new string[] { songConfig.SpreadsheetTab }, midiEventWriter).Select(song => { song.Name = songConfig.Name; return song; }),
+                                    ".mid" => new List<Song> { MidiReader.ReadSong(songConfig.Source, midiEventWriter, songConfig.InstrumentOffsets, ProcessMasterVolume(songConfig.Volume), ProcessInstrumentVolumes(songConfig.InstrumentVolumes), songConfig.Loop, songConfig.Name) },
                                     _ => throw new Exception($"Unsupported source file extension for {songConfig.Source}")
                                 }
                             )
@@ -64,7 +66,7 @@ namespace MusicBoxCompiler
                 )
                 .ToList();
 
-            var blueprint = CreateBlueprintFromPlaylists(playlists, baseAddress, width, height, volumeLevels, minVolume, maxVolume);
+            var blueprint = CreateBlueprintFromPlaylists(playlists, baseAddress, width, height, volumeLevels, minVolume, maxVolume, out var addresses);
             BlueprintUtil.PopulateIndices(blueprint);
 
             var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
@@ -75,6 +77,7 @@ namespace MusicBoxCompiler
 
             BlueprintUtil.WriteOutBlueprint(outputBlueprintFile, blueprintWrapper);
             BlueprintUtil.WriteOutJson(outputJsonFile, blueprintWrapper);
+            WriteOutConstants(outputConstantsFile, addresses, constantsNamespace);
             WriteOutCommands(outputCommandsFile, memoryCells, volumeLevels, minVolume, maxVolume);
         }
 
@@ -92,11 +95,13 @@ namespace MusicBoxCompiler
         private static Dictionary<Instrument, double> ProcessInstrumentVolumes(Dictionary<Instrument, double> instrumentVolumes) =>
             instrumentVolumes?.Select(entry => (entry.Key, Value: entry.Value / 100))?.ToDictionary(entry => entry.Key, entry => entry.Value);
 
-        private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, int width, int height, int volumeLevels, double minVolume, double maxVolume)
+        private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, int width, int height, int volumeLevels, double minVolume, double maxVolume, out Addresses addresses)
         {
             var memoryCells = new List<MemoryCell>();
             var currentAddress = baseAddress;
             var songContexts = new Dictionary<Song, (Filter jumpFilter, int returnAddress)>();
+
+            addresses = new Addresses();
 
             Filter CreateJumpFilter(int targetAddress)
             {
@@ -126,8 +131,18 @@ namespace MusicBoxCompiler
             {
                 var playlistAddress = currentAddress;
 
+                if (playlist.Name != null)
+                {
+                    addresses.PlaylistAddresses[playlist.Name] = playlistAddress;
+                }
+
                 foreach (var song in playlist.Songs)
                 {
+                    if (song.Name != null)
+                    {
+                        addresses.SongAddresses[song.Name] = currentAddress;
+                    }
+
                     var jumpFilter = AddJump(0);
 
                     songContexts[song] = (jumpFilter, currentAddress);
@@ -205,6 +220,28 @@ namespace MusicBoxCompiler
                 .Sum();
         }
 
+        private static void WriteOutConstants(string outputConstantsFile, Addresses addresses, string constantsNamespace)
+        {
+            if (outputConstantsFile == null)
+            {
+                return;
+            }
+
+            File.WriteAllText(outputConstantsFile, $@"namespace {constantsNamespace}
+{{
+    public static class PlaylistAddresses
+    {{
+{string.Join(Environment.NewLine, addresses.PlaylistAddresses.Select(entry => $"        public const int {entry.Key} = {entry.Value};"))}
+    }}
+
+    public static class SongAddresses
+    {{
+{string.Join(Environment.NewLine, addresses.SongAddresses.Select(entry => $"        public const int {entry.Key} = {entry.Value};"))}
+    }}
+}}
+");
+        }
+
         private static void WriteOutCommands(string outputCommandsFile, List<Entity> memoryCells, int volumeLevels, double minVolume, double maxVolume)
         {
             if (outputCommandsFile == null)
@@ -272,6 +309,12 @@ namespace MusicBoxCompiler
         {
             return new Filter { Signal = new SignalID { Name = VirtualSignalNames.LetterOrDigit(signal), Type = SignalTypes.Virtual }, Count = count };
         }
+
+        private class Addresses
+        {
+            public Dictionary<string, int> PlaylistAddresses { get; } = new Dictionary<string, int>();
+            public Dictionary<string, int> SongAddresses { get; } = new Dictionary<string, int>();
+        }
     }
 
     public class MusicBoxConfiguration
@@ -279,6 +322,7 @@ namespace MusicBoxCompiler
         public string ConfigFile { get; set; }
         public string OutputBlueprint { get; set; }
         public string OutputJson { get; set; }
+        public string OutputConstants { get; set; }
         public string OutputCommands { get; set; }
         public string OutputMidiEvents { get; set; }
         public int? BaseAddress { get; set; }
@@ -287,5 +331,6 @@ namespace MusicBoxCompiler
         public int? VolumeLevels { get; set; }
         public double? MinVolume { get; set; }
         public double? MaxVolume { get; set; }
+        public string ConstantsNamespace { get; set; }
     }
 }
