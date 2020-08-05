@@ -18,19 +18,22 @@ namespace CompilerCommon
         public int ConditionRegister { get; set; }
         public int ConditionImmediateValue { get; set; }
         public ConditionOperator ConditionOperator { get; set; }
+        public string Comment { get; set; }
 
         public static IEnumerable<Instruction> NoOp(int cycles) => Enumerable.Repeat(new Instruction { OpCode = Operation.NoOp }, cycles);
 
-        public static Instruction IncrementRegister(int register, int increment) => new Instruction
+        public static Instruction IncrementRegister(int register, int increment, string comment = null) => new Instruction
         {
             OpCode = Operation.NoOp,
             AutoIncrement = increment,
-            LeftInputRegister = register
+            LeftInputRegister = register,
+            Comment = comment ?? $"IncrementRegister({register}, {increment})"
         };
 
-        public static Instruction SetRegisterToImmediateValue(int outputRegister, int immediateValue) => SetRegister(outputRegister, immediateValue: immediateValue);
+        public static Instruction SetRegisterToImmediateValue(int outputRegister, int immediateValue, string comment = null) =>
+            SetRegister(outputRegister, immediateValue: immediateValue, comment: comment ?? $"SetRegisterToImmediateValue({outputRegister}, {immediateValue})");
 
-        public static Instruction SetRegister(int outputRegister, int inputRegister = 0, int immediateValue = 0, int conditionLeftRegister = 0, int conditionRightImmediateValue = 0, ConditionOperator conditionOperator = ConditionOperator.IsEqual) => new Instruction
+        public static Instruction SetRegister(int outputRegister, int inputRegister = 0, int immediateValue = 0, int conditionLeftRegister = 0, int conditionRightImmediateValue = 0, ConditionOperator conditionOperator = ConditionOperator.IsEqual, string comment = null) => new Instruction
         {
             OpCode = Operation.Add,
             OutputRegister = outputRegister,
@@ -38,66 +41,76 @@ namespace CompilerCommon
             LeftImmediateValue = immediateValue,
             ConditionRegister = conditionLeftRegister,
             ConditionImmediateValue = -conditionRightImmediateValue,
-            ConditionOperator = conditionOperator
+            ConditionOperator = conditionOperator,
+            Comment = comment ?? $"SetRegister({outputRegister}, {inputRegister}, {immediateValue}, {conditionLeftRegister}, {conditionRightImmediateValue}, {conditionOperator})"
         };
 
-        public static Instruction Pop(int outputRegister, int additionalStackPointerAdjustment = 0) => ReadStackValue(-1, outputRegister, stackPointerAdjustment: -1 + additionalStackPointerAdjustment);
+        public static Instruction Pop(int outputRegister, int additionalStackPointerAdjustment = 0, string comment = null) =>
+            ReadStackValue(-1, outputRegister, stackPointerAdjustment: -1 + additionalStackPointerAdjustment, comment: comment ?? $"Pop({outputRegister}, {additionalStackPointerAdjustment})");
 
-        public static Instruction PushImmediateValue(int value) => Push(immediateValue: value);
+        public static Instruction PushImmediateValue(int value, string comment = null) => Push(immediateValue: value, comment: comment ?? $"PushImmediateValue({value})");
 
-        public static Instruction PushRegister(int inputRegister) => Push(inputRegister: inputRegister);
+        public static Instruction PushRegister(int inputRegister, string comment = null) => Push(inputRegister: inputRegister, comment: comment ?? $"PushRegister({inputRegister})");
 
-        public static Instruction Push(int inputRegister = 0, int immediateValue = 0) => WriteMemory(addressRegister: SpecialRegisters.StackPointer, inputRegister: inputRegister, immediateValue: immediateValue, autoIncrement: 1);
+        public static Instruction Push(int inputRegister = 0, int immediateValue = 0, string comment = null) =>
+            WriteMemory(addressRegister: SpecialRegisters.StackPointer, inputRegister: inputRegister, immediateValue: immediateValue, autoIncrement: 1, comment: comment ?? $"Push({inputRegister}, {immediateValue})");
 
-        public static Instruction AdjustStackPointer(int increment) => IncrementRegister(SpecialRegisters.StackPointer, increment);
+        public static Instruction AdjustStackPointer(int increment, string comment = null) => IncrementRegister(SpecialRegisters.StackPointer, increment, comment: comment ?? $"AdjustStackPointer({increment})");
 
-        public static Instruction ReadStackValue(int offset, int outputRegister, int stackPointerAdjustment = 0) => new Instruction
+        public static Instruction ReadStackValue(int offset, int outputRegister, int stackPointerAdjustment = 0, string comment = null) => new Instruction
         {
             OpCode = Operation.Read,
             OutputRegister = outputRegister,
             AutoIncrement = stackPointerAdjustment,
             LeftInputRegister = SpecialRegisters.StackPointer,
             LeftImmediateValue = offset,
-            RightImmediateValue = RamSignal
+            RightImmediateValue = RamSignal,
+            Comment = comment ?? $"ReadStackValue({offset}, {outputRegister}, {stackPointerAdjustment})"
         };
 
-        public static Instruction WriteStackValue(int offset, int inputRegister = 0, int immediateValue = 0) => WriteMemory(SpecialRegisters.StackPointer, offset, inputRegister, immediateValue);
+        public static Instruction WriteStackValue(int offset, int inputRegister = 0, int immediateValue = 0, string comment = null) =>
+            WriteMemory(SpecialRegisters.StackPointer, offset, inputRegister, immediateValue, comment: comment ?? $"WriteStackValue({offset}, {inputRegister}, {immediateValue})");
 
-        public static Instruction ReadMemory(int outputRegister, int addressRegister = 0, int addressValue = 0) => ReadSignal(outputRegister, addressRegister, addressValue, signalValue: RamSignal);
+        public static Instruction ReadMemory(int outputRegister, int addressRegister = 0, int addressValue = 0, string comment = null) =>
+            ReadSignal(outputRegister, addressRegister, addressValue, signalValue: RamSignal, comment: comment ?? $"ReadMemory({outputRegister}, {addressRegister}, {addressValue})");
 
-        public static Instruction WriteMemory(int addressRegister = 0, int addressValue = 0, int inputRegister = 0, int immediateValue = 0, int autoIncrement = 0) => new Instruction
+        public static Instruction WriteMemory(int addressRegister = 0, int addressValue = 0, int inputRegister = 0, int immediateValue = 0, int autoIncrement = 0, string comment = null) => new Instruction
         {
             OpCode = Operation.Write,
             AutoIncrement = autoIncrement,
             LeftInputRegister = addressRegister,
             LeftImmediateValue = addressValue,
             RightInputRegister = inputRegister,
-            RightImmediateValue = immediateValue
+            RightImmediateValue = immediateValue,
+            Comment = comment ?? $"WriteMemory({addressRegister}, {addressValue}, {inputRegister}, {immediateValue}, {autoIncrement})"
         };
 
-        public static Instruction ReadSignal(int outputRegister, int addressRegister = 0, int addressValue = 0, int signalRegister = 0, int signalValue = 0) => new Instruction
+        public static Instruction ReadSignal(int outputRegister, int addressRegister = 0, int addressValue = 0, int signalRegister = 0, int signalValue = 0, string comment = null) => new Instruction
         {
             OpCode = Operation.Read,
             OutputRegister = outputRegister,
             LeftInputRegister = addressRegister,
             LeftImmediateValue = addressValue,
             RightInputRegister = signalRegister,
-            RightImmediateValue = signalValue
+            RightImmediateValue = signalValue,
+            Comment = comment ?? $"ReadSignal({outputRegister}, {addressRegister}, {addressValue}, {signalRegister}, {signalValue})"
         };
 
-        public static Instruction BinaryOperation(Operation opCode, int outputRegister, int leftInputRegister = 0, int leftImmediateValue = 0, int rightInputRegister = 0, int rightImmediateValue = 0) => new Instruction
+        public static Instruction BinaryOperation(Operation opCode, int outputRegister, int leftInputRegister = 0, int leftImmediateValue = 0, int rightInputRegister = 0, int rightImmediateValue = 0, string comment = null) => new Instruction
         {
             OpCode = opCode,
             OutputRegister = outputRegister,
             LeftInputRegister = leftInputRegister,
             LeftImmediateValue = leftImmediateValue,
             RightInputRegister = rightInputRegister,
-            RightImmediateValue = rightImmediateValue
+            RightImmediateValue = rightImmediateValue,
+            Comment = comment ?? $"BinaryOperation({opCode}, {outputRegister}, {leftInputRegister}, {leftImmediateValue}, {rightInputRegister}, {rightImmediateValue})"
         };
 
-        public static Instruction Jump(int offset) => IncrementRegister(SpecialRegisters.InstructionPointer, increment: offset - 2); // Account for the delay between reading the instruction and the address getting incremented
+        public static Instruction Jump(int offset, string comment = null) =>
+            IncrementRegister(SpecialRegisters.InstructionPointer, increment: offset - 2, comment: comment ?? $"Jump()"); // Account for the delay between reading the instruction and the address getting incremented
 
-        public static Instruction JumpIf(int offset, int conditionLeftRegister = 0, int conditionRightImmediateValue = 0, ConditionOperator conditionOperator = ConditionOperator.IsEqual) => new Instruction
+        public static Instruction JumpIf(int offset, int conditionLeftRegister = 0, int conditionRightImmediateValue = 0, ConditionOperator conditionOperator = ConditionOperator.IsEqual, string comment = null) => new Instruction
         {
             OpCode = Operation.Add,
             OutputRegister = SpecialRegisters.InstructionPointer,
@@ -105,7 +118,8 @@ namespace CompilerCommon
             RightImmediateValue = offset - 2, // Account for the delay between reading the instruction and the address getting read in
             ConditionRegister = conditionLeftRegister,
             ConditionImmediateValue = -conditionRightImmediateValue,
-            ConditionOperator = conditionOperator
+            ConditionOperator = conditionOperator,
+            Comment = comment ?? $"JumpIf({conditionLeftRegister}, {conditionRightImmediateValue}, {conditionOperator})"
         };
 
         public void SetJumpTarget(int jumpTarget)
@@ -213,6 +227,17 @@ namespace CompilerCommon
                 };
 
                 builder.Append($" {shortConditionOperator} 0");
+            }
+
+            if (Comment != null)
+            {
+                var spaces = 32 - builder.Length;
+                if (spaces > 0)
+                {
+                    builder.Append(' ', spaces);
+                }
+
+                builder.Append($"// {Comment}");
             }
 
             return builder.ToString();
