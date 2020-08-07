@@ -2,7 +2,6 @@
 using ILReader;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -116,246 +115,6 @@ namespace Assembler
                 }
                 instructionsWriter.WriteLine();
             }
-        }
-
-        private void Analyze(MethodInfo main)
-        {
-            var callCounts = new Dictionary<MethodBase, int>();
-            var inlinedMethods = new HashSet<MethodBase>();
-            var methodsToVisit = new Queue<MethodBase>();
-
-            void AddType(Type type)
-            {
-                if (type == null)
-                {
-                    return;
-                }
-
-                if (types.Add(type))
-                {
-                    AddType(type.BaseType);
-                }
-            }
-
-            void AddTypeInitializer(Type type)
-            {
-                var typeInfo = GetTypeInfo(type);
-
-                if (!typeInfo.Initialize)
-                {
-                    typeInfo.Initialize = true;
-
-                    var staticConstructor = type.GetConstructor(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
-
-                    if (staticConstructor != null)
-                    {
-                        typeInfo.StaticConstructor = staticConstructor;
-                        methodsToVisit.Enqueue(staticConstructor);
-                    }
-                }
-            }
-
-            methodsToVisit.Enqueue(main);
-            callCounts[main] = 1;
-
-            AddType(typeof(Type)); // Ensure that we have the "Type" type defined
-
-            while (methodsToVisit.Count > 0)
-            {
-                var method = methodsToVisit.Dequeue();
-                var isCompilerGenerated = IsCompilerGenerated(method);
-                var ilInstructions = !isCompilerGenerated ? method.GetInstructions() : new List<ILInstruction> { };
-                var methodBody = !isCompilerGenerated ? method.GetMethodBody() : null;
-                var nonInlineableParameters = new HashSet<int>();
-                var methodCalls = new HashSet<ILInstruction>();
-
-                AddType(method.DeclaringType);
-
-                var methodImpl = method.GetCustomAttribute<MethodImplAttribute>();
-                if (methodImpl != null && methodImpl.Value.HasFlag(MethodImplOptions.AggressiveInlining)) // || ilInstructions.Count <= 10) // TODO: handle recursion
-                {
-                    inlinedMethods.Add(method);
-                }
-
-                foreach (var ilInstruction in ilInstructions)
-                {
-                    var opCodeValue = ilInstruction.Code.Value;
-
-                    if (ilInstruction.Operand is Type typeOperand)
-                    {
-                        AddType(typeOperand);
-                    }
-                    else if (ilInstruction.Operand is FieldInfo fieldInfoOperand && ilInstruction.Code.Value != OpCodes.Ldtoken.Value)
-                    {
-                        AddType(fieldInfoOperand.DeclaringType);
-
-                        // Only initialize the type if a static field is referenced. This isn't perfect since static initializers can do other things besides initialize static variables, but it reduces the amount of code that is generated.
-                        if (fieldInfoOperand.IsStatic)
-                        {
-                            AddTypeInitializer(fieldInfoOperand.DeclaringType);
-                        }
-                    }
-
-                    if (opCodeValue == OpCodes.Call.Value ||
-                        opCodeValue == OpCodes.Callvirt.Value ||
-                        opCodeValue == OpCodes.Newobj.Value)
-                    {
-                        var operand = (MethodBase)ilInstruction.Operand;
-
-                        if (callCounts.ContainsKey(operand))
-                        {
-                            callCounts[operand]++;
-                        }
-                        else
-                        {
-                            callCounts[operand] = 1;
-                            methodsToVisit.Enqueue(operand);
-                        }
-
-                        methodCalls.Add(ilInstruction);
-                    }
-                    else if (opCodeValue == OpCodes.Ldstr.Value)
-                    {
-                        AddType(typeof(string));
-                    }
-                    else if (opCodeValue == OpCodes.Newarr.Value)
-                    {
-                        var operand = (Type)ilInstruction.Operand;
-
-                        AddType(operand.MakeArrayType());
-                    } else if (opCodeValue == OpCodes.Starg.Value ||
-                        opCodeValue == OpCodes.Starg_S.Value ||
-                        opCodeValue == OpCodes.Ldarga.Value ||
-                        opCodeValue == OpCodes.Ldarga_S.Value)
-                    {
-                        var operand = Convert.ToInt32(ilInstruction.Operand);
-
-                        nonInlineableParameters.Add(operand);
-                    }
-                }
-
-                methodAnalyses[method] = new MethodAnalysis
-                {
-                    ILInstructions = ilInstructions,
-                    IsCompilerGenerated = isCompilerGenerated,
-                    SourceSinkMap = GenerateSourceSinkMap(ilInstructions, methodBody),
-                    NonInlineableParameters = nonInlineableParameters,
-                    MethodCalls = methodCalls
-                };
-            }
-
-            nonInlinedMethods = callCounts
-                .Where(entry => entry.Value > 1 && !inlinedMethods.Contains(entry.Key))
-                .Select(entry => entry.Key)
-                .ToHashSet();
-        }
-
-        private Dictionary<ILInstruction, Sink> GenerateSourceSinkMap(List<ILInstruction> ilInstructions, MethodBody methodBody)
-        {
-            var stack = ImmutableStack<ILInstruction>.Empty;
-            var stackSnapshots = new Dictionary<ILInstruction, IImmutableStack<ILInstruction>>();
-            var sourceSinkMap = new Dictionary<ILInstruction, Sink>();
-
-            var exceptionHandlingClauses = methodBody?.ExceptionHandlingClauses;
-            var exceptionHandlerOffsets = exceptionHandlingClauses != null
-                ? exceptionHandlingClauses
-                    .Where(clause => clause.Flags.HasFlag(ExceptionHandlingClauseOptions.Clause))
-                    .Select(clause => clause.HandlerOffset)
-                    .ToHashSet()
-                : new HashSet<int>();
-
-            foreach (var ilInstruction in ilInstructions)
-            {
-                var opCode = ilInstruction.Code;
-                var opCodeValue = opCode.Value;
-                var offset = ilInstruction.Offset;
-
-                var popCount = opCode.StackBehaviourPop switch
-                {
-                    StackBehaviour.Pop1 => 1,
-                    StackBehaviour.Pop1_pop1 => 2,
-                    StackBehaviour.Popi => 1,
-                    StackBehaviour.Popi_pop1 => 2,
-                    StackBehaviour.Popi_popi => 2,
-                    StackBehaviour.Popi_popi8 => 2,
-                    StackBehaviour.Popi_popi_popi => 3,
-                    StackBehaviour.Popi_popr4 => 2,
-                    StackBehaviour.Popi_popr8 => 2,
-                    StackBehaviour.Popref => 1,
-                    StackBehaviour.Popref_pop1 => 2,
-                    StackBehaviour.Popref_popi => 2,
-                    StackBehaviour.Popref_popi_pop1 => 3,
-                    StackBehaviour.Popref_popi_popi => 3,
-                    StackBehaviour.Popref_popi_popi8 => 3,
-                    StackBehaviour.Popref_popi_popr4 => 3,
-                    StackBehaviour.Popref_popi_popr8 => 3,
-                    StackBehaviour.Popref_popi_popref => 3,
-                    _ => 0
-                };
-
-                var pushCount = opCode.StackBehaviourPush switch
-                {
-                    StackBehaviour.Push1 => 1,
-                    StackBehaviour.Push1_push1 => 2,
-                    StackBehaviour.Pushi => 1,
-                    StackBehaviour.Pushi8 => 1,
-                    StackBehaviour.Pushr4 => 1,
-                    StackBehaviour.Pushr8 => 1,
-                    StackBehaviour.Pushref => 1,
-                    _ => 0
-                };
-
-                if (exceptionHandlerOffsets.Contains(offset))
-                {
-                    stack = stack.Push(null);
-                }
-
-                for (int index = 0; index < popCount; index++)
-                {
-                    stack = stack.Pop(out var sourceInstruction);
-
-                    if (sourceInstruction != null)
-                    {
-                        sourceSinkMap[sourceInstruction] = new Sink { Instruction = ilInstruction };
-                    }
-                }
-
-                for (int index = 0; index < pushCount; index++)
-                {
-                    stack = stack.Push(ilInstruction);
-                }
-
-                if (opCodeValue == OpCodes.Call.Value ||
-                    opCodeValue == OpCodes.Callvirt.Value ||
-                    opCodeValue == OpCodes.Newobj.Value)
-                {
-                    var operand = (MethodBase)ilInstruction.Operand;
-                    var parameters = operand.GetParameters();
-                    var parameterSources = new Dictionary<ParameterInfo, ILInstruction>();
-                    var parameterOffset = operand.IsStatic ? 0 : 1;
-
-                    foreach (var parameter in parameters.Reverse())
-                    {
-                        stack = stack.Pop(out var sourceInstruction);
-
-                        sourceSinkMap[sourceInstruction] = new Sink { Instruction = ilInstruction, Parameter = parameter.Position + parameterOffset };
-                    }
-
-                    if (!operand.IsStatic && opCodeValue != OpCodes.Newobj.Value)
-                    {
-                        stack = stack.Pop();
-                    }
-
-                    if (!operand.IsVoid())
-                    {
-                        stack = stack.Push(ilInstruction);
-                    }
-                }
-
-                stackSnapshots[ilInstruction] = stack;
-            }
-
-            return sourceSinkMap;
         }
 
         private void AllocateStaticFields()
@@ -538,6 +297,7 @@ namespace Assembler
             var ilInstructions = analysis.ILInstructions;
             var methodParameterInfo = GetMethodParameterInfo(method, inlinedParameterValues?.Keys);
             var (localVariables, localVariablesSize) = AllocateLocalVariables(!analysis.IsCompilerGenerated ? method.GetMethodBody()?.LocalVariables : null);
+            var stackPointerOffsetMap = new Dictionary<ILInstruction, int>();
             var instructionOffsetToIndexMap = new Dictionary<int, int>();
             var jumps = new List<(Instruction, int)>();
 
@@ -591,6 +351,12 @@ namespace Assembler
                     var opCodeValue = ilInstruction.Code.Value;
                     var isInlinedParameterSource = inlinedParameterSources.Contains(ilInstruction);
 
+                    if (analysis.DiscontinuityMap.TryGetValue(ilInstruction, out var jumpSource) &&
+                        stackPointerOffsetMap.TryGetValue(jumpSource, out var stackPointerOffset))
+                    {
+                        methodContext.StackPointerOffset = stackPointerOffset;
+                    }
+
                     // Opcode reference: https://docs.microsoft.com/en-us/dotnet/api/system.reflection.emit.opcodes?view=netcore-3.1
 
                     if (opCodeValue == OpCodes.Pop.Value)
@@ -635,45 +401,13 @@ namespace Assembler
 
                         AddInstruction(Instruction.Push(inputRegister: SpecialRegisters.StackPointer, immediateValue: methodContext.Parameters[operand].Offset - methodContext.ParametersSize - (methodContext.IsInline ? 0 : 1) - methodContext.StackPointerOffset));
                     }
-                    else if (opCodeValue == OpCodes.Ldloc_0.Value)
+                    else if (IsLoadLocal(opCodeValue))
                     {
-                        PushLocalVariable(0);
+                        PushLocalVariable(GetLoadLocalIndex(ilInstruction));
                     }
-                    else if (opCodeValue == OpCodes.Ldloc_1.Value)
+                    else if (IsStoreLocal(opCodeValue))
                     {
-                        PushLocalVariable(1);
-                    }
-                    else if (opCodeValue == OpCodes.Ldloc_2.Value)
-                    {
-                        PushLocalVariable(2);
-                    }
-                    else if (opCodeValue == OpCodes.Ldloc_3.Value)
-                    {
-                        PushLocalVariable(3);
-                    }
-                    else if (opCodeValue == OpCodes.Ldloc_S.Value)
-                    {
-                        PushLocalVariable((byte)ilInstruction.Operand);
-                    }
-                    else if (opCodeValue == OpCodes.Stloc_0.Value)
-                    {
-                        PopLocalVariable(0);
-                    }
-                    else if (opCodeValue == OpCodes.Stloc_1.Value)
-                    {
-                        PopLocalVariable(1);
-                    }
-                    else if (opCodeValue == OpCodes.Stloc_2.Value)
-                    {
-                        PopLocalVariable(2);
-                    }
-                    else if (opCodeValue == OpCodes.Stloc_3.Value)
-                    {
-                        PopLocalVariable(3);
-                    }
-                    else if (opCodeValue == OpCodes.Stloc_S.Value)
-                    {
-                        PopLocalVariable((byte)ilInstruction.Operand);
+                        PopLocalVariable(GetStoreLocalIndex(ilInstruction));
                     }
                     else if (opCodeValue == OpCodes.Ldloca_S.Value)
                     {
@@ -1330,6 +1064,8 @@ namespace Assembler
                         throw new NotImplementedException($"Unsupported opcode {ilInstruction.Code.Name}");
                     }
 
+                    stackPointerOffsetMap[ilInstruction] = methodContext.StackPointerOffset;
+
                     ilInstructionIndex++;
                 }
 
@@ -1727,7 +1463,8 @@ namespace Assembler
                     RightImmediateValue = instruction.RightImmediateValue - (instruction.RightInputRegister != 0 ? instruction.AutoIncrement : 0),
                     ConditionRegister = instruction.ConditionRegister,
                     ConditionImmediateValue = instruction.ConditionImmediateValue - (instruction.ConditionRegister != 0 ? instruction.AutoIncrement : 0),
-                    ConditionOperator = instruction.ConditionOperator
+                    ConditionOperator = instruction.ConditionOperator,
+                    Comment = instruction.Comment
                 };
             }
 
@@ -1916,6 +1653,94 @@ namespace Assembler
             }
         }
 
+        private static bool IsLoadLocal(short opCodeValue)
+        {
+            return opCodeValue == OpCodes.Ldloc_0.Value ||
+                opCodeValue == OpCodes.Ldloc_1.Value ||
+                opCodeValue == OpCodes.Ldloc_2.Value ||
+                opCodeValue == OpCodes.Ldloc_3.Value ||
+                opCodeValue == OpCodes.Ldloc.Value ||
+                opCodeValue == OpCodes.Ldloc_S.Value;
+        }
+
+        public static int GetLoadLocalIndex(ILInstruction ilInstruction)
+        {
+            var opCodeValue = ilInstruction.Code.Value;
+
+            if (opCodeValue == OpCodes.Ldloc_0.Value)
+            {
+                return 0;
+            }
+            else if (opCodeValue == OpCodes.Ldloc_1.Value)
+            {
+                return 1;
+            }
+            else if (opCodeValue == OpCodes.Ldloc_2.Value)
+            {
+                return 2;
+            }
+            else if (opCodeValue == OpCodes.Ldloc_3.Value)
+            {
+                return 3;
+            }
+            else if (opCodeValue == OpCodes.Ldloc.Value)
+            {
+                return (int)ilInstruction.Operand;
+            }
+            else if (opCodeValue == OpCodes.Ldloc_S.Value)
+            {
+                return (byte)ilInstruction.Operand;
+            }
+            else
+            {
+                throw new Exception($"Cannot get local index from {ilInstruction.Code}");
+            }
+        }
+
+        private static bool IsStoreLocal(short opCodeValue)
+        {
+            return opCodeValue == OpCodes.Stloc_0.Value ||
+                opCodeValue == OpCodes.Stloc_1.Value ||
+                opCodeValue == OpCodes.Stloc_2.Value ||
+                opCodeValue == OpCodes.Stloc_3.Value ||
+                opCodeValue == OpCodes.Stloc.Value ||
+                opCodeValue == OpCodes.Stloc_S.Value;
+        }
+
+        public static int GetStoreLocalIndex(ILInstruction ilInstruction)
+        {
+            var opCodeValue = ilInstruction.Code.Value;
+
+            if (opCodeValue == OpCodes.Stloc_0.Value)
+            {
+                return 0;
+            }
+            else if (opCodeValue == OpCodes.Stloc_1.Value)
+            {
+                return 1;
+            }
+            else if (opCodeValue == OpCodes.Stloc_2.Value)
+            {
+                return 2;
+            }
+            else if (opCodeValue == OpCodes.Stloc_3.Value)
+            {
+                return 3;
+            }
+            else if (opCodeValue == OpCodes.Stloc.Value)
+            {
+                return (int)ilInstruction.Operand;
+            }
+            else if (opCodeValue == OpCodes.Stloc_S.Value)
+            {
+                return (byte)ilInstruction.Operand;
+            }
+            else
+            {
+                throw new Exception($"Cannot get local index from {ilInstruction.Code}");
+            }
+        }
+
         private class MethodContext
         {
             public MethodBase Method { get; set; }
@@ -1929,15 +1754,6 @@ namespace Assembler
             public MethodAnalysis Analysis { get; set; }
             public Dictionary<int, int> InlinedParameterValues { get; set; }
             public int StackPointerOffset { get; set; } = 0;
-        }
-
-        private class MethodAnalysis
-        {
-            public List<ILInstruction> ILInstructions { get; set; }
-            public bool IsCompilerGenerated { get; set; }
-            public Dictionary<ILInstruction, Sink> SourceSinkMap { get; set; }
-            public HashSet<int> NonInlineableParameters { get; set; }
-            public HashSet<ILInstruction> MethodCalls { get; set; }
         }
 
         private class TypeInfo
@@ -1959,12 +1775,6 @@ namespace Assembler
         {
             public int Offset { get; set; }
             public int Size { get; set; }
-        }
-
-        private class Sink
-        {
-            public ILInstruction Instruction { get; set; }
-            public int Parameter { get; set; }
         }
     }
 }
