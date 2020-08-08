@@ -1,5 +1,5 @@
-﻿using System;
-using System.Runtime.CompilerServices;
+﻿using SeeSharp.Runtime.CompilerServices;
+using System;
 
 namespace SeeSharp.Runtime
 {
@@ -12,43 +12,43 @@ namespace SeeSharp.Runtime
         private const int InstrumentCount = 12;
         private const int SpeakersPerVolumeLevel = ChannelCount * InstrumentCount;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [Inline]
         public static void SetChannel(Instrument instrument, int channel, int value)
         {
             Memory.Write((int)instrument + channel, value);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [Inline]
         public static void SetChannel(Instrument instrument, int channel, int value, Volume volume)
         {
             Memory.Write((int)instrument + channel + (int)volume, value);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [Inline]
         public static void SetDrum(int channel, Drum drum)
         {
             Memory.Write((int)Instrument.Drumkit + channel, (int)drum);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [Inline]
         public static void SetDrum(int channel, Drum drum, Volume volume)
         {
             Memory.Write((int)Instrument.Drumkit + channel + (int)volume, (int)drum);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [Inline]
         public static void Clear()
         {
             Memory.Write(GoAddress, (int)ExecutionFlags.Clear);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [Inline]
         public static void Play()
         {
             Memory.Write(GoAddress, (int)ExecutionFlags.Play);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [Inline]
         public static void PlayAndClear()
         {
             Memory.Write(GoAddress, (int)(ExecutionFlags.Clear | ExecutionFlags.Play));

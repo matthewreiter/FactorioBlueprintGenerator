@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+﻿using SeeSharp.Runtime.CompilerServices;
 
 namespace SeeSharp.Runtime
 {
@@ -6,7 +6,7 @@ namespace SeeSharp.Runtime
     {
         private const int Address = 32769;
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [Inline]
         public static int GetValue(Signal signal)
         {
             return Memory.ReadSignal(Address, signal);

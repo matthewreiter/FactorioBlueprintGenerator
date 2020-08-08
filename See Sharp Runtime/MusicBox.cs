@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+﻿using SeeSharp.Runtime.CompilerServices;
 
 namespace SeeSharp.Runtime
 {
@@ -9,10 +9,10 @@ namespace SeeSharp.Runtime
 
         public static int Position
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [Inline]
             get { return Memory.Read(CurrentPositionAddress); }
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            set { Memory.Write(CurrentPositionAddress, value); }
+            [Inline]
+            set { Memory.Write(CurrentPositionAddress, value - 4); }
         }
     }
 }
