@@ -19,9 +19,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "See Sharp Compiler Test", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "See Sharp Runtime", "See Sharp Runtime\See Sharp Runtime.csproj", "{9E552215-AA7C-4FCA-B51D-75E2C8809CA2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Compiler Common", "Compiler Common\Compiler Common.csproj", "{453BE191-29F2-4B19-8A24-C0B35B7DC723}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Compiler Common", "Compiler Common\Compiler Common.csproj", "{453BE191-29F2-4B19-8A24-C0B35B7DC723}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IL Assembler", "IL Assembler\IL Assembler.csproj", "{6AFA96A4-D76B-4359-BBF2-9A0A5A74F767}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IL Assembler", "IL Assembler\IL Assembler.csproj", "{6AFA96A4-D76B-4359-BBF2-9A0A5A74F767}"
+	ProjectSection(ProjectDependencies) = postProject
+		{D63D8041-7700-4382-A529-979FC687CF74} = {D63D8041-7700-4382-A529-979FC687CF74}
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IL Reader", "IL Reader\IL Reader.csproj", "{26BBFD17-0A43-4F9A-953B-C72617F7F6EC}"
 EndProject
