@@ -25,10 +25,12 @@ namespace MusicBoxCompiler
             new InstrumentMapping { Instrument = Instrument.BassGuitar, RangeStart = GMInst.AcousticBass, RangeEnd = GMInst.SynthBass2 },
             new InstrumentMapping { Instrument = Instrument.PluckedStrings, RangeStart = GMInst.Violin, RangeEnd = GMInst.SynthStrings2 },
             new InstrumentMapping { Instrument = Instrument.Celesta, RangeStart = GMInst.ChoirAahs, RangeEnd = GMInst.SynthVoice },
+            new InstrumentMapping { Instrument = Instrument.LeadGuitar, RangeStart = GMInst.Trumpet, RangeEnd = GMInst.SynthBrass2 },
             new InstrumentMapping { Instrument = Instrument.Square, RangeStart = GMInst.SopranoSax, RangeEnd = GMInst.Clarinet },
             new InstrumentMapping { Instrument = Instrument.Celesta, RangeStart = GMInst.Piccolo, RangeEnd = GMInst.Ocarina },
             new InstrumentMapping { Instrument = Instrument.Square, RangeStart = GMInst.LeadSquare, RangeEnd = GMInst.LeadSquare },
             new InstrumentMapping { Instrument = Instrument.Sawtooth, RangeStart = GMInst.LeadSawtooth, RangeEnd = GMInst.LeadSawtooth },
+            new InstrumentMapping { Instrument = Instrument.Celesta, RangeStart = GMInst.LeadVoice, RangeEnd = GMInst.LeadVoice },
             new InstrumentMapping { Instrument = Instrument.SteelDrum, RangeStart = GMInst.TinkleBell, RangeEnd = GMInst.SynthDrum },
             new InstrumentMapping { Instrument = Instrument.Drumkit, RangeStart = GMInst.ReverseCymbal, RangeEnd = GMInst.ReverseCymbal }
         );
@@ -56,9 +58,20 @@ namespace MusicBoxCompiler
             { Percussions.Cowbell, Drum.Cowbell },
             { Percussions.CrashCymbal2, Drum.Crash },
             { Percussions.RideCymbal2, Drum.HiHat1 },
+            { Percussions.HiBongo, Drum.Kick2 },
+            { Percussions.LowBongo, Drum.Kick1 },
+            { Percussions.MuteHiConga, Drum.Snare2 },
+            { Percussions.OpenHiConga, Drum.Snare2 },
+            { Percussions.LowConga, Drum.Snare1 },
+            { Percussions.Cabasa, Drum.Shaker },
             { Percussions.Maracas, Drum.Shaker },
+            { Percussions.HiWoodBlock, Drum.Clap },
+            { Percussions.LowWoodBlock, Drum.Clap },
             { Percussions.MuteTriangle, Drum.Triangle },
-            { Percussions.OpenTriangle, Drum.Triangle }
+            { Percussions.OpenTriangle, Drum.Triangle },
+            { 88, Drum.Percussion1 },
+            { 89, Drum.Percussion1 },
+            { 91, Drum.Percussion1 }
         };
         private static readonly Dictionary<Instrument, int> BaseInstrumentOffsets = new Dictionary<Instrument, int>
         {
