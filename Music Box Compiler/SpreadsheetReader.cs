@@ -21,7 +21,7 @@ namespace MusicBoxCompiler
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance); // Required for reading from Excel spreadsheets from .NET Core apps
         }
 
-        public static List<Song> ReadSongsFromSpreadsheet(string inputSpreadsheetFile, string[] spreadsheetTabs, StreamWriter midiEventWriter)
+        public static List<Song> ReadSongsFromSpreadsheet(string inputSpreadsheetFile, string[] spreadsheetTabs)
         {
             var songs = new List<Song>();
 
@@ -38,7 +38,7 @@ namespace MusicBoxCompiler
                     {
                         if (spreadsheetTabs.Contains(reader.Name))
                         {
-                            songs.AddRange(ReadSongsFromSpreadsheetTab(reader, midiEventWriter));
+                            songs.AddRange(ReadSongsFromSpreadsheetTab(reader));
                         }
                     }
                 }
@@ -51,14 +51,13 @@ namespace MusicBoxCompiler
             return songs;
         }
 
-        private static List<Song> ReadSongsFromSpreadsheetTab(IExcelDataReader reader, StreamWriter midiEventWriter)
+        private static List<Song> ReadSongsFromSpreadsheetTab(IExcelDataReader reader)
         {
             var row = 0;
             var currentLines = new List<List<List<List<Note>>>>();
             var noteGroups = new List<NoteGroup>();
             var instrumentMappings = new List<InstrumentMapping>();
             var instrumentOffsets = new Dictionary<Instrument, int>();
-            var midiFiles = new List<string>();
             var instrumentVolumes = new Dictionary<Instrument, double>();
             var masterVolume = 1d;
             var loop = false;
@@ -230,19 +229,6 @@ namespace MusicBoxCompiler
                                 }
 
                                 break;
-                            case "Midi File":
-                                foreach (var column in Enumerable.Range(1, reader.FieldCount - 1))
-                                {
-                                    var value = reader.GetValue(column);
-                                    if (value == null)
-                                    {
-                                        continue;
-                                    }
-
-                                    midiFiles.Add(Convert.ToString(value));
-                                }
-
-                                break;
                         }
                     }
                 }
@@ -260,11 +246,6 @@ namespace MusicBoxCompiler
                     NoteGroups = noteGroups,
                     Loop = loop
                 });
-            }
-
-            foreach (var midiFile in midiFiles)
-            {
-                songs.Add(MidiReader.ReadSong(midiFile, midiEventWriter, instrumentOffsets, masterVolume, instrumentVolumes, loop));
             }
 
             return songs;
