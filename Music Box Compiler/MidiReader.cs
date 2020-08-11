@@ -159,13 +159,23 @@ namespace MusicBoxCompiler
                                     lastTime = currentTime;
                                 }
 
-                                currentNotes.Add(new Note
+                                var volume = Math.Min(velocity / 127d * instrumentVolume * masterVolume, 1);
+                                var duplicateNote = currentNotes.Find(note => note.Instrument == instrument && note.Number == effectiveNoteNumber);
+
+                                if (duplicateNote != null)
                                 {
-                                    Instrument = instrument,
-                                    Number = effectiveNoteNumber,
-                                    Pitch = effectiveNoteNumber,
-                                    Volume = Math.Min(velocity / 127d * instrumentVolume * masterVolume, 1)
-                                });
+                                    duplicateNote.Volume = Math.Max(volume, duplicateNote.Volume);
+                                }
+                                else
+                                {
+                                    currentNotes.Add(new Note
+                                    {
+                                        Instrument = instrument,
+                                        Number = effectiveNoteNumber,
+                                        Pitch = effectiveNoteNumber,
+                                        Volume = volume
+                                    });
+                                }
                             }
                         }
 
