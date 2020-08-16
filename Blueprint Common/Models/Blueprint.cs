@@ -10,6 +10,23 @@ namespace BlueprintCommon.Models
     public class Blueprint
     {
         /// <summary>
+        /// The description of the blueprint set by the user.
+        /// </summary>
+        public string Description { get; set; }
+
+        /// <summary>
+        /// Building repetition pattern when building by dragging.
+        /// </summary>
+        [JsonPropertyName("snap-to-grid")]
+        public SnapToGrid SnapToGrid { get; set; }
+
+        /// <summary>
+        /// Allows the blueprint to snap to the global grid. The reference point shifts the blueprint relative to the grid.
+        /// </summary>
+        [JsonPropertyName("absolute-snapping")]
+        public bool? AbsoluteSnapping { get; set; }
+
+        /// <summary>
         /// The icons of the blueprint set by the user.
         /// </summary>
         public List<Icon> Icons { get; set; }
@@ -48,6 +65,19 @@ namespace BlueprintCommon.Models
         /// The map version of the map the blueprint was created in.
         /// </summary>
         public long Version { get; set; }
+    }
+
+    public class SnapToGrid
+    {
+        /// <summary>
+        /// X dimension of building repetition pattern when building by dragging.
+        /// </summary>
+        public ulong X { get; set; }
+
+        /// <summary>
+        /// T dimension of building repetition pattern when building by dragging.
+        /// </summary>
+        public ulong Y { get; set; }
     }
 
     public class Icon
