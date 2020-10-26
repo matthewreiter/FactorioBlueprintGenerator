@@ -41,11 +41,14 @@ namespace MemoryInitializer
 
             const int entitiesPerCell = 2;
             const int cellHeight = 3;
+            const int blockHeightInCells = 64;
+            const int blockGapHeight = 8;
 
             const int readerEntityOffset = 1;
 
+
             var gridWidth = width + ((width + 7) / 16 + 1) * 2;
-            var gridHeight = height * cellHeight;
+            var gridHeight = height * cellHeight + (height - 1) / blockHeightInCells * blockGapHeight;
 
             var entities = new List<Entity>();
 
@@ -58,7 +61,7 @@ namespace MemoryInitializer
                         : data?.ElementAtOrDefault((row - programRows) * width + column) ?? new MemoryCell { Address = (row - programRows) * width + column + 1 + GetAddressOffset(data) };
                     var memoryCellEntityNumber = (row * width + column) * entitiesPerCell + 1;
                     var memoryCellX = column + (column / 16 + 1) * 2 + xOffset;
-                    var memoryCellY = (height - row - 1) * cellHeight + yOffset;
+                    var memoryCellY = gridHeight - (row + 1) * cellHeight - row / blockHeightInCells * blockGapHeight + yOffset;
 
                     var adjacentMemoryCells = new List<int> { -1, 1 }
                         .Where(offset => column + offset >= 0 && column + offset < width)
