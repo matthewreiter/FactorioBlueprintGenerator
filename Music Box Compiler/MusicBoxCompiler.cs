@@ -99,6 +99,7 @@ namespace MusicBoxCompiler
         {
             var memoryCells = new List<MemoryCell>();
             var currentAddress = baseAddress;
+            var timeDeficit = 0;
             var songContexts = new Dictionary<Song, (Filter jumpFilter, int returnAddress)>();
 
             addresses = new Addresses();
@@ -181,7 +182,20 @@ namespace MusicBoxCompiler
                             .Append(CreateFilter('Z', GetHistogram(noteGroup.Notes)))
                             .ToList();
 
-                        var length = (int)(14400 / currentBeatsPerMinute / noteGroup.Length);
+                        var length = (int)(14400 / currentBeatsPerMinute / noteGroup.Length) - timeDeficit;
+
+                        // We can't have multiple note groups at the same address, so the minimum length must be 1.
+                        // However, to avoid delaying future notes we capture the amount that the length is adjusted
+                        // as the time deficit and apply that to the next note.
+                        if (length < 1)
+                        {
+                            timeDeficit = 1 - length;
+                            length = 1;
+                        }
+                        else
+                        {
+                            timeDeficit = 0;
+                        }
 
                         AddMemoryCell(filters, length: length);
                     }
