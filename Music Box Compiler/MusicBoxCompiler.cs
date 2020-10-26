@@ -160,6 +160,7 @@ namespace MusicBoxCompiler
             AddJump(0);
 
             // Add the songs
+            var trackNumber = 0;
             foreach (var playlist in playlists)
             {
                 foreach (var song in playlist.Songs)
@@ -167,6 +168,8 @@ namespace MusicBoxCompiler
                     var songAddress = currentAddress;
                     var (jumpFilter, returnAddress) = songContexts[song];
                     int currentBeatsPerMinute = 60;
+
+                    trackNumber++;
 
                     // Update the jump table entry to point at the song
                     jumpFilter.Count += songAddress;
@@ -182,6 +185,8 @@ namespace MusicBoxCompiler
                         var filters = noteGroup.Notes
                             .OrderBy(note => (int)note.Instrument * 100 + note.Number)
                             .Select((note, index) => CreateFilter((char)('0' + index), note.Number + ((int)note.Instrument + EncodeVolume(note.Volume) * InstrumentCount) * 256))
+                            .Append(CreateFilter('X', trackNumber))
+                            .Append(CreateFilter('Y', currentAddress - songAddress + 1))
                             .Append(CreateFilter('Z', GetHistogram(noteGroup.Notes)))
                             .ToList();
 
@@ -302,6 +307,14 @@ namespace MusicBoxCompiler
                             {
                                 //return $"jump by {filter.Count} to {address + 1 + filter.Count}";
                                 return $"jump by {filter.Count}";
+                            }
+                            else if (signalName == VirtualSignalNames.LetterOrDigit('X'))
+                            {
+                                return $"track {filter.Count}";
+                            }
+                            else if (signalName == VirtualSignalNames.LetterOrDigit('Y'))
+                            {
+                                return $"offset {filter.Count}";
                             }
                             else if (signalName == VirtualSignalNames.LetterOrDigit('Z'))
                             {
