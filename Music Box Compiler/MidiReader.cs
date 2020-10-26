@@ -148,11 +148,7 @@ namespace MusicBoxCompiler
 
                             if (isNoteInRange)
                             {
-                                if (timeDelta < TimeSpan.FromMilliseconds(17) && currentNotes.Count < ChannelCount) // 17 is 1000ms / 60fps, rounded up
-                                {
-                                    timeDelta = TimeSpan.Zero;
-                                }
-                                else
+                                if (timeDelta >= TimeSpan.FromMilliseconds(17) || currentNotes.Count >= ChannelCount) // 17 is 1000ms / 60fps, rounded up
                                 {
                                     noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = 4 / timeDelta.TotalMinutes, BeatsPerMinute = 1 });
                                     currentNotes = new List<Note>();
