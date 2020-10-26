@@ -34,6 +34,9 @@ namespace MusicBoxCompiler
             var outputCommandsFile = configuration.OutputCommands;
             var outputMidiEventsFile = configuration.OutputMidiEvents;
             var baseAddress = configuration.BaseAddress ?? 0;
+            var snapToGrid = configuration.SnapToGrid;
+            var x = configuration.X;
+            var y = configuration.Y;
             var width = configuration.Width ?? 16;
             var height = configuration.Height ?? 16;
             var volumeLevels = configuration.VolumeLevels ?? 10;
@@ -66,7 +69,7 @@ namespace MusicBoxCompiler
                 )
                 .ToList();
 
-            var blueprint = CreateBlueprintFromPlaylists(playlists, baseAddress, width, height, volumeLevels, minVolume, maxVolume, out var addresses);
+            var blueprint = CreateBlueprintFromPlaylists(playlists, baseAddress, snapToGrid, x, y, width, height, volumeLevels, minVolume, maxVolume, out var addresses);
             BlueprintUtil.PopulateIndices(blueprint);
 
             var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
@@ -95,7 +98,7 @@ namespace MusicBoxCompiler
         private static Dictionary<Instrument, double> ProcessInstrumentVolumes(Dictionary<Instrument, double> instrumentVolumes) =>
             instrumentVolumes?.Select(entry => (entry.Key, Value: entry.Value / 100))?.ToDictionary(entry => entry.Key, entry => entry.Value);
 
-        private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, int width, int height, int volumeLevels, double minVolume, double maxVolume, out Addresses addresses)
+        private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, bool? snapToGrid, int? x, int? y, int width, int height, int volumeLevels, double minVolume, double maxVolume, out Addresses addresses)
         {
             var memoryCells = new List<MemoryCell>();
             var currentAddress = baseAddress;
@@ -218,6 +221,9 @@ namespace MusicBoxCompiler
 
             return RomGenerator.Generate(new RomConfiguration
             {
+                SnapToGrid = snapToGrid,
+                X = x,
+                Y = y,
                 Width = width,
                 Height = height,
                 ProgramRows = height,
@@ -340,6 +346,9 @@ namespace MusicBoxCompiler
         public string OutputCommands { get; set; }
         public string OutputMidiEvents { get; set; }
         public int? BaseAddress { get; set; }
+        public bool? SnapToGrid { get; set; }
+        public int? X { get; set; }
+        public int? Y { get; set; }
         public int? Width { get; set; }
         public int? Height { get; set; }
         public int? VolumeLevels { get; set; }
