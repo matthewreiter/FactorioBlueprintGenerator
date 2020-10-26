@@ -17,6 +17,9 @@ namespace MemoryInitializer
 
         public static Blueprint Generate(RomConfiguration configuration, IList<MemoryCell> program = null, IList<MemoryCell> data = null)
         {
+            var snapToGrid = configuration.SnapToGrid ?? false;
+            var xOffset = configuration.X ?? 0;
+            var yOffset = configuration.Y ?? 0;
             var width = configuration.Width ?? 16;
             var height = configuration.Height ?? 16;
             var programRows = configuration.ProgramRows ?? (program != null ? (program.Count - 1) / width + 1 : height / 2);
@@ -43,8 +46,6 @@ namespace MemoryInitializer
 
             var gridWidth = width + ((width + 7) / 16 + 1) * 2;
             var gridHeight = height * cellHeight;
-            var xOffset = -gridWidth / 2;
-            var yOffset = -gridHeight / 2;
 
             var entities = new List<Entity>();
 
@@ -166,6 +167,8 @@ namespace MemoryInitializer
                     }
                 }).ToList(),
                 Entities = entities,
+                SnapToGrid = snapToGrid ? new SnapToGrid { X = (ulong)gridWidth, Y = (ulong)gridHeight } : null,
+                AbsoluteSnapping = snapToGrid ? true : (bool?)null,
                 Item = ItemNames.Blueprint,
                 Version = BlueprintVersions.CurrentVersion
             };
@@ -177,6 +180,9 @@ namespace MemoryInitializer
 
     public class RomConfiguration
     {
+        public bool? SnapToGrid { get; set; }
+        public int? X { get; set; }
+        public int? Y { get; set; }
         public int? Width { get; set; }
         public int? Height { get; set; }
         public int? ProgramRows { get; set; }
