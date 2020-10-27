@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using static MusicBoxCompiler.Constants;
 using GMInst = Commons.Music.Midi.GeneralMidi.Instruments;
 using Percussions = Commons.Music.Midi.GeneralMidi.Percussions;
 
@@ -12,6 +13,7 @@ namespace MusicBoxCompiler
 {
     public static class MidiReader
     {
+        // http://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html
         private const int ChannelCount = 10;
         private const int PercussionMidiChannel = 9;
         private static readonly List<string> Notes = new List<string> { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
@@ -30,12 +32,19 @@ namespace MusicBoxCompiler
             new InstrumentMapping { Instrument = Instrument.Celesta, RangeStart = GMInst.Piccolo, RangeEnd = GMInst.Ocarina },
             new InstrumentMapping { Instrument = Instrument.Square, RangeStart = GMInst.LeadSquare, RangeEnd = GMInst.LeadSquare },
             new InstrumentMapping { Instrument = Instrument.Sawtooth, RangeStart = GMInst.LeadSawtooth, RangeEnd = GMInst.LeadSawtooth },
+            new InstrumentMapping { Instrument = Instrument.Square, RangeStart = GMInst.LeadCharang, RangeEnd = GMInst.LeadCharang },
             new InstrumentMapping { Instrument = Instrument.Celesta, RangeStart = GMInst.LeadVoice, RangeEnd = GMInst.LeadVoice },
+            new InstrumentMapping { Instrument = Instrument.Sawtooth, RangeStart = GMInst.PadPolysynth, RangeEnd = GMInst.PadPolysynth },
+            new InstrumentMapping { Instrument = Instrument.SteelDrum, RangeStart = GMInst.FXRain, RangeEnd = GMInst.FXRain },
             new InstrumentMapping { Instrument = Instrument.SteelDrum, RangeStart = GMInst.TinkleBell, RangeEnd = GMInst.SynthDrum },
             new InstrumentMapping { Instrument = Instrument.Drumkit, RangeStart = GMInst.ReverseCymbal, RangeEnd = GMInst.ReverseCymbal }
         );
         private static readonly Dictionary<int, Drum> DrumMap = new Dictionary<int, Drum>
         {
+            { PercussionsGM2.HighQ, Drum.HighQ },
+            { PercussionsGM2.Slap, Drum.Clap },
+            { PercussionsGM2.ScratchPush, Drum.Fx },
+            { PercussionsGM2.ScratchPull, Drum.Fx },
             { Percussions.AcousticBassDrum, Drum.Kick1 },
             { Percussions.BassDrum1, Drum.Kick2 },
             { Percussions.SideStick, Drum.Percussion1 },
@@ -57,6 +66,7 @@ namespace MusicBoxCompiler
             { Percussions.SplashCymbal, Drum.HiHat1 },
             { Percussions.Cowbell, Drum.Cowbell },
             { Percussions.CrashCymbal2, Drum.Crash },
+            { Percussions.Vibraslap, Drum.Clap },
             { Percussions.RideCymbal2, Drum.HiHat1 },
             { Percussions.HiBongo, Drum.Kick2 },
             { Percussions.LowBongo, Drum.Kick1 },
@@ -65,10 +75,14 @@ namespace MusicBoxCompiler
             { Percussions.LowConga, Drum.Snare1 },
             { Percussions.Cabasa, Drum.Shaker },
             { Percussions.Maracas, Drum.Shaker },
+            { Percussions.ShortWhistle, Drum.Fx },
+            { Percussions.LongWhistle, Drum.Fx },
             { Percussions.HiWoodBlock, Drum.Clap },
             { Percussions.LowWoodBlock, Drum.Clap },
             { Percussions.MuteTriangle, Drum.Triangle },
             { Percussions.OpenTriangle, Drum.Triangle },
+            { PercussionsGM2.Shaker, Drum.Shaker },
+            { PercussionsGM2.JingleBell, Drum.Shaker },
             { 88, Drum.Percussion1 },
             { 89, Drum.Percussion1 },
             { 91, Drum.Percussion1 }
