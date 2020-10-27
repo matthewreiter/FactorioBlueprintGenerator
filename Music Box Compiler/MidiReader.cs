@@ -168,7 +168,7 @@ namespace MusicBoxCompiler
                                     {
                                         Instrument = instrument,
                                         Number = effectiveNoteNumber,
-                                        Pitch = effectiveNoteNumber,
+                                        Pitch = effectiveNoteNumber - (instrument != Instrument.Drumkit ? baseNoteOffset + 40 : 0),
                                         Volume = volume
                                     });
                                 }
