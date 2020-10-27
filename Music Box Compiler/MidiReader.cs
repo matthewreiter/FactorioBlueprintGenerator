@@ -129,6 +129,7 @@ namespace MusicBoxCompiler
                         : InstrumentMap.TryGetValue(channel.Program, out var instrumentValue) ? instrumentValue : Instrument.Unknown;
                     var isInstrumentMapped = instrument != Instrument.Unknown;
                     var isNoteInRange = true;
+                    var effectiveNoteNumber = 0;
 
                     if (velocity > 0)
                     {
@@ -139,7 +140,7 @@ namespace MusicBoxCompiler
                             var instrumentVolume = instrumentVolumes != null && instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
                             var timeDelta = currentTime - lastTime;
 
-                            var effectiveNoteNumber = isPercussion
+                            effectiveNoteNumber = isPercussion
                                 ? DrumMap.TryGetValue(noteNumber, out var drum) ? (int)drum : 0
                                 : instrument == Instrument.Drumkit
                                     ? (int)Drum.ReverseCymbal
@@ -181,7 +182,12 @@ namespace MusicBoxCompiler
                             var note = isPercussion
                                 ? DrumNames.TryGetValue(noteNumber, out var drumName) ? drumName : noteNumber.ToString()
                                 : $"{Notes[noteNumber % Notes.Count]}{noteNumber / Notes.Count - 1}";
-                            midiEventWriter.WriteLine($"{lastTime.TotalMilliseconds}: {instrumentName} {note} velocity {velocity}{(!isNoteInRange ? " (note not in range)" : "")}{(!isInstrumentMapped ? " (instrument not mapped)" : "")}");
+                            var instrumentOrDrum = instrument switch
+                            {
+                                Instrument.Drumkit => isNoteInRange ? Drums[effectiveNoteNumber] : "Unknown",
+                                _ => instrument.ToString()
+                            };
+                            midiEventWriter.WriteLine($"{lastTime.TotalMilliseconds}: {instrumentName} {note} velocity {velocity}{(isInstrumentMapped ? $" => {instrumentOrDrum}" : "")}{(!isNoteInRange ? " (note not in range)" : "")}{(!isInstrumentMapped ? " (instrument not mapped)" : "")}");
                         }
                     }
                 }
