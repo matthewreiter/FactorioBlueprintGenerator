@@ -17,7 +17,10 @@ namespace MusicBoxCompiler
         private const int ChannelCount = 10;
         private const int PercussionMidiChannel = 9;
         private static readonly List<string> Notes = new List<string> { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
-        private static readonly Dictionary<byte, string> DrumNames = typeof(Percussions).GetFields(BindingFlags.Public | BindingFlags.Static).ToDictionary(field => (byte)field.GetValue(null), field => field.Name);
+        private static readonly Dictionary<byte, string> DrumNames =
+            typeof(Percussions).GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Concat(typeof(PercussionsGM2).GetFields(BindingFlags.Public | BindingFlags.Static))
+            .ToDictionary(field => (byte)field.GetValue(null), field => field.Name);
         private static readonly Dictionary<int, Instrument> InstrumentMap = CreateInstrumentMap(
             new InstrumentMapping { Instrument = Instrument.Piano, RangeStart = GMInst.AcousticGrandPiano, RangeEnd = GMInst.Clavi },
             new InstrumentMapping { Instrument = Instrument.Celesta, RangeStart = GMInst.Celesta, RangeEnd = GMInst.MusicBox },
