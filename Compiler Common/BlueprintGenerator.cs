@@ -9,7 +9,7 @@ namespace CompilerCommon
 {
     public static class BlueprintGenerator
     {
-        public static Blueprint CreateBlueprintFromCompiledProgram(CompiledProgram compiledProgram, int? width, int? height, StreamWriter instructionsWriter)
+        public static Blueprint CreateBlueprintFromCompiledProgram(CompiledProgram compiledProgram, bool? snapToGrid, int? x, int? y, int? width, int? height, StreamWriter instructionsWriter)
         {
             var program = new List<MemoryCell>();
             var data = new List<MemoryCell>();
@@ -45,7 +45,16 @@ namespace CompilerCommon
             instructionsWriter.WriteLine();
             instructionsWriter.WriteLine($"ROM usage: {romUsed}/{totalRom} ({(double)romUsed / totalRom * 100:F1}%)");
 
-            return RomGenerator.Generate(new RomConfiguration { Width = width, Height = height, ProgramRows = height / 2, ProgramName = compiledProgram.Name }, program, data);
+            return RomGenerator.Generate(new RomConfiguration
+            {
+                SnapToGrid = snapToGrid,
+                X = x,
+                Y = y,
+                Width = width,
+                Height = height,
+                ProgramRows = height / 2,
+                ProgramName = compiledProgram.Name
+            }, program, data);
         }
 
         private static List<Filter> ConvertInstructionToFilters(Instruction instruction)

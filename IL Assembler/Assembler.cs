@@ -20,6 +20,9 @@ namespace Assembler
             var outputBlueprintFile = configuration.OutputBlueprint;
             var outputJsonFile = configuration.OutputJson;
             var outputInstructionsFile = configuration.OutputInstructions;
+            var snapToGrid = configuration.SnapToGrid;
+            var x = configuration.X;
+            var y = configuration.Y;
             var width = configuration.Width;
             var height = configuration.Height;
 
@@ -29,7 +32,7 @@ namespace Assembler
 
             if (compiledProgram != null)
             {
-                var blueprint = BlueprintGenerator.CreateBlueprintFromCompiledProgram(compiledProgram, width, height, instructionsWriter);
+                var blueprint = BlueprintGenerator.CreateBlueprintFromCompiledProgram(compiledProgram, snapToGrid, x, y, width, height, instructionsWriter);
                 BlueprintUtil.PopulateIndices(blueprint);
 
                 var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
@@ -60,6 +63,9 @@ namespace Assembler
         public string OutputBlueprint { get; set; }
         public string OutputJson { get; set; }
         public string OutputInstructions { get; set; }
+        public bool? SnapToGrid { get; set; }
+        public int? X { get; set; }
+        public int? Y { get; set; }
         public int? Width { get; set; }
         public int? Height { get; set; }
     }
