@@ -56,7 +56,7 @@ namespace MusicBoxCompiler
                         Songs = playlistConfig.Songs
                             .Where(songConfig => !songConfig.Disabled)
                             .SelectMany(songConfig =>
-                                Path.GetExtension(songConfig.Source) switch
+                                Path.GetExtension(songConfig.Source).ToLower() switch
                                 {
                                     ".xlsx" => SpreadsheetReader.ReadSongsFromSpreadsheet(songConfig.Source, new string[] { songConfig.SpreadsheetTab }).Select(song => { song.Name = songConfig.Name; return song; }),
                                     ".mid" => new List<Song> { MidiReader.ReadSong(songConfig.Source, midiEventWriter, songConfig.InstrumentOffsets, ProcessMasterVolume(songConfig.Volume), ProcessInstrumentVolumes(songConfig.InstrumentVolumes), songConfig.Loop, songConfig.Name) },
