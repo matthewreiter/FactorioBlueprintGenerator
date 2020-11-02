@@ -110,7 +110,7 @@ namespace MusicBoxCompiler
                 .ToDictionary(entry => entry.channel, entry => entry.Instrument);
         }
 
-        public static Song ReadSong(string midiFile, StreamWriter midiEventWriter, Dictionary<Instrument, int> instrumentOffsets = null, double masterVolume = 1, Dictionary<Instrument, double> instrumentVolumes = null, bool loop = false, string name = null)
+        public static Song ReadSong(string midiFile, bool debug = false, Dictionary<Instrument, int> instrumentOffsets = null, double masterVolume = 1, Dictionary<Instrument, double> instrumentVolumes = null, bool loop = false, string name = null)
         {
             using var fileReader = File.OpenRead(midiFile);
             var music = SmfTrackMerger.Merge(MidiMusic.Read(fileReader));
@@ -120,6 +120,8 @@ namespace MusicBoxCompiler
             var lastTime = TimeSpan.Zero;
             var currentNotes = new List<Note>();
             var noteGroups = new List<NoteGroup>();
+            var midiEventStream = debug ? new MemoryStream() : null;
+            using var midiEventWriter = debug ? new StreamWriter(midiEventStream) : null;
 
             if (midiEventWriter != null)
             {
@@ -227,7 +229,8 @@ namespace MusicBoxCompiler
             {
                 Name = name,
                 NoteGroups = noteGroups,
-                Loop = loop
+                Loop = loop,
+                DebugStream = midiEventStream
             };
         }
     }

@@ -7,5 +7,6 @@ namespace MusicBoxCompiler.Models
         public string Name { get; set; }
         public List<NoteGroup> NoteGroups { get; set; }
         public bool Loop { get; set; }
+        public MemoryStream DebugStream { get; set; }
     }
 }

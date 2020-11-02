@@ -46,20 +46,20 @@ namespace MusicBoxCompiler
 
             var config = LoadConfig(configFile);
 
-            using var midiEventWriter = outputMidiEventsFile != null ? new StreamWriter(outputMidiEventsFile) : null;
-
             var playlists = config.Playlists
+                .AsParallel()
                 .Select(playlistConfig =>
                     new Playlist
                     {
                         Name = playlistConfig.Name,
                         Songs = playlistConfig.Songs
+                            .AsParallel()
                             .Where(songConfig => !songConfig.Disabled)
                             .SelectMany(songConfig =>
                                 Path.GetExtension(songConfig.Source).ToLower() switch
                                 {
                                     ".xlsx" => SpreadsheetReader.ReadSongsFromSpreadsheet(songConfig.Source, new string[] { songConfig.SpreadsheetTab }).Select(song => { song.Name = songConfig.Name; return song; }),
-                                    ".mid" => new List<Song> { MidiReader.ReadSong(songConfig.Source, midiEventWriter, songConfig.InstrumentOffsets, ProcessMasterVolume(songConfig.Volume), ProcessInstrumentVolumes(songConfig.InstrumentVolumes), songConfig.Loop, songConfig.Name) },
+                                    ".mid" => new List<Song> { MidiReader.ReadSong(songConfig.Source, outputMidiEventsFile != null, songConfig.InstrumentOffsets, ProcessMasterVolume(songConfig.Volume), ProcessInstrumentVolumes(songConfig.InstrumentVolumes), songConfig.Loop, songConfig.Name) },
                                     _ => throw new Exception($"Unsupported source file extension for {songConfig.Source}")
                                 }
                             )
@@ -81,6 +81,7 @@ namespace MusicBoxCompiler
             BlueprintUtil.WriteOutBlueprint(outputBlueprintFile, blueprintWrapper);
             BlueprintUtil.WriteOutJson(outputJsonFile, blueprintWrapper);
             WriteOutConstants(outputConstantsFile, addresses, constantsNamespace);
+            WriteOutMidiEvents(outputMidiEventsFile, playlists);
             WriteOutCommands(outputCommandsFile, memoryCells, volumeLevels, minVolume, maxVolume);
         }
 
@@ -265,6 +266,28 @@ namespace MusicBoxCompiler
     }}
 }}
 ");
+        }
+
+        private static void WriteOutMidiEvents(string outputMidiEventsFile, List<Playlist> playlists)
+        {
+            if (outputMidiEventsFile != null)
+            {
+                using var midiEventStream = File.OpenWrite(outputMidiEventsFile);
+
+                foreach (var playlist in playlists)
+                {
+                    foreach (var song in playlist.Songs)
+                    {
+                        var debugStream = song.DebugStream;
+
+                        if (debugStream != null)
+                        {
+                            debugStream.Position = 0;
+                            debugStream.CopyTo(midiEventStream);
+                        }
+                    }
+                }
+            }
         }
 
         private static void WriteOutCommands(string outputCommandsFile, List<Entity> memoryCells, int volumeLevels, double minVolume, double maxVolume)
