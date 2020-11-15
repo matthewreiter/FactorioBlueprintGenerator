@@ -19,6 +19,7 @@ namespace MusicBoxCompiler
         private const int InstrumentCount = 12;
         private static readonly List<string> Notes = new List<string> { "F", "F#", "G", "G#", "A", "A#", "B", "C", "C#", "D", "D#", "E" };
         private static readonly Regex NoteSignalRegex = new Regex(@"^signal-(\d)$");
+        private static readonly Regex NoteGroupSignalRegex = new Regex(@"^signal-([A-Q])$");
 
         public static void Run(IConfigurationRoot configuration)
         {
@@ -102,11 +103,16 @@ namespace MusicBoxCompiler
 
         private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, bool? snapToGrid, int? x, int? y, int width, int height, int volumeLevels, double minVolume, double maxVolume, int? baseConstantAddress, out Addresses addresses)
         {
+            const int maxAddresses = 1 << 20;
+            const int maxNoteGroupTimeOffset = 1 << 11 - 1; // Don't let noteGroupTimeOffset * maxAddresses go negative
+            const int maxNoteGroups = 10240;
+
             var memoryCells = new List<MemoryCell>();
+            var noteGroupCells = new List<MemoryCell>();
             var constantCells = new List<MemoryCell>();
             var currentAddress = baseAddress;
-            var timeDeficit = 0;
-            var songContexts = new Dictionary<Song, (Filter jumpFilter, int returnAddress)>();
+            var noteGroupsToAddresses = new Dictionary<(int Note0, int Note1, int Note2, int Note3, int Note4, int Note5, int Note6, int Note7, int Note8, int Note9), int>();
+            var currentNoteGroupAddress = baseAddress + maxAddresses - maxNoteGroups;
 
             addresses = new Addresses();
 
@@ -133,39 +139,20 @@ namespace MusicBoxCompiler
                 return (int)((maxVolume - volume) / (maxVolume - minVolume) * (volumeLevels - 1));
             }
 
-            // Create the jump table
-            foreach (var playlist in playlists)
-            {
-                var playlistAddress = currentAddress;
-
-                if (playlist.Name != null)
-                {
-                    addresses.PlaylistAddresses[playlist.Name] = playlistAddress;
-                }
-
-                foreach (var song in playlist.Songs)
-                {
-                    var jumpFilter = AddJump(0);
-
-                    songContexts[song] = (jumpFilter, currentAddress);
-                }
-
-                // Create a jump back to the beginning of the playlist
-                AddJump(playlistAddress, isEnabled: playlist.Loop);
-            }
-
-            // Jump back to the beginning
-            AddJump(0);
-
             // Add the songs
             var trackNumber = 0;
             foreach (var playlist in playlists)
             {
+                var playlistAddress = currentAddress;
+
                 foreach (var song in playlist.Songs)
                 {
                     var songAddress = currentAddress;
-                    var (jumpFilter, returnAddress) = songContexts[song];
-                    int currentBeatsPerMinute = 60;
+                    var currentFilters = new List<Filter>();
+                    var currentBeatsPerMinute = 60;
+                    var currentTimeOffset = 0;
+                    var cellStartTime = 0;
+                    var timeDeficit = 0;
 
                     trackNumber++;
 
@@ -176,9 +163,6 @@ namespace MusicBoxCompiler
                         constantCells.Add(new MemoryCell { Address = constantAddress, Filters = new List<Filter> { CreateFilter('0', songAddress) } });
                     }
 
-                    // Update the jump table entry to point at the song
-                    jumpFilter.Count += songAddress;
-
                     // Add the notes for the song
                     foreach (var noteGroup in song.NoteGroups)
                     {
@@ -187,42 +171,101 @@ namespace MusicBoxCompiler
                             currentBeatsPerMinute = noteGroup.BeatsPerMinute.Value;
                         }
 
-                        var filters = noteGroup.Notes
+                        var notes = noteGroup.Notes
                             .OrderBy(note => (int)note.Instrument * 100 + note.Number)
-                            .Select((note, index) => CreateFilter((char)('0' + index), note.Number + ((int)note.Instrument + EncodeVolume(note.Volume) * InstrumentCount) * 256))
-                            .Append(CreateFilter('X', trackNumber))
-                            .Append(CreateFilter('Y', currentAddress - songAddress + 1))
-                            .Append(CreateFilter('Z', GetHistogram(noteGroup.Notes)))
-                            .ToList();
+                            .Select(note => note.Number + ((int)note.Instrument + EncodeVolume(note.Volume) * InstrumentCount) * 256);
+                        var noteTuple = (
+                            notes.ElementAtOrDefault(0),
+                            notes.ElementAtOrDefault(1),
+                            notes.ElementAtOrDefault(2),
+                            notes.ElementAtOrDefault(3),
+                            notes.ElementAtOrDefault(4),
+                            notes.ElementAtOrDefault(5),
+                            notes.ElementAtOrDefault(6),
+                            notes.ElementAtOrDefault(7),
+                            notes.ElementAtOrDefault(8),
+                            notes.ElementAtOrDefault(9)
+                        );
+
+                        if (!noteGroupsToAddresses.TryGetValue(noteTuple, out var noteGroupAddress))
+                        {
+                            noteGroupAddress = currentNoteGroupAddress++;
+                            noteGroupsToAddresses[noteTuple] = noteGroupAddress;
+
+                            var filters = notes.Select((note, index) => CreateFilter((char)('0' + index), note))
+                                .Append(CreateFilter('Z', GetHistogram(noteGroup.Notes)))
+                                .ToList();
+
+                            noteGroupCells.Add(new MemoryCell { Address = noteGroupAddress, Filters = filters, IsEnabled = true });
+                        }
+
+                        if (currentFilters.Count == 0)
+                        {
+                            currentFilters.Add(CreateFilter('Y', currentTimeOffset + 1 + trackNumber * 65536));
+                        }
 
                         var length = (int)(14400 / currentBeatsPerMinute / noteGroup.Length) - timeDeficit;
 
-                        // We can't have multiple note groups at the same address, so the minimum length must be 1.
+                        // We can't have multiple note groups play too close too each other.
                         // However, to avoid delaying future notes we capture the amount that the length is adjusted
                         // as the time deficit and apply that to the next note.
-                        if (length < 1)
+                        const int minimumLength = 1;
+                        if (length < minimumLength)
                         {
-                            timeDeficit = 1 - length;
-                            length = 1;
+                            timeDeficit = minimumLength - length;
+                            length = minimumLength;
                         }
                         else
                         {
                             timeDeficit = 0;
                         }
 
-                        AddMemoryCell(filters, length: length);
+                        var relativeNoteGroupAddress = noteGroupAddress - currentAddress - currentFilters.Count - 2;
+                        var noteGroupTimeOffset = Math.Min(currentTimeOffset - cellStartTime - currentFilters.Count + 2, maxNoteGroupTimeOffset);
+                        currentFilters.Add(CreateFilter((char)('A' + currentFilters.Count - 1), relativeNoteGroupAddress + noteGroupTimeOffset * maxAddresses));
+
+                        currentTimeOffset += length;
+
+                        if (currentFilters.Count >= 18)
+                        {
+                            const int minimumCellLength = 19; // The number of cycles required to finish loading all of the note groups
+                            var cellLength = currentTimeOffset - cellStartTime;
+
+                            if (cellLength < currentFilters.Count)
+                            {
+                                timeDeficit += minimumCellLength - cellLength;
+                                cellLength = minimumCellLength;
+                            }
+
+                            AddMemoryCell(currentFilters, cellLength);
+
+                            currentFilters = new List<Filter>();
+                            cellStartTime = currentTimeOffset;
+                        }
+                    }
+
+                    if (currentFilters.Count > 0)
+                    {
+                        var cellLength = Math.Max(currentTimeOffset - cellStartTime, currentFilters.Count + 1);
+
+                        AddMemoryCell(currentFilters, cellLength);
                     }
 
                     // Create a jump back to the beginning of the song
                     AddJump(songAddress, isEnabled: song.Loop);
 
                     // Add a pause between songs
-                    AddMemoryCell(null, length: 120);
-
-                    // Jump to the next song
-                    AddJump(returnAddress);
+                    currentAddress += 120;
                 }
+
+                // Create a jump back to the beginning of the playlist
+                AddJump(playlistAddress, isEnabled: playlist.Loop);
             }
+
+            // Jump back to the beginning
+            AddJump(0);
+
+            memoryCells.AddRange(noteGroupCells);
 
             var romUsed = memoryCells.Count + constantCells.Count;
             var totalRom = width * height;
@@ -332,18 +375,22 @@ namespace {constantsNamespace}
                                 var volume = maxVolume - (double)encodedVolume / (volumeLevels - 1) * (maxVolume - minVolume);
                                 return $"{instrumentAndNote} at {(int)(volume * 100)}% volume";
                             }
+                            else if ((match = NoteGroupSignalRegex.Match(signalName)).Success)
+                            {
+                                const int maxAddresses = 1 << 20;
+                                var relativeNoteGroupAddress = filter.Count % maxAddresses;
+                                var noteGroupTimeOffset = filter.Count / maxAddresses;
+
+                                return $"note group {relativeNoteGroupAddress} with time offset {noteGroupTimeOffset}";
+                            }
                             else if (signalName == VirtualSignalNames.LetterOrDigit('U'))
                             {
                                 //return $"jump by {filter.Count} to {address + 1 + filter.Count}";
                                 return $"jump by {filter.Count}";
                             }
-                            else if (signalName == VirtualSignalNames.LetterOrDigit('X'))
-                            {
-                                return $"track {filter.Count}";
-                            }
                             else if (signalName == VirtualSignalNames.LetterOrDigit('Y'))
                             {
-                                return $"offset {filter.Count}";
+                                return $"offset {filter.Count % 65536}, track {filter.Count / 65536}";
                             }
                             else if (signalName == VirtualSignalNames.LetterOrDigit('Z'))
                             {
