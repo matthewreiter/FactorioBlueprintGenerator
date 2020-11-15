@@ -42,6 +42,7 @@ namespace MusicBoxCompiler
             var volumeLevels = configuration.VolumeLevels ?? 10;
             var minVolume = configuration.MinVolume ?? 0.1;
             var maxVolume = configuration.MaxVolume ?? 1;
+            var baseConstantAddress = configuration.BaseConstantAddress;
             var constantsNamespace = configuration.ConstantsNamespace ?? "Music";
 
             var config = LoadConfig(configFile);
@@ -59,7 +60,7 @@ namespace MusicBoxCompiler
                                 Path.GetExtension(songConfig.Source).ToLower() switch
                                 {
                                     ".xlsx" => SpreadsheetReader.ReadSongsFromSpreadsheet(songConfig.Source, new string[] { songConfig.SpreadsheetTab }).Select(song => { song.Name = songConfig.Name; song.Loop |= songConfig.Loop; return song; }),
-                                    ".mid" => new List<Song> { MidiReader.ReadSong(songConfig.Source, outputMidiEventsFile != null, songConfig.InstrumentOffsets, ProcessMasterVolume(songConfig.Volume), ProcessInstrumentVolumes(songConfig.InstrumentVolumes), songConfig.Loop, songConfig.Name) },
+                                    ".mid" => new List<Song> { MidiReader.ReadSong(songConfig.Source, outputMidiEventsFile != null, songConfig.InstrumentOffsets, ProcessMasterVolume(songConfig.Volume), ProcessInstrumentVolumes(songConfig.InstrumentVolumes), songConfig.Loop, songConfig.Name, songConfig.AddressIndex) },
                                     _ => throw new Exception($"Unsupported source file extension for {songConfig.Source}")
                                 }
                             )
@@ -69,7 +70,7 @@ namespace MusicBoxCompiler
                 )
                 .ToList();
 
-            var blueprint = CreateBlueprintFromPlaylists(playlists, baseAddress, snapToGrid, x, y, width, height, volumeLevels, minVolume, maxVolume, out var addresses);
+            var blueprint = CreateBlueprintFromPlaylists(playlists, baseAddress, snapToGrid, x, y, width, height, volumeLevels, minVolume, maxVolume, baseConstantAddress, out var addresses);
             BlueprintUtil.PopulateIndices(blueprint);
 
             var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
@@ -99,9 +100,10 @@ namespace MusicBoxCompiler
         private static Dictionary<Instrument, double> ProcessInstrumentVolumes(Dictionary<Instrument, double> instrumentVolumes) =>
             instrumentVolumes?.Select(entry => (entry.Key, Value: entry.Value / 100))?.ToDictionary(entry => entry.Key, entry => entry.Value);
 
-        private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, bool? snapToGrid, int? x, int? y, int width, int height, int volumeLevels, double minVolume, double maxVolume, out Addresses addresses)
+        private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, bool? snapToGrid, int? x, int? y, int width, int height, int volumeLevels, double minVolume, double maxVolume, int? baseConstantAddress, out Addresses addresses)
         {
             var memoryCells = new List<MemoryCell>();
+            var constantCells = new List<MemoryCell>();
             var currentAddress = baseAddress;
             var timeDeficit = 0;
             var songContexts = new Dictionary<Song, (Filter jumpFilter, int returnAddress)>();
@@ -143,11 +145,6 @@ namespace MusicBoxCompiler
 
                 foreach (var song in playlist.Songs)
                 {
-                    if (song.Name != null)
-                    {
-                        addresses.SongAddresses[song.Name] = currentAddress;
-                    }
-
                     var jumpFilter = AddJump(0);
 
                     songContexts[song] = (jumpFilter, currentAddress);
@@ -171,6 +168,13 @@ namespace MusicBoxCompiler
                     int currentBeatsPerMinute = 60;
 
                     trackNumber++;
+
+                    if (song.Name != null && song.AddressIndex != null && baseConstantAddress != null)
+                    {
+                        var constantAddress = baseConstantAddress.Value + song.AddressIndex.Value;
+                        addresses.SongAddresses[song.Name] = constantAddress;
+                        constantCells.Add(new MemoryCell { Address = constantAddress, Filters = new List<Filter> { CreateFilter('0', songAddress) } });
+                    }
 
                     // Update the jump table entry to point at the song
                     jumpFilter.Count += songAddress;
@@ -220,7 +224,7 @@ namespace MusicBoxCompiler
                 }
             }
 
-            var romUsed = memoryCells.Count;
+            var romUsed = memoryCells.Count + constantCells.Count;
             var totalRom = width * height;
 
             Console.WriteLine($"ROM usage: {romUsed}/{totalRom} ({(double)romUsed / totalRom * 100:F1}%)");
@@ -232,10 +236,10 @@ namespace MusicBoxCompiler
                 Y = y,
                 Width = width,
                 Height = height,
-                ProgramRows = height,
+                ProgramRows = height - 1, // Allocate one line for the constant cells
                 ProgramName = "Songs",
                 IconItemNames = new List<string> { ItemNames.ElectronicCircuit, ItemNames.ProgrammableSpeaker }
-            }, memoryCells);
+            }, memoryCells, constantCells);
         }
 
         private static int GetHistogram(List<Note> notes)
@@ -253,16 +257,18 @@ namespace MusicBoxCompiler
                 return;
             }
 
-            File.WriteAllText(outputConstantsFile, $@"namespace {constantsNamespace}
+            File.WriteAllText(outputConstantsFile, $@"using SeeSharp.Runtime;
+
+namespace {constantsNamespace}
 {{
     public static class PlaylistAddresses
     {{
-{string.Join(Environment.NewLine, addresses.PlaylistAddresses.Select(entry => $"        public const int {entry.Key} = {entry.Value};"))}
+        {string.Join($"{Environment.NewLine}        ", addresses.PlaylistAddresses.Select(entry => $"public const int {entry.Key} = {entry.Value};"))}
     }}
 
     public static class SongAddresses
     {{
-{string.Join(Environment.NewLine, addresses.SongAddresses.Select(entry => $"        public const int {entry.Key} = {entry.Value};"))}
+        {string.Join($"{Environment.NewLine}        ", addresses.SongAddresses.Select(entry => $"public static int {entry.Key} => Memory.Read({entry.Value});"))}
     }}
 }}
 ");
@@ -390,6 +396,7 @@ namespace MusicBoxCompiler
         public int? VolumeLevels { get; set; }
         public double? MinVolume { get; set; }
         public double? MaxVolume { get; set; }
+        public int? BaseConstantAddress { get; set; }
         public string ConstantsNamespace { get; set; }
     }
 }

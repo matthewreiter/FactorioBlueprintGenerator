@@ -2,7 +2,7 @@
   "profiles": {
     "Music Box Compiler": {
       "commandName": "Project",
-      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Test/musicConfig.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputConstants=\"$(ProjectDir)/Test/MusicConstants.cs\" --OutputCommands=\"$(ProjectDir)/Test/commands.txt\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=128 --SnapToGrid=true --X=-32 --Y=39 --BaseAddress=1"
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Test/musicConfig.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputConstants=\"$(ProjectDir)/Test/MusicConstants.cs\" --OutputCommands=\"$(ProjectDir)/Test/commands.txt\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=128 --SnapToGrid=true --X=-32 --Y=39 --BaseAddress=1 --BaseConstantAddress=34881"
     }
   }
 }
