@@ -58,7 +58,7 @@ namespace MusicBoxCompiler
                             .SelectMany(songConfig =>
                                 Path.GetExtension(songConfig.Source).ToLower() switch
                                 {
-                                    ".xlsx" => SpreadsheetReader.ReadSongsFromSpreadsheet(songConfig.Source, new string[] { songConfig.SpreadsheetTab }).Select(song => { song.Name = songConfig.Name; return song; }),
+                                    ".xlsx" => SpreadsheetReader.ReadSongsFromSpreadsheet(songConfig.Source, new string[] { songConfig.SpreadsheetTab }).Select(song => { song.Name = songConfig.Name; song.Loop |= songConfig.Loop; return song; }),
                                     ".mid" => new List<Song> { MidiReader.ReadSong(songConfig.Source, outputMidiEventsFile != null, songConfig.InstrumentOffsets, ProcessMasterVolume(songConfig.Volume), ProcessInstrumentVolumes(songConfig.InstrumentVolumes), songConfig.Loop, songConfig.Name) },
                                     _ => throw new Exception($"Unsupported source file extension for {songConfig.Source}")
                                 }
