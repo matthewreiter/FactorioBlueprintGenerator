@@ -7,6 +7,9 @@ namespace CompilerCommon
 {
     public static class SignalUtils
     {
+        /// <summary>
+        /// The maximum number of signals in a single memory cell.
+        /// </summary>
         public const int MaxSignals = 18;
 
         // The numeric value of the signal is its index plus 1
