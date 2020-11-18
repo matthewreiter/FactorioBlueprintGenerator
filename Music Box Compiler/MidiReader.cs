@@ -112,14 +112,6 @@ namespace MusicBoxCompiler
 
         public static Song ReadSong(string midiFile, bool debug = false, Dictionary<Instrument, int> instrumentOffsets = null, double masterVolume = 1, Dictionary<Instrument, double> instrumentVolumes = null, bool loop = false, string name = null, int? addressIndex = null)
         {
-            using var fileReader = File.OpenRead(midiFile);
-            var music = SmfTrackMerger.Merge(MidiMusic.Read(fileReader));
-            var machine = new MidiMachine();
-
-            var currentTimeTicks = 0;
-            var lastTime = TimeSpan.Zero;
-            var currentNotes = new List<Note>();
-            var noteGroups = new List<NoteGroup>();
             var midiEventStream = debug ? new MemoryStream() : null;
             var midiEventWriter = debug ? new StreamWriter(midiEventStream) : null;
 
@@ -128,93 +120,123 @@ namespace MusicBoxCompiler
                 midiEventWriter.WriteLine(midiFile);
             }
 
-            foreach (var midiMessage in music.Tracks[0].Messages)
+            var (midiNotes, totalPlayTime) = ReadMidiFile(midiFile);
+
+            if (instrumentOffsets == null)
             {
-                currentTimeTicks += midiMessage.DeltaTime;
-                var currentTime = TimeSpan.FromMilliseconds(music.GetTimePositionInMillisecondsForTick(currentTimeTicks));
+                const int maxPossibleOctave = 12; // This is to ensure that we don't have a negative number before calculating the octave, which would throw off the result
 
-                var midiEvent = midiMessage.Event;
-                var channel = machine.Channels[midiEvent.Channel];
-
-                machine.ProcessEvent(midiEvent);
-
-                if (midiEvent.EventType == MidiEvent.NoteOn)
-                {
-                    var noteNumber = midiEvent.Msb;
-                    var velocity = midiEvent.Lsb;
-                    var isPercussion = midiEvent.Channel == PercussionMidiChannel;
-                    var instrument = isPercussion
-                        ? Instrument.Drumkit
-                        : InstrumentMap.TryGetValue(channel.Program, out var instrumentValue) ? instrumentValue : Instrument.Unknown;
-                    var isInstrumentMapped = instrument != Instrument.Unknown;
-                    var isNoteInRange = true;
-                    var effectiveNoteNumber = 0;
-
-                    if (velocity > 0)
+                instrumentOffsets = midiNotes
+                    .Where(note => note.Instrument is not Instrument.Unknown and not Instrument.Drumkit)
+                    .GroupBy(note => note.Instrument, note => note.RelativeNoteNumber, (instrument, noteNumbers) =>
                     {
-                        if (isInstrumentMapped)
-                        {
-                            var baseNoteOffset = BaseInstrumentOffsets.TryGetValue(instrument, out var baseOffsetValue) ? baseOffsetValue : 0;
-                            var noteOffset = instrumentOffsets != null && instrumentOffsets.TryGetValue(instrument, out var offsetValue) ? offsetValue : 0;
-                            var instrumentVolume = instrumentVolumes != null && instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
-                            var timeDelta = currentTime - lastTime;
+                        var octaves = noteNumbers.GroupBy(relativeNoteNumber => (relativeNoteNumber - 1 + maxPossibleOctave * 12) / 12 - maxPossibleOctave, (octaveNumber, groupedNoteNumbers) => (OctaveNumber: octaveNumber, NoteCount: groupedNoteNumbers.Count()));
+                        var totalNotes = octaves.Sum(octave => octave.NoteCount);
+                        var minOctave = octaves.Min(octave => octave.OctaveNumber);
+                        var maxOctave = octaves.Max(octave => octave.OctaveNumber);
+                        var minOctaveShift = Math.Min(minOctave, 0);
+                        var maxOctaveShift = Math.Max(maxOctave - 3, 0);
 
-                            effectiveNoteNumber = isPercussion
-                                ? DrumMap.TryGetValue(noteNumber, out var drum) ? (int)drum : 0
-                                : instrument == Instrument.Drumkit
-                                    ? (int)Drum.ReverseCymbal
-                                    : noteNumber + baseNoteOffset + noteOffset;
-                            isNoteInRange = effectiveNoteNumber > 0 && effectiveNoteNumber <= 48;
+                        const double newNotesOutOfRangePenalty = 4;
+                        const double octaveShiftPenaltyBase = 0.05;
+                        const double octaveShiftPenaltyGrowth = 2;
 
-                            if (isNoteInRange)
-                            {
-                                if (timeDelta >= TimeSpan.FromMilliseconds(17) || currentNotes.Count >= ChannelCount) // 17 is 1000ms / 60fps, rounded up
-                                {
-                                    noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = 4 / timeDelta.TotalMinutes, BeatsPerMinute = 1 });
-                                    currentNotes = new List<Note>();
-                                    lastTime = currentTime;
-                                }
-
-                                var volume = Math.Min(velocity / 127d * instrumentVolume * masterVolume, 1);
-                                var duplicateNote = currentNotes.Find(note => note.Instrument == instrument && note.Number == effectiveNoteNumber);
-
-                                if (duplicateNote != null)
-                                {
-                                    duplicateNote.Volume = Math.Max(volume, duplicateNote.Volume);
-                                }
-                                else
-                                {
-                                    currentNotes.Add(new Note
+                        return (
+                            Instrument: instrument,
+                            NoteShift: minOctaveShift < 0 || maxOctaveShift > 0
+                                ? Enumerable.Range(minOctaveShift, maxOctaveShift - minOctaveShift + 1)
+                                    .Select(octavesOutOfRange =>
                                     {
-                                        Instrument = instrument,
-                                        Number = effectiveNoteNumber,
-                                        Pitch = effectiveNoteNumber - (instrument != Instrument.Drumkit ? baseNoteOffset + 40 : 0),
-                                        Volume = volume
-                                    });
-                                }
-                            }
+                                        var octavesThatAreOutOfRange = octaves.Where(octave => octave.OctaveNumber - octavesOutOfRange is < 0 or > 3);
+
+                                        return (
+                                            OctaveShift: -octavesOutOfRange,
+                                            NotesStillOutOfRange: octavesThatAreOutOfRange.Where(octave => octave.OctaveNumber is < 0 or > 3).Sum(octave => octave.NoteCount),
+                                            NewNotesOutOfRange: octavesThatAreOutOfRange.Where(octave => octave.OctaveNumber is not (< 0 or > 3)).Sum(octave => octave.NoteCount)
+                                        );
+                                    })
+                                    // Order by the number of notes still out of range, imposing a penalty for each octave we shift to favor shifting less even if a few notes are left behind
+                                    .OrderBy(tuple => (tuple.NotesStillOutOfRange + tuple.NewNotesOutOfRange * newNotesOutOfRangePenalty) / totalNotes + (tuple.OctaveShift != 0 ? octaveShiftPenaltyBase * Math.Pow(octaveShiftPenaltyGrowth, Math.Abs(tuple.OctaveShift) - 1) : 0))
+                                    .First()
+                                    .OctaveShift * 12
+                                : 0
+                        );
+                    })
+                    .ToDictionary(tuple => tuple.Instrument, tuple => tuple.NoteShift);
+
+                midiEventWriter.WriteLine($"Calculated instrument offsets: {string.Join(", ", instrumentOffsets.OrderBy(entry => entry.Key).Select(entry => $"{entry.Key}: {entry.Value}"))}");
+            }
+
+            var instrumentsNotMapped = midiNotes.Where(note => note.Instrument == Instrument.Unknown).GroupBy(note => note.OriginalInstrumentName, (originalInstrumentName, notes) => originalInstrumentName).ToList();
+            if (instrumentsNotMapped.Count > 0)
+            {
+                midiEventWriter.WriteLine($"Instruments not mapped: {string.Join(", ", instrumentsNotMapped)}");
+            }
+
+            var lastTime = TimeSpan.Zero;
+            var currentNotes = new List<Note>();
+            var noteGroups = new List<NoteGroup>();
+
+            foreach (var midiNote in midiNotes)
+            {
+                var instrument = midiNote.Instrument;
+                var isInstrumentMapped = instrument != Instrument.Unknown;
+                var isNoteInRange = true;
+                var effectiveNoteNumber = 0;
+
+                if (isInstrumentMapped)
+                {
+                    var baseNoteOffset = BaseInstrumentOffsets.TryGetValue(instrument, out var baseOffsetValue) ? baseOffsetValue : 0;
+                    var noteOffset = instrumentOffsets != null && instrumentOffsets.TryGetValue(instrument, out var offsetValue) ? offsetValue : 0;
+                    var instrumentVolume = instrumentVolumes != null && instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
+                    var timeDelta = midiNote.CurrentTime - lastTime;
+
+                    effectiveNoteNumber = midiNote.RelativeNoteNumber + noteOffset;
+                    isNoteInRange = effectiveNoteNumber > 0 && effectiveNoteNumber <= 48;
+
+                    if (isNoteInRange)
+                    {
+                        if (timeDelta >= TimeSpan.FromMilliseconds(17) || currentNotes.Count >= ChannelCount) // 17 is 1000ms / 60fps, rounded up
+                        {
+                            noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = 4 / timeDelta.TotalMinutes, BeatsPerMinute = 1 });
+                            currentNotes = new List<Note>();
+                            lastTime = midiNote.CurrentTime;
                         }
 
-                        if (midiEventWriter != null)
+                        var volume = Math.Min(midiNote.Volume * instrumentVolume * masterVolume, 1);
+                        var duplicateNote = currentNotes.Find(note => note.Instrument == instrument && note.Number == effectiveNoteNumber);
+
+                        if (duplicateNote != null)
                         {
-                            var instrumentName = isPercussion ? GeneralMidi.DrumKitsGM2[channel.Program] : GeneralMidi.InstrumentNames[channel.Program];
-                            var note = isPercussion
-                                ? DrumNames.TryGetValue(noteNumber, out var drumName) ? drumName : noteNumber.ToString()
-                                : $"{Notes[noteNumber % Notes.Count]}{noteNumber / Notes.Count - 1}";
-                            var instrumentOrDrum = instrument switch
+                            duplicateNote.Volume = Math.Max(volume, duplicateNote.Volume);
+                        }
+                        else
+                        {
+                            currentNotes.Add(new Note
                             {
-                                Instrument.Drumkit => isNoteInRange ? Drums[effectiveNoteNumber] : "Unknown",
-                                _ => instrument.ToString()
-                            };
-                            midiEventWriter.WriteLine($"{lastTime.TotalMilliseconds}: {instrumentName} {note} velocity {velocity}{(isInstrumentMapped ? $" => {instrumentOrDrum}" : "")}{(!isNoteInRange ? " (note not in range)" : "")}{(!isInstrumentMapped ? " (instrument not mapped)" : "")}");
+                                Instrument = instrument,
+                                Number = effectiveNoteNumber,
+                                Pitch = effectiveNoteNumber - (instrument != Instrument.Drumkit ? baseNoteOffset + 40 : 0),
+                                Volume = volume
+                            });
                         }
                     }
+                }
+
+                if (midiEventWriter != null)
+                {
+                    var instrumentOrDrum = instrument switch
+                    {
+                        Instrument.Drumkit => isNoteInRange ? Drums[effectiveNoteNumber] : "Unknown",
+                        _ => instrument.ToString()
+                    };
+                    midiEventWriter.WriteLine($"{lastTime.TotalMilliseconds}: {midiNote.OriginalInstrumentName} {midiNote.OriginalNoteName} volume {midiNote.Volume:F2}{(isInstrumentMapped ? $" => {instrumentOrDrum}" : "")}{(!isNoteInRange ? " (note not in range)" : "")}{(!isInstrumentMapped ? " (instrument not mapped)" : "")}");
                 }
             }
 
             if (currentNotes.Count > 0)
             {
-                var currentTime = TimeSpan.FromMilliseconds(music.GetTotalPlayTimeMilliseconds());
+                var currentTime = totalPlayTime;
                 var timeDelta = currentTime - lastTime;
 
                 noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = 4 / timeDelta.TotalMinutes, BeatsPerMinute = 1 });
@@ -233,6 +255,89 @@ namespace MusicBoxCompiler
                 Loop = loop,
                 DebugStream = midiEventStream
             };
+        }
+
+        private static (List<MidiNote> MidiNotes, TimeSpan TotalPlayTime) ReadMidiFile(string midiFile)
+        {
+            using var fileReader = File.OpenRead(midiFile);
+            var music = SmfTrackMerger.Merge(MidiMusic.Read(fileReader));
+            var machine = new MidiMachine();
+
+            var currentTimeTicks = 0;
+            var notes = new List<MidiNote>();
+
+            foreach (var midiMessage in music.Tracks[0].Messages)
+            {
+                currentTimeTicks += midiMessage.DeltaTime;
+                var currentTime = TimeSpan.FromMilliseconds(music.GetTimePositionInMillisecondsForTick(currentTimeTicks));
+
+                var midiEvent = midiMessage.Event;
+                var channel = machine.Channels[midiEvent.Channel];
+
+                machine.ProcessEvent(midiEvent);
+
+                if (midiEvent.EventType == MidiEvent.NoteOn)
+                {
+                    var velocity = midiEvent.Lsb;
+
+                    if (velocity > 0)
+                    {
+                        var noteNumber = midiEvent.Msb;
+                        var isPercussion = midiEvent.Channel == PercussionMidiChannel;
+                        var instrument = isPercussion
+                            ? Instrument.Drumkit
+                            : InstrumentMap.TryGetValue(channel.Program, out var instrumentValue) ? instrumentValue : Instrument.Unknown;
+                        var instrumentName = isPercussion ? GeneralMidi.DrumKitsGM2[channel.Program] : GeneralMidi.InstrumentNames[channel.Program];
+                        var noteName = isPercussion
+                            ? DrumNames.TryGetValue(noteNumber, out var drumName) ? drumName : noteNumber.ToString()
+                            : $"{Notes[noteNumber % Notes.Count]}{noteNumber / Notes.Count - 1}";
+
+
+                        if (instrument != Instrument.Unknown)
+                        {
+                            var baseNoteOffset = BaseInstrumentOffsets.TryGetValue(instrument, out var baseOffsetValue) ? baseOffsetValue : 0;
+
+                            var relativeNoteNumber = isPercussion
+                                ? DrumMap.TryGetValue(noteNumber, out var drum) ? (int)drum : 0
+                                : instrument == Instrument.Drumkit
+                                    ? (int)Drum.ReverseCymbal
+                                    : noteNumber + baseNoteOffset;
+
+                            notes.Add(new()
+                            {
+                                OriginalInstrumentName = instrumentName,
+                                OriginalNoteName = noteName,
+                                Instrument = instrument,
+                                RelativeNoteNumber = relativeNoteNumber,
+                                Volume = velocity / 127d,
+                                CurrentTime = currentTime
+                            });
+                        }
+                        else
+                        {
+                            notes.Add(new()
+                            {
+                                OriginalInstrumentName = instrumentName,
+                                Instrument = instrument
+                            });
+                        }
+                    }
+                }
+            }
+
+            var totalPlayTime = TimeSpan.FromMilliseconds(music.GetTotalPlayTimeMilliseconds());
+
+            return (notes, totalPlayTime);
+        }
+
+        private class MidiNote
+        {
+            public string OriginalInstrumentName { get; init; }
+            public string OriginalNoteName { get; init; }
+            public Instrument Instrument { get; init; }
+            public int RelativeNoteNumber { get; init; }
+            public double Volume { get; init; }
+            public TimeSpan CurrentTime { get; init; }
         }
     }
 }
