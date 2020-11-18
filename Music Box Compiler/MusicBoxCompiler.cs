@@ -321,7 +321,7 @@ namespace {constantsNamespace}
         {
             if (outputMidiEventsFile != null)
             {
-                using var midiEventStream = File.OpenWrite(outputMidiEventsFile);
+                using var midiEventStream = File.Create(outputMidiEventsFile);
 
                 foreach (var playlist in playlists)
                 {

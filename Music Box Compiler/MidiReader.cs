@@ -115,12 +115,11 @@ namespace MusicBoxCompiler
             var midiEventStream = debug ? new MemoryStream() : null;
             var midiEventWriter = debug ? new StreamWriter(midiEventStream) : null;
 
-            if (midiEventWriter != null)
-            {
-                midiEventWriter.WriteLine(midiFile);
-            }
+            midiEventWriter?.WriteLine(midiFile);
 
             var (midiNotes, totalPlayTime) = ReadMidiFile(midiFile);
+
+            midiEventWriter?.WriteLine($"Total play time: {totalPlayTime}");
 
             if (instrumentOffsets == null)
             {
@@ -164,13 +163,22 @@ namespace MusicBoxCompiler
                     })
                     .ToDictionary(tuple => tuple.Instrument, tuple => tuple.NoteShift);
 
-                midiEventWriter.WriteLine($"Calculated instrument offsets: {string.Join(", ", instrumentOffsets.OrderBy(entry => entry.Key).Select(entry => $"{entry.Key}: {entry.Value}"))}");
+                midiEventWriter?.WriteLine($"Calculated instrument offsets: {string.Join(", ", instrumentOffsets.OrderBy(entry => entry.Key).Select(entry => $"{entry.Key}: {entry.Value}"))}");
             }
 
-            var instrumentsNotMapped = midiNotes.Where(note => note.Instrument == Instrument.Unknown).GroupBy(note => note.OriginalInstrumentName, (originalInstrumentName, notes) => originalInstrumentName).ToList();
-            if (instrumentsNotMapped.Count > 0)
+            if (midiEventWriter != null)
             {
-                midiEventWriter.WriteLine($"Instruments not mapped: {string.Join(", ", instrumentsNotMapped)}");
+                var instrumentsNotMapped = midiNotes.Where(note => note.Instrument == Instrument.Unknown).GroupBy(note => note.OriginalInstrumentName, (originalInstrumentName, notes) => originalInstrumentName).ToList();
+                if (instrumentsNotMapped.Count > 0)
+                {
+                    midiEventWriter.WriteLine($"Instruments not mapped: {string.Join(", ", instrumentsNotMapped)}");
+                }
+
+                var instrumentsInSong = midiNotes.Where(note => note.Instrument != Instrument.Unknown).GroupBy(note => note.Instrument, (instrument, notes) => instrument).ToList();
+                if (instrumentsInSong.Count > 0)
+                {
+                    midiEventWriter.WriteLine($"Instruments in song: {string.Join(", ", instrumentsInSong)}");
+                }
             }
 
             var lastTime = TimeSpan.Zero;
@@ -242,10 +250,8 @@ namespace MusicBoxCompiler
                 noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = 4 / timeDelta.TotalMinutes, BeatsPerMinute = 1 });
             }
 
-            if (midiEventWriter != null)
-            {
-                midiEventWriter.WriteLine();
-            }
+            midiEventWriter?.WriteLine();
+            midiEventWriter?.Flush();
 
             return new Song
             {
