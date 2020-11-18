@@ -201,7 +201,7 @@ namespace MusicBoxCompiler
 
                         if (currentFilters.Count == 0)
                         {
-                            currentFilters.Add(CreateFilter('Y', currentTimeOffset + 1 + trackNumber * 65536));
+                            currentFilters.Add(CreateFilter('Y', trackNumber + (currentTimeOffset + 1) * 256));
                         }
 
                         var length = (int)(14400 / currentBeatsPerMinute / noteGroup.Length) - timeDeficit;
