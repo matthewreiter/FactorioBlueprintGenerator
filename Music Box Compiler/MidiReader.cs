@@ -119,6 +119,8 @@ namespace MusicBoxCompiler
 
         public static Song ReadSong(string midiFile, bool debug = false, Dictionary<Instrument, int> instrumentOffsets = null, double masterVolume = 1, Dictionary<Instrument, double> instrumentVolumes = null, bool loop = false, string name = null, int? addressIndex = null)
         {
+            const int unreasonablyHighOctave = 12; // This is to ensure that we don't have a negative number before calculating the octave, which would throw off the result
+
             var midiEventStream = debug ? new MemoryStream() : null;
             var midiEventWriter = debug ? new StreamWriter(midiEventStream) : null;
 
@@ -130,13 +132,11 @@ namespace MusicBoxCompiler
 
             if (instrumentOffsets == null)
             {
-                const int maxPossibleOctave = 12; // This is to ensure that we don't have a negative number before calculating the octave, which would throw off the result
-
                 instrumentOffsets = midiNotes
                     .Where(note => note.Instrument is not Instrument.Unknown and not Instrument.Drumkit)
                     .GroupBy(note => note.Instrument, note => note.RelativeNoteNumber, (instrument, noteNumbers) =>
                     {
-                        var octaves = noteNumbers.GroupBy(relativeNoteNumber => (relativeNoteNumber - 1 + maxPossibleOctave * 12) / 12 - maxPossibleOctave, (octaveNumber, groupedNoteNumbers) => (OctaveNumber: octaveNumber, NoteCount: groupedNoteNumbers.Count()));
+                        var octaves = noteNumbers.GroupBy(relativeNoteNumber => (relativeNoteNumber - 1 + unreasonablyHighOctave * 12) / 12 - unreasonablyHighOctave, (octaveNumber, groupedNoteNumbers) => (OctaveNumber: octaveNumber, NoteCount: groupedNoteNumbers.Count()));
                         var totalNotes = octaves.Sum(octave => octave.NoteCount);
                         var minOctave = octaves.Min(octave => octave.OctaveNumber);
                         var maxOctave = octaves.Max(octave => octave.OctaveNumber);
@@ -197,7 +197,8 @@ namespace MusicBoxCompiler
                 var instrument = midiNote.Instrument;
                 var isInstrumentMapped = instrument != Instrument.Unknown;
                 var isNoteInRange = true;
-                var effectiveNoteNumber = 0;
+                var playedNote = 0;
+                var volume = 0d;
 
                 if (isInstrumentMapped)
                 {
@@ -207,7 +208,8 @@ namespace MusicBoxCompiler
                     var instrumentVolume = instrumentVolumes != null && instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
                     var timeDelta = midiNote.CurrentTime - lastTime;
 
-                    effectiveNoteNumber = midiNote.RelativeNoteNumber + noteOffset;
+                    playedNote = instrument == Instrument.Drumkit ? midiNote.RelativeNoteNumber : midiNote.OriginalNoteNumber + noteOffset;
+                    var effectiveNoteNumber = midiNote.RelativeNoteNumber + noteOffset;
                     isNoteInRange = effectiveNoteNumber > 0 && effectiveNoteNumber <= 48;
 
                     if (isNoteInRange)
@@ -219,7 +221,7 @@ namespace MusicBoxCompiler
                             lastTime = midiNote.CurrentTime;
                         }
 
-                        var volume = Math.Min(midiNote.Volume * baseInstrumentVolume * instrumentVolume * masterVolume, 1);
+                        volume = Math.Min(midiNote.Volume * baseInstrumentVolume * instrumentVolume * masterVolume, 1);
                         var duplicateNote = currentNotes.Find(note => note.Instrument == instrument && note.Number == effectiveNoteNumber);
 
                         if (duplicateNote != null)
@@ -232,7 +234,7 @@ namespace MusicBoxCompiler
                             {
                                 Instrument = instrument,
                                 Number = effectiveNoteNumber,
-                                Pitch = effectiveNoteNumber - (instrument != Instrument.Drumkit ? baseNoteOffset + 40 : 0),
+                                Pitch = playedNote - (instrument != Instrument.Drumkit ? 40 : 0),
                                 Volume = volume
                             });
                         }
@@ -241,12 +243,16 @@ namespace MusicBoxCompiler
 
                 if (midiEventWriter != null)
                 {
-                    var instrumentOrDrum = instrument switch
+                    var instrumentAndNote = instrument switch
                     {
-                        Instrument.Drumkit => isNoteInRange ? Drums[effectiveNoteNumber] : "Unknown",
-                        _ => instrument.ToString()
+                        Instrument.Drumkit => isNoteInRange ? Drums[playedNote] : "Unknown",
+                        _ => $"{instrument} {Notes[(playedNote + unreasonablyHighOctave * Notes.Count) % Notes.Count]}{playedNote / Notes.Count - 1}"
                     };
-                    midiEventWriter.WriteLine($"{lastTime.TotalMilliseconds}: {midiNote.OriginalInstrumentName} {midiNote.OriginalNoteName} volume {midiNote.Volume:F2}{(isInstrumentMapped ? $" => {instrumentOrDrum}" : "")}{(!isNoteInRange ? " (note not in range)" : "")}{(!isInstrumentMapped ? " (instrument not mapped)" : "")}");
+
+                    midiEventWriter.WriteLine($"{lastTime:mm\\:ss\\.fff}: {midiNote.OriginalInstrumentName} {midiNote.OriginalNoteName} volume {midiNote.Volume:F2}" +
+                        (isInstrumentMapped ? $" => {instrumentAndNote} volume {volume:F2}" : "") +
+                        (!isNoteInRange ? " (note not in range)" : "") +
+                        (!isInstrumentMapped ? " (instrument not mapped)" : ""));
                 }
             }
 
@@ -301,11 +307,20 @@ namespace MusicBoxCompiler
                         var instrument = isPercussion
                             ? Instrument.Drumkit
                             : InstrumentMap.TryGetValue(channel.Program, out var instrumentValue) ? instrumentValue : Instrument.Unknown;
-                        var instrumentName = isPercussion ? GeneralMidi.DrumKitsGM2[channel.Program] : GeneralMidi.InstrumentNames[channel.Program];
+                        var instrumentName = (isPercussion ? GeneralMidi.DrumKitsGM2.ElementAtOrDefault(channel.Program) : GeneralMidi.InstrumentNames.ElementAtOrDefault(channel.Program)) ?? channel.Program.ToString();
                         var noteName = isPercussion
                             ? DrumNames.TryGetValue(noteNumber, out var drumName) ? drumName : noteNumber.ToString()
                             : $"{Notes[noteNumber % Notes.Count]}{noteNumber / Notes.Count - 1}";
 
+                        var note = new MidiNote
+                        {
+                            OriginalInstrumentName = instrumentName,
+                            OriginalNoteName = noteName,
+                            OriginalNoteNumber = noteNumber,
+                            Instrument = instrument,
+                            Volume = velocity / 127d,
+                            CurrentTime = currentTime
+                        };
 
                         if (instrument != Instrument.Unknown)
                         {
@@ -317,24 +332,10 @@ namespace MusicBoxCompiler
                                     ? (int)Drum.ReverseCymbal
                                     : noteNumber + baseNoteOffset;
 
-                            notes.Add(new()
-                            {
-                                OriginalInstrumentName = instrumentName,
-                                OriginalNoteName = noteName,
-                                Instrument = instrument,
-                                RelativeNoteNumber = relativeNoteNumber,
-                                Volume = velocity / 127d,
-                                CurrentTime = currentTime
-                            });
+                            note = note with { RelativeNoteNumber = relativeNoteNumber };
                         }
-                        else
-                        {
-                            notes.Add(new()
-                            {
-                                OriginalInstrumentName = instrumentName,
-                                Instrument = instrument
-                            });
-                        }
+
+                        notes.Add(note);
                     }
                 }
             }
@@ -344,10 +345,11 @@ namespace MusicBoxCompiler
             return (notes, totalPlayTime);
         }
 
-        private class MidiNote
+        private record MidiNote
         {
             public string OriginalInstrumentName { get; init; }
             public string OriginalNoteName { get; init; }
+            public int OriginalNoteNumber { get; init; }
             public Instrument Instrument { get; init; }
             public int RelativeNoteNumber { get; init; }
             public double Volume { get; init; }
