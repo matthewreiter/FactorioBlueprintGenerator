@@ -104,6 +104,11 @@ namespace MusicBoxCompiler
             { Instrument.PluckedStrings, -64 },
             { Instrument.SteelDrum, -52 }
         };
+        private static readonly Dictionary<Instrument, double> BaseInstrumentVolumes = new Dictionary<Instrument, double>
+        {
+            { Instrument.Square, 0.5 },
+            { Instrument.Sawtooth, 0.75 }
+        };
 
         private static Dictionary<int, Instrument> CreateInstrumentMap(params InstrumentMapping[] mappings)
         {
@@ -198,6 +203,7 @@ namespace MusicBoxCompiler
                 {
                     var baseNoteOffset = BaseInstrumentOffsets.TryGetValue(instrument, out var baseOffsetValue) ? baseOffsetValue : 0;
                     var noteOffset = instrumentOffsets != null && instrumentOffsets.TryGetValue(instrument, out var offsetValue) ? offsetValue : 0;
+                    var baseInstrumentVolume = BaseInstrumentVolumes.TryGetValue(instrument, out var baseInstrumentVolumeValue) ? baseInstrumentVolumeValue : 1;
                     var instrumentVolume = instrumentVolumes != null && instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
                     var timeDelta = midiNote.CurrentTime - lastTime;
 
@@ -213,7 +219,7 @@ namespace MusicBoxCompiler
                             lastTime = midiNote.CurrentTime;
                         }
 
-                        var volume = Math.Min(midiNote.Volume * instrumentVolume * masterVolume, 1);
+                        var volume = Math.Min(midiNote.Volume * baseInstrumentVolume * instrumentVolume * masterVolume, 1);
                         var duplicateNote = currentNotes.Find(note => note.Instrument == instrument && note.Number == effectiveNoteNumber);
 
                         if (duplicateNote != null)
