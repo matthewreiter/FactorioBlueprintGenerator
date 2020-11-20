@@ -39,6 +39,7 @@ namespace MusicBoxCompiler
             new InstrumentMapping { Instrument = Instrument.Square, RangeStart = GMInst.LeadCharang, RangeEnd = GMInst.LeadCharang },
             new InstrumentMapping { Instrument = Instrument.Celesta, RangeStart = GMInst.LeadVoice, RangeEnd = GMInst.LeadVoice },
             new InstrumentMapping { Instrument = Instrument.BassGuitar, RangeStart = GMInst.LeadBassAndLead, RangeEnd = GMInst.LeadBassAndLead },
+            new InstrumentMapping { Instrument = Instrument.PluckedStrings, RangeStart = GMInst.PadNewage, RangeEnd = GMInst.PadNewage },
             new InstrumentMapping { Instrument = Instrument.Sawtooth, RangeStart = GMInst.PadPolysynth, RangeEnd = GMInst.PadPolysynth },
             new InstrumentMapping { Instrument = Instrument.SteelDrum, RangeStart = GMInst.FXRain, RangeEnd = GMInst.FXScifi },
             new InstrumentMapping { Instrument = Instrument.LeadGuitar, RangeStart = GMInst.Sitar, RangeEnd = GMInst.Banjo },
