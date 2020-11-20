@@ -21,10 +21,8 @@ namespace MusicBoxCompiler
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance); // Required for reading from Excel spreadsheets from .NET Core apps
         }
 
-        public static List<Song> ReadSongsFromSpreadsheet(string inputSpreadsheetFile, string[] spreadsheetTabs)
+        public static Song ReadSongFromSpreadsheet(string inputSpreadsheetFile, string spreadsheetTab)
         {
-            var songs = new List<Song>();
-
             if (inputSpreadsheetFile != null)
             {
                 var tempFile = Path.GetTempFileName();
@@ -36,9 +34,9 @@ namespace MusicBoxCompiler
 
                     while (reader.NextResult())
                     {
-                        if (spreadsheetTabs.Contains(reader.Name))
+                        if (reader.Name == spreadsheetTab)
                         {
-                            songs.AddRange(ReadSongsFromSpreadsheetTab(reader));
+                            return ReadSongFromSpreadsheetTab(reader);
                         }
                     }
                 }
@@ -48,10 +46,10 @@ namespace MusicBoxCompiler
                 }
             }
 
-            return songs;
+            throw new Exception($"No songs were found in spreadsheet '{inputSpreadsheetFile}' tab '{spreadsheetTab}'");
         }
 
-        private static List<Song> ReadSongsFromSpreadsheetTab(IExcelDataReader reader)
+        private static Song ReadSongFromSpreadsheetTab(IExcelDataReader reader)
         {
             var row = 0;
             var currentLines = new List<List<List<List<Note>>>>();
@@ -60,7 +58,6 @@ namespace MusicBoxCompiler
             var instrumentOffsets = new Dictionary<Instrument, int>();
             var instrumentVolumes = new Dictionary<Instrument, double>();
             var masterVolume = 1d;
-            var loop = false;
 
             while (reader.Read())
             {
@@ -216,19 +213,6 @@ namespace MusicBoxCompiler
                                 }
 
                                 break;
-                            case "Loop":
-                                var loopValue = Enumerable
-                                    .Range(1, reader.FieldCount - 1)
-                                    .Select(column => reader.GetValue(column))
-                                    .Where(value => value != null)
-                                    .FirstOrDefault();
-
-                                if (loopValue != null)
-                                {
-                                    loop = Convert.ToBoolean(loopValue);
-                                }
-
-                                break;
                         }
                     }
                 }
@@ -237,18 +221,10 @@ namespace MusicBoxCompiler
             // Process any remaining lines
             ProcessSpreadsheetLines(currentLines, noteGroups);
 
-            var songs = new List<Song>();
-
-            if (noteGroups.Count > 0)
+            return new Song
             {
-                songs.Add(new Song
-                {
-                    NoteGroups = noteGroups,
-                    Loop = loop
-                });
-            }
-
-            return songs;
+                NoteGroups = noteGroups
+            };
         }
 
         private static void ProcessSpreadsheetLines(List<List<List<List<Note>>>> currentLines, List<NoteGroup> noteGroups)

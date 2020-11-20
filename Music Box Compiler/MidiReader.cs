@@ -119,7 +119,7 @@ namespace MusicBoxCompiler
                 .ToDictionary(entry => entry.channel, entry => entry.Instrument);
         }
 
-        public static Song ReadSong(string midiFile, bool debug = false, Dictionary<Instrument, int> instrumentOffsets = null, double masterVolume = 1, Dictionary<Instrument, double> instrumentVolumes = null, bool loop = false, string name = null, int? addressIndex = null)
+        public static Song ReadSong(string midiFile, bool debug, Dictionary<Instrument, int> instrumentOffsets, double masterVolume, Dictionary<Instrument, double> instrumentVolumes)
         {
             const int unreasonablyHighOctave = 12; // This is to ensure that we don't have a negative number before calculating the octave, which would throw off the result
 
@@ -271,10 +271,7 @@ namespace MusicBoxCompiler
 
             return new Song
             {
-                Name = name,
-                AddressIndex = addressIndex,
                 NoteGroups = noteGroups,
-                Loop = loop,
                 DebugStream = midiEventStream
             };
         }

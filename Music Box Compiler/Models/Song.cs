@@ -3,7 +3,7 @@ using System.IO;
 
 namespace MusicBoxCompiler.Models
 {
-    public class Song
+    public record Song
     {
         public string Name { get; set; }
         public int? AddressIndex { get; set; }
