@@ -246,7 +246,7 @@ namespace MusicBoxCompiler
                 {
                     var instrumentAndNote = instrument switch
                     {
-                        Instrument.Drumkit => isNoteInRange ? Drums[playedNote] : "Unknown",
+                        Instrument.Drumkit => isNoteInRange ? Drums[playedNote - 1] : "Unknown",
                         _ => $"{instrument} {Notes[(playedNote + unreasonablyHighOctave * Notes.Count) % Notes.Count]}{playedNote / Notes.Count - 1}"
                     };
 
