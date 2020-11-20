@@ -211,6 +211,7 @@ namespace MusicBoxCompiler
                     playedNote = instrument == Instrument.Drumkit ? midiNote.RelativeNoteNumber : midiNote.OriginalNoteNumber + noteOffset;
                     var effectiveNoteNumber = midiNote.RelativeNoteNumber + noteOffset;
                     isNoteInRange = effectiveNoteNumber > 0 && effectiveNoteNumber <= 48;
+                    volume = Math.Min(midiNote.Volume * baseInstrumentVolume * instrumentVolume * masterVolume, 1);
 
                     if (isNoteInRange)
                     {
@@ -221,7 +222,6 @@ namespace MusicBoxCompiler
                             lastTime = midiNote.CurrentTime;
                         }
 
-                        volume = Math.Min(midiNote.Volume * baseInstrumentVolume * instrumentVolume * masterVolume, 1);
                         var duplicateNote = currentNotes.Find(note => note.Instrument == instrument && note.Number == effectiveNoteNumber);
 
                         if (duplicateNote != null)
