@@ -369,8 +369,8 @@ namespace {constantsNamespace}
                                 var note = filter.Count % 256 - 1;
                                 var instrumentAndNote = instrument switch
                                 {
-                                    Instrument.Drumkit => Constants.Drums[note],
-                                    _ => $"{instrument} {Notes[note % Notes.Count]}{(note + 5) / Notes.Count + 1}"
+                                    Instrument.Drumkit => Constants.Drums.ElementAtOrDefault(note) ?? note.ToString(),
+                                    _ => $"{instrument} {Notes.ElementAtOrDefault(note % Notes.Count) ?? (note % Notes.Count).ToString()}{(note + 5) / Notes.Count + 1}"
                                 };
                                 var volume = maxVolume - (double)encodedVolume / (volumeLevels - 1) * (maxVolume - minVolume);
                                 return $"{instrumentAndNote} at {(int)(volume * 100)}% volume";
