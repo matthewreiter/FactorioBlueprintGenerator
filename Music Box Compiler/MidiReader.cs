@@ -285,6 +285,7 @@ namespace MusicBoxCompiler
             var machine = new MidiMachine();
 
             var currentTimeTicks = 0;
+            var lastNoteTimeTicks = 0;
             var notes = new List<MidiNote>();
 
             foreach (var midiMessage in music.Tracks[0].Messages)
@@ -337,11 +338,14 @@ namespace MusicBoxCompiler
                         }
 
                         notes.Add(note);
+                        lastNoteTimeTicks = currentTimeTicks;
                     }
                 }
             }
 
-            var totalPlayTime = TimeSpan.FromMilliseconds(music.GetTotalPlayTimeMilliseconds());
+            var maxEndOfSongSilenceMillis = 3000; // Truncate the song if the end is more than 3 seconds after the last note
+            var lastNoteTime = music.GetTimePositionInMillisecondsForTick(lastNoteTimeTicks);
+            var totalPlayTime = TimeSpan.FromMilliseconds(Math.Min(music.GetTotalPlayTimeMilliseconds(), lastNoteTime + maxEndOfSongSilenceMillis));
 
             return (notes, totalPlayTime);
         }
