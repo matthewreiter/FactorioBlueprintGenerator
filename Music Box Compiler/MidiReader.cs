@@ -282,17 +282,22 @@ namespace MusicBoxCompiler
             var music = SmfTrackMerger.Merge(MidiMusic.Read(fileReader));
             var machine = new MidiMachine();
 
-            var currentTimeTicks = 0;
-            var lastNoteTimeTicks = 0;
+            var tempo = MidiMetaType.DefaultTempo;
+            var currentTimeMillis = 0d;
+            var lastNoteTimeMillis = 0d;
             var notes = new List<MidiNote>();
 
             foreach (var midiMessage in music.Tracks[0].Messages)
             {
-                currentTimeTicks += midiMessage.DeltaTime;
-                var currentTime = TimeSpan.FromMilliseconds(music.GetTimePositionInMillisecondsForTick(currentTimeTicks));
-
                 var midiEvent = midiMessage.Event;
                 var channel = machine.Channels[midiEvent.Channel];
+
+                currentTimeMillis += tempo / 1000d * midiMessage.DeltaTime / music.DeltaTimeSpec;
+
+                if (midiEvent.EventType == MidiEvent.Meta && midiEvent.Msb == MidiMetaType.Tempo)
+                {
+                    tempo = MidiMetaType.GetTempo(midiEvent.ExtraData, midiEvent.ExtraDataOffset);
+                }
 
                 machine.ProcessEvent(midiEvent);
 
@@ -319,7 +324,7 @@ namespace MusicBoxCompiler
                             OriginalNoteNumber = noteNumber,
                             Instrument = instrument,
                             Volume = velocity / 127d,
-                            CurrentTime = currentTime
+                            CurrentTime = TimeSpan.FromMilliseconds(currentTimeMillis)
                         };
 
                         if (instrument != Instrument.Unknown)
@@ -336,14 +341,13 @@ namespace MusicBoxCompiler
                         }
 
                         notes.Add(note);
-                        lastNoteTimeTicks = currentTimeTicks;
+                        lastNoteTimeMillis = currentTimeMillis;
                     }
                 }
             }
 
             var maxEndOfSongSilenceMillis = 3000; // Truncate the song if the end is more than 3 seconds after the last note
-            var lastNoteTime = music.GetTimePositionInMillisecondsForTick(lastNoteTimeTicks);
-            var totalPlayTime = TimeSpan.FromMilliseconds(Math.Min(music.GetTotalPlayTimeMilliseconds(), lastNoteTime + maxEndOfSongSilenceMillis));
+            var totalPlayTime = TimeSpan.FromMilliseconds(Math.Min(currentTimeMillis, lastNoteTimeMillis + maxEndOfSongSilenceMillis));
 
             return (notes, totalPlayTime);
         }
