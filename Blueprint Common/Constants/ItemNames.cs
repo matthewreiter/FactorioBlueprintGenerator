@@ -2,7 +2,68 @@
 {
     public static class ItemNames
     {
+        // Logistics
+        public const string WoodenChest = "wooden-chest";
+        public const string IronChest = "iron-chest";
+        public const string SteelChest = "steel-chest";
+        public const string StorageTank = "storage-tank";
+        public const string TransportBelt = "transport-belt";
+        public const string FastTransportBelt = "fast-transport-belt";
+        public const string ExpressTransportBelt = "express-transport-belt";
+        public const string UndergroundBelt = "underground-belt";
+        public const string FastUndergroundBelt = "fast-underground-belt";
+        public const string ExpressUndergroundBelt = "express-underground-belt";
+        public const string Splitter = "splitter";
+        public const string FastSplitter = "fast-splitter";
+        public const string ExpressSplitter = "express-splitter";
+        public const string BurnerInserter = "burner-inserter";
+        public const string Inserter = "inserter";
+        public const string LongHandedInserter = "long-handed-inserter";
+        public const string FastInserter = "fast-inserter";
+        public const string FilterInserter = "filter-inserter";
+        public const string StackInserter = "stack-inserter";
+        public const string StackFilterInserter = "stack-filter-inserter";
+        public const string SmallElectricPole = "small-electric-pole";
+        public const string MediumElectricPole = "medium-electric-pole";
+        public const string BigElectricPole = "big-electric-pole";
+        public const string Substation = "substation";
+        public const string Pipe = "pipe";
+        public const string PipeToGround = "pipe-to-ground";
+        public const string Pump = "pump";
+        public const string Rail = "rail";
+        public const string TrainStop = "train-stop";
+        public const string RailSignal = "rail-signal";
+        public const string RailChainSignal = "rail-chain-signal";
+        public const string Locomotive = "locomotive";
+        public const string CargoWagon = "cargo-wagon";
+        public const string FluidWagon = "fluid-wagon";
+
+        public const string ArithmeticCombinator = "arithmetic-combinator";
+        public const string DeciderCombinator = "decider-combinator";
+        public const string ConstantCombinator = "constant-combinator";
+        public const string ProgrammableSpeaker = "programmable-speaker";
+
+        // Production
         public const string Blueprint = "blueprint";
+
+        public const string Boiler = "boiler";
+        public const string SteamEngine = "steam-engine";
+        public const string SolarPanel = "solar-panel";
+        public const string Accumulator = "accumulator";
+        public const string NuclearReactor = "nuclear-reactor";
+        public const string HeatPipe = "heat-pipe";
+        public const string HeatExchanger = "heat-exchanger";
+        public const string SteamTurbine = "steam-turbine";
+        public const string BurnerMiningDrill = "burner-mining-drill";
+        public const string ElectricMiningDrill = "electric-mining-drill";
+        public const string OffshorePump = "offshore-pump";
+        public const string Pumpjack = "pumpjack";
+        public const string StoneFurnace = "stone-furnace";
+        public const string SteelFurnace = "steel-furnace";
+        public const string ElectricFurnace = "electric-furnace";
+        public const string AssemblyingMachine1 = "assembling-machine-1";
+
+        // Intermediate products
         public const string Wood = "wood";
         public const string Coal = "coal";
         public const string Stone = "stone";
@@ -48,11 +109,8 @@
         public const string LogisticSciencePack = "logistic-science-pack";
         public const string MilitarySciencePack = "military-science-pack";
         public const string ChemicalSciencePack = "chemical-science-pack";
-
-        public const string Substation = "substation";
-        public const string ArithmeticCombinator = "arithmetic-combinator";
-        public const string DeciderCombinator = "decider-combinator";
-        public const string ConstantCombinator = "constant-combinator";
-        public const string ProgrammableSpeaker = "programmable-speaker";
+        public const string ProductionSciencePack = "production-science-pack";
+        public const string UtilitySciencePack = "utility-science-pack";
+        public const string SpaceSciencePack = "space-science-pack";
     }
 }

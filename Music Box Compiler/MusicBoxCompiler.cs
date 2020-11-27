@@ -103,16 +103,16 @@ namespace MusicBoxCompiler
 
         private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, bool? snapToGrid, int? x, int? y, int width, int height, int volumeLevels, double minVolume, double maxVolume, int? baseConstantAddress, out Addresses addresses)
         {
-            const int maxAddresses = 1 << 20;
-            const int maxNoteGroupTimeOffset = 1 << 11 - 1; // Don't let noteGroupTimeOffset * maxAddresses go negative
-            const int maxNoteGroups = 10240;
+            const int noteGroupAddressBits = 16;
+            const int noteGroupTimeOffsetBits = 12;
 
             var memoryCells = new List<MemoryCell>();
             var noteGroupCells = new List<MemoryCell>();
             var constantCells = new List<MemoryCell>();
+            var allNoteTuples = new HashSet<NoteTuple>();
+            var noteTuplesToAddresses = new Dictionary<NoteTuple, (int Address, int SubAddress)>();
             var currentAddress = baseAddress;
-            var noteGroupsToAddresses = new Dictionary<(int Note0, int Note1, int Note2, int Note3, int Note4, int Note5, int Note6, int Note7, int Note8, int Note9), int>();
-            var currentNoteGroupAddress = baseAddress + maxAddresses - maxNoteGroups;
+            var initialNoteAddress = 1 << noteGroupAddressBits;
 
             addresses = new Addresses();
 
@@ -137,6 +137,94 @@ namespace MusicBoxCompiler
             int EncodeVolume(double volume)
             {
                 return (int)((maxVolume - volume) / (maxVolume - minVolume) * (volumeLevels - 1));
+            }
+
+            NoteTuple CreateNoteTuple(NoteGroup noteGroup)
+            {
+                var notes = noteGroup.Notes
+                    .OrderBy(note => (int)note.Instrument * 100 + note.Number)
+                    .Select(note => note.Number + ((int)note.Instrument + EncodeVolume(note.Volume) * InstrumentCount) * 256);
+
+                return new(
+                    notes.ElementAtOrDefault(0),
+                    notes.ElementAtOrDefault(1),
+                    notes.ElementAtOrDefault(2),
+                    notes.ElementAtOrDefault(3),
+                    notes.ElementAtOrDefault(4),
+                    notes.ElementAtOrDefault(5),
+                    notes.ElementAtOrDefault(6),
+                    notes.ElementAtOrDefault(7),
+                    notes.ElementAtOrDefault(8),
+                    notes.ElementAtOrDefault(9)
+                );
+            }
+
+            AddJump(initialNoteAddress);
+            var currentNoteGroupAddress = currentAddress;
+            currentAddress = initialNoteAddress;
+
+            // Add note groups
+            var noteTuplesWithHistograms = playlists
+                .SelectMany(playlist => playlist.Songs.SelectMany(song => song.NoteGroups))
+                .OrderByDescending(noteGroup => noteGroup.Notes.Count)
+                .Select(noteGroup => new NoteTupleWithHistogram(CreateNoteTuple(noteGroup), GetHistogram(noteGroup.Notes)))
+                .ToList();
+
+            var noteGroupCellDataByFreeSpace = Enumerable.Range(0, 18).Select(index => new Queue<List<NoteTupleWithHistogram>>()).ToList();
+
+            foreach (var noteTupleWithHistogram in noteTuplesWithHistograms)
+            {
+                if (!allNoteTuples.Add(noteTupleWithHistogram.NoteTuple))
+                {
+                    continue;
+                }
+
+                var spaceRequired = noteTupleWithHistogram.NoteTuple.Count() + 1;
+
+                for (int freeSpace = spaceRequired; ; freeSpace++)
+                {
+                    List<NoteTupleWithHistogram> noteGroupCellData = null;
+                    if (freeSpace >= noteGroupCellDataByFreeSpace.Count || noteGroupCellDataByFreeSpace[freeSpace].TryDequeue(out noteGroupCellData))
+                    {
+                        if (noteGroupCellData == null)
+                        {
+                            noteGroupCellData = new List<NoteTupleWithHistogram>();
+                        }
+
+                        noteGroupCellData.Add(noteTupleWithHistogram);
+
+                        var newFreeSpace = noteGroupCellData.Count < DecoderConstants.AllNoteGroupSignals.Count ? freeSpace - spaceRequired : 0;
+                        noteGroupCellDataByFreeSpace[newFreeSpace].Enqueue(noteGroupCellData);
+
+                        break;
+                    }
+                }
+            }
+
+            foreach (var noteGroupCellData in noteGroupCellDataByFreeSpace.SelectMany(list => list))
+            {
+                var noteGroupAddress = currentNoteGroupAddress++;
+
+                var noteGroupCellIntermediateData = noteGroupCellData.Select((noteTupleWithHistogram, index) =>
+                {
+                    var noteTuple = noteTupleWithHistogram.NoteTuple;
+                    var noteGroupSignals = DecoderConstants.AllNoteGroupSignals[index];
+
+                    var noteGroupFilters = noteTuple.Select((note, index) => CreateItemFilter(noteGroupSignals.NoteSignals[index], note))
+                        .Append(CreateItemFilter(noteGroupSignals.HistogramSignal, noteTupleWithHistogram.Histogram))
+                        .ToList();
+
+                    return (Tuple: noteTuple, Filters: noteGroupFilters, SubAddress: index);
+                }).ToList();
+
+                foreach (var (noteTuple, noteGroupFilters, subAddress) in noteGroupCellIntermediateData)
+                {
+                    noteTuplesToAddresses[noteTuple] = (noteGroupAddress, subAddress);
+                }
+
+                var filters = noteGroupCellIntermediateData.SelectMany(data => data.Filters).ToList();
+
+                noteGroupCells.Add(new MemoryCell { Address = noteGroupAddress, Filters = filters, IsEnabled = true });
             }
 
             // Add the songs
@@ -171,33 +259,7 @@ namespace MusicBoxCompiler
                             currentBeatsPerMinute = noteGroup.BeatsPerMinute.Value;
                         }
 
-                        var notes = noteGroup.Notes
-                            .OrderBy(note => (int)note.Instrument * 100 + note.Number)
-                            .Select(note => note.Number + ((int)note.Instrument + EncodeVolume(note.Volume) * InstrumentCount) * 256);
-                        var noteTuple = (
-                            notes.ElementAtOrDefault(0),
-                            notes.ElementAtOrDefault(1),
-                            notes.ElementAtOrDefault(2),
-                            notes.ElementAtOrDefault(3),
-                            notes.ElementAtOrDefault(4),
-                            notes.ElementAtOrDefault(5),
-                            notes.ElementAtOrDefault(6),
-                            notes.ElementAtOrDefault(7),
-                            notes.ElementAtOrDefault(8),
-                            notes.ElementAtOrDefault(9)
-                        );
-
-                        if (!noteGroupsToAddresses.TryGetValue(noteTuple, out var noteGroupAddress))
-                        {
-                            noteGroupAddress = currentNoteGroupAddress++;
-                            noteGroupsToAddresses[noteTuple] = noteGroupAddress;
-
-                            var filters = notes.Select((note, index) => CreateFilter((char)('0' + index), note))
-                                .Append(CreateFilter('Z', GetHistogram(noteGroup.Notes)))
-                                .ToList();
-
-                            noteGroupCells.Add(new MemoryCell { Address = noteGroupAddress, Filters = filters, IsEnabled = true });
-                        }
+                        var (noteGroupAddress, noteGroupSubAddress) = noteTuplesToAddresses[CreateNoteTuple(noteGroup)];
 
                         if (currentFilters.Count == 0)
                         {
@@ -220,9 +282,8 @@ namespace MusicBoxCompiler
                             timeDeficit = 0;
                         }
 
-                        var relativeNoteGroupAddress = noteGroupAddress - currentAddress - currentFilters.Count - 2;
-                        var noteGroupTimeOffset = Math.Min(currentTimeOffset - cellStartTime - currentFilters.Count + 2, maxNoteGroupTimeOffset);
-                        currentFilters.Add(CreateFilter((char)('A' + currentFilters.Count - 1), relativeNoteGroupAddress + noteGroupTimeOffset * maxAddresses));
+                        var noteGroupTimeOffset = Math.Min(currentTimeOffset - cellStartTime - currentFilters.Count + 2, (1 << noteGroupTimeOffsetBits) - 1);
+                        currentFilters.Add(CreateFilter((char)('A' + currentFilters.Count - 1), noteGroupAddress + (noteGroupTimeOffset << noteGroupAddressBits) + (noteGroupSubAddress << noteGroupAddressBits + noteGroupTimeOffsetBits)));
 
                         currentTimeOffset += length;
 
@@ -419,11 +480,40 @@ namespace {constantsNamespace}
             return new Filter { Signal = new SignalID { Name = VirtualSignalNames.LetterOrDigit(signal), Type = SignalTypes.Virtual }, Count = count };
         }
 
+        private static Filter CreateItemFilter(string name, int count)
+        {
+            return new Filter { Signal = new SignalID { Name = name, Type = SignalTypes.Item }, Count = count };
+        }
+
         private class Addresses
         {
             public Dictionary<string, int> PlaylistAddresses { get; } = new Dictionary<string, int>();
             public Dictionary<string, int> SongAddresses { get; } = new Dictionary<string, int>();
         }
+
+        private record NoteTuple(int Note0, int Note1, int Note2, int Note3, int Note4, int Note5, int Note6, int Note7, int Note8, int Note9) : IEnumerable<int>
+        {
+            public IEnumerator<int> GetEnumerator()
+            {
+                if (Note0 != 0) yield return Note0;
+                if (Note1 != 0) yield return Note1;
+                if (Note2 != 0) yield return Note2;
+                if (Note3 != 0) yield return Note3;
+                if (Note4 != 0) yield return Note4;
+                if (Note5 != 0) yield return Note5;
+                if (Note6 != 0) yield return Note6;
+                if (Note7 != 0) yield return Note7;
+                if (Note8 != 0) yield return Note8;
+                if (Note9 != 0) yield return Note9;
+            }
+
+            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
+        }
+
+        private record NoteTupleWithHistogram(NoteTuple NoteTuple, int Histogram);
     }
 
     public class MusicBoxConfiguration
