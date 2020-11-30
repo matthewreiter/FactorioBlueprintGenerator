@@ -105,6 +105,11 @@ namespace BlueprintCommon.Models
         /// </summary>
         public string Name { get; set; }
 
+        public static SignalID Create(string name)
+        {
+            return new SignalID { Type = name.StartsWith("signal-") ? SignalTypes.Virtual : SignalTypes.Item, Name = name };
+        }
+
         public static SignalID CreateVirtual(string name)
         {
             return new SignalID { Type = SignalTypes.Virtual, Name = name };

@@ -49,11 +49,7 @@ namespace MemoryInitializer
 
                             if (pixel.ToArgb() == Color.Black.ToArgb())
                             {
-                                glyphSignals.Add(new SignalID
-                                {
-                                    Name = signals[y * width + x],
-                                    Type = SignalTypes.Virtual
-                                });
+                                glyphSignals.Add(SignalID.Create(signals[y * width + x]));
                             }
                         }
                     }
