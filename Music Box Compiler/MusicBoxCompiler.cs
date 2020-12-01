@@ -34,7 +34,7 @@ namespace MusicBoxCompiler
             var outputConstantsFile = configuration.OutputConstants;
             var outputCommandsFile = configuration.OutputCommands;
             var outputMidiEventsFile = configuration.OutputMidiEvents;
-            var baseAddress = configuration.BaseAddress ?? 0;
+            var baseAddress = configuration.BaseAddress ?? 1;
             var snapToGrid = configuration.SnapToGrid;
             var x = configuration.X;
             var y = configuration.Y;
@@ -43,7 +43,7 @@ namespace MusicBoxCompiler
             var volumeLevels = configuration.VolumeLevels ?? 10;
             var minVolume = configuration.MinVolume ?? 0.1;
             var maxVolume = configuration.MaxVolume ?? 1;
-            var baseConstantAddress = configuration.BaseConstantAddress;
+            var baseMetadataAddress = configuration.BaseMetadataAddress ?? 1;
             var constantsNamespace = configuration.ConstantsNamespace ?? "Music";
 
             var config = LoadConfig(configFile);
@@ -63,7 +63,7 @@ namespace MusicBoxCompiler
                                     ".xlsx" => SpreadsheetReader.ReadSongFromSpreadsheet(songConfig.Source, songConfig.SpreadsheetTab),
                                     ".mid" => MidiReader.ReadSong(songConfig.Source, outputMidiEventsFile != null, songConfig.InstrumentOffsets, ProcessMasterVolume(songConfig.Volume), ProcessInstrumentVolumes(songConfig.InstrumentVolumes)),
                                     _ => throw new Exception($"Unsupported source file extension for {songConfig.Source}")
-                                } with { Name = songConfig.Name, Loop = songConfig.Loop, AddressIndex = songConfig.AddressIndex }
+                                } with { Name = songConfig.Name, DisplayName = songConfig.DisplayName, Loop = songConfig.Loop, AddressIndex = songConfig.AddressIndex }
                             )
                             .ToList(),
                         Loop = playlistConfig.Loop
@@ -71,7 +71,7 @@ namespace MusicBoxCompiler
                 )
                 .ToList();
 
-            var blueprint = CreateBlueprintFromPlaylists(playlists, baseAddress, snapToGrid, x, y, width, height, volumeLevels, minVolume, maxVolume, baseConstantAddress, out var addresses);
+            var blueprint = CreateBlueprintFromPlaylists(playlists, baseAddress, snapToGrid, x, y, width, height, volumeLevels, minVolume, maxVolume, baseMetadataAddress, out var addresses);
             BlueprintUtil.PopulateIndices(blueprint);
 
             var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
@@ -101,7 +101,7 @@ namespace MusicBoxCompiler
         private static Dictionary<Instrument, double> ProcessInstrumentVolumes(Dictionary<Instrument, double> instrumentVolumes) =>
             instrumentVolumes?.Select(entry => (entry.Key, Value: entry.Value / 100))?.ToDictionary(entry => entry.Key, entry => entry.Value);
 
-        private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, bool? snapToGrid, int? x, int? y, int width, int height, int volumeLevels, double minVolume, double maxVolume, int? baseConstantAddress, out Addresses addresses)
+        private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, bool? snapToGrid, int? x, int? y, int width, int height, int volumeLevels, double minVolume, double maxVolume, int baseMetadataAddress, out Addresses addresses)
         {
             const int noteGroupAddressBits = 16;
             const int noteGroupTimeOffsetBits = 12;
@@ -159,13 +159,28 @@ namespace MusicBoxCompiler
                 );
             }
 
+            var allSongs = playlists.SelectMany(playlist => playlist.Songs).ToList();
+
+            var currentMetadataAddressIndex = 0;
+            var reservedMetadataAddressIndices = allSongs.Where(song => song.AddressIndex != null).Select(song => song.AddressIndex.Value).ToHashSet();
+
+            int AllocateNextMetadataAddress()
+            {
+                while (reservedMetadataAddressIndices.Contains(currentMetadataAddressIndex))
+                {
+                    currentMetadataAddressIndex++;
+                }
+
+                return currentMetadataAddressIndex++;
+            }
+
             AddJump(initialNoteAddress);
             var currentNoteGroupAddress = currentAddress;
             currentAddress = initialNoteAddress;
 
             // Add note groups
-            var noteTuplesWithHistograms = playlists
-                .SelectMany(playlist => playlist.Songs.SelectMany(song => song.NoteGroups))
+            var noteTuplesWithHistograms = allSongs
+                .SelectMany(song => song.NoteGroups)
                 .OrderByDescending(noteGroup => noteGroup.Notes.Count)
                 .Select(noteGroup => new NoteTupleWithHistogram(CreateNoteTuple(noteGroup), GetHistogram(noteGroup.Notes)))
                 .ToList();
@@ -235,6 +250,7 @@ namespace MusicBoxCompiler
 
                 foreach (var song in playlist.Songs)
                 {
+                    var metadataAddress = baseMetadataAddress + (song.AddressIndex ?? AllocateNextMetadataAddress());
                     var songAddress = currentAddress;
                     var currentFilters = new List<Filter>();
                     var currentBeatsPerMinute = 60;
@@ -243,13 +259,6 @@ namespace MusicBoxCompiler
                     var timeDeficit = 0;
 
                     trackNumber++;
-
-                    if (song.Name != null && song.AddressIndex != null && baseConstantAddress != null)
-                    {
-                        var constantAddress = baseConstantAddress.Value + song.AddressIndex.Value;
-                        addresses.SongAddresses[song.Name] = constantAddress;
-                        constantCells.Add(new MemoryCell { Address = constantAddress, Filters = new List<Filter> { CreateFilter('0', songAddress) } });
-                    }
 
                     // Add the notes for the song
                     foreach (var noteGroup in song.NoteGroups)
@@ -263,7 +272,7 @@ namespace MusicBoxCompiler
 
                         if (currentFilters.Count == 0)
                         {
-                            currentFilters.Add(CreateFilter('Y', trackNumber + (currentTimeOffset + 1) * 256));
+                            currentFilters.Add(CreateFilter('Y', metadataAddress + (currentTimeOffset + 1) * 256));
                         }
 
                         var length = (int)(14400 / currentBeatsPerMinute / noteGroup.Length) - timeDeficit;
@@ -312,11 +321,52 @@ namespace MusicBoxCompiler
                         AddMemoryCell(currentFilters, cellLength);
                     }
 
+                    var songLength = currentAddress - songAddress;
+
                     // Create a jump back to the beginning of the song
                     AddJump(songAddress, isEnabled: song.Loop);
 
                     // Add a pause between songs
                     currentAddress += 120;
+
+                    // Add song metadata
+                    if (song.Name != null)
+                    {
+                        addresses.SongMetadataAddresses[song.Name] = metadataAddress;
+                    }
+
+                    var metadataFilters = new List<Filter>
+                    {
+                        CreateFilter('0', songAddress),
+                        CreateFilter('1', trackNumber),
+                        CreateFilter('2', songLength)
+                    };
+
+                    var displayName = song.DisplayName ?? song.Name;
+                    if (displayName != null)
+                    {
+                        const int maxCharactersToDisplay = 20;
+                        var charactersToDisplay = Math.Min(displayName.Length, maxCharactersToDisplay);
+                        var encodedBlock = 0;
+                        var blockIndex = 0;
+
+                        for (var index = 0; index < charactersToDisplay; index++)
+                        {
+                            var currentCharacter = (byte)displayName[index];
+                            var positionInBlock = index % 4;
+
+                            encodedBlock |= currentCharacter << (positionInBlock * 8);
+
+                            if (positionInBlock == 3 || index == charactersToDisplay - 1)
+                            {
+                                metadataFilters.Add(CreateFilter((char)('A' + blockIndex), encodedBlock));
+                                encodedBlock = 0;
+                                blockIndex++;
+                            }
+                        }
+                    }
+
+                    constantCells.Add(new MemoryCell { Address = metadataAddress, Filters = metadataFilters });
                 }
 
                 // Create a jump back to the beginning of the playlist
@@ -370,9 +420,9 @@ namespace {constantsNamespace}
         {string.Join($"{Environment.NewLine}        ", addresses.PlaylistAddresses.Select(entry => $"public const int {entry.Key} = {entry.Value};"))}
     }}
 
-    public static class SongAddresses
+    public static class SongMetadataAddresses
     {{
-        {string.Join($"{Environment.NewLine}        ", addresses.SongAddresses.Select(entry => $"public static int {entry.Key} => Memory.Read({entry.Value});"))}
+        {string.Join($"{Environment.NewLine}        ", addresses.SongMetadataAddresses.Select(entry => $"public const int {entry.Key} = {entry.Value};"))}
     }}
 }}
 ");
@@ -488,7 +538,7 @@ namespace {constantsNamespace}
         private class Addresses
         {
             public Dictionary<string, int> PlaylistAddresses { get; } = new Dictionary<string, int>();
-            public Dictionary<string, int> SongAddresses { get; } = new Dictionary<string, int>();
+            public Dictionary<string, int> SongMetadataAddresses { get; } = new Dictionary<string, int>();
         }
 
         private record NoteTuple(int Note0, int Note1, int Note2, int Note3, int Note4, int Note5, int Note6, int Note7, int Note8, int Note9) : IEnumerable<int>
@@ -533,7 +583,7 @@ namespace {constantsNamespace}
         public int? VolumeLevels { get; set; }
         public double? MinVolume { get; set; }
         public double? MaxVolume { get; set; }
-        public int? BaseConstantAddress { get; set; }
+        public int? BaseMetadataAddress { get; set; }
         public string ConstantsNamespace { get; set; }
     }
 }

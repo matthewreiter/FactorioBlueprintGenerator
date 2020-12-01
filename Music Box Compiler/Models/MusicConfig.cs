@@ -17,6 +17,7 @@ namespace MusicBoxCompiler.Models
     public class SongConfig
     {
         public string Name { get; set; }
+        public string DisplayName { get; set; }
         /// <summary>
         /// Indicates where the constant field holding the song's address should be located in memory relative to the base constant address.
         /// </summary>
