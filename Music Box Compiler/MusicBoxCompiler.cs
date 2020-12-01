@@ -345,7 +345,7 @@ namespace MusicBoxCompiler
                     var displayName = song.DisplayName ?? song.Name;
                     if (displayName != null)
                     {
-                        const int maxCharactersToDisplay = 20;
+                        const int maxCharactersToDisplay = 24;
                         var charactersToDisplay = Math.Min(displayName.Length, maxCharactersToDisplay);
                         var encodedBlock = 0;
                         var blockIndex = 0;
