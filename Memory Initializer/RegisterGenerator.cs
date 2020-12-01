@@ -61,7 +61,7 @@ namespace MemoryInitializer
                         X = memoryCellX,
                         Y = memoryCellY
                     },
-                    Direction = 2,
+                    Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
                     {
                         Decider_conditions = new DeciderConditions
@@ -140,7 +140,7 @@ namespace MemoryInitializer
                         X = memoryCellX,
                         Y = memoryCellY - 1
                     },
-                    Direction = 2,
+                    Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
                     {
                         Decider_conditions = new DeciderConditions
@@ -198,7 +198,7 @@ namespace MemoryInitializer
                         X = memoryCellX - 2,
                         Y = memoryCellY - 1
                     },
-                    Direction = 2,
+                    Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
                     {
                         Decider_conditions = new DeciderConditions
@@ -242,7 +242,7 @@ namespace MemoryInitializer
                         X = memoryCellX + 2,
                         Y = memoryCellY - 1
                     },
-                    Direction = 2,
+                    Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
                     {
                         Decider_conditions = new DeciderConditions
@@ -312,7 +312,7 @@ namespace MemoryInitializer
                         X = memoryCellX + 2,
                         Y = memoryCellY
                     },
-                    Direction = 2,
+                    Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
                     {
                         Decider_conditions = new DeciderConditions
@@ -370,7 +370,7 @@ namespace MemoryInitializer
                         X = memoryCellX + 4,
                         Y = memoryCellY - 1
                     },
-                    Direction = 2,
+                    Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
                     {
                         Decider_conditions = new DeciderConditions

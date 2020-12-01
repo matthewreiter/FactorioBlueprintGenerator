@@ -75,7 +75,7 @@ namespace MemoryInitializer
                             X = cellX,
                             Y = cellY
                         },
-                        Direction = 4,
+                        Direction = Direction.Down,
                         Control_behavior = new ControlBehavior
                         {
                             Decider_conditions = new DeciderConditions

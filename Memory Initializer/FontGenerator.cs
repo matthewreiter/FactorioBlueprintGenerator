@@ -67,7 +67,7 @@ namespace MemoryInitializer
                                     X = currentCharacterNumber,
                                     Y = index
                                 },
-                                Direction = 4,
+                                Direction = Direction.Down,
                                 Control_behavior = new ControlBehavior
                                 {
                                     Filters = glyphSignals.Skip(index * 18).Take(18).Select(signal => new Filter { Signal = signal, Count = 1 }).ToList()

@@ -82,7 +82,7 @@ namespace MemoryInitializer
                             X = memoryCellX,
                             Y = memoryCellY
                         },
-                        Direction = 4,
+                        Direction = Direction.Down,
                         Control_behavior = new ControlBehavior
                         {
                             Filters = memoryCell.Filters,
@@ -112,7 +112,7 @@ namespace MemoryInitializer
                             X = memoryCellX,
                             Y = memoryCellY + 1.5
                         },
-                        Direction = 4,
+                        Direction = Direction.Down,
                         Control_behavior = new ControlBehavior
                         {
                             Decider_conditions = new DeciderConditions

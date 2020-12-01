@@ -78,7 +78,7 @@ namespace MemoryInitializer
                             X = memoryCellX,
                             Y = memoryCellY
                         },
-                        Direction = 4,
+                        Direction = Direction.Down,
                         Control_behavior = new ControlBehavior
                         {
                             Decider_conditions = new DeciderConditions
@@ -152,7 +152,7 @@ namespace MemoryInitializer
                             X = memoryCellX,
                             Y = memoryCellY - 2
                         },
-                        Direction = 4,
+                        Direction = Direction.Down,
                         Control_behavior = new ControlBehavior
                         {
                             Decider_conditions = new DeciderConditions
@@ -216,7 +216,7 @@ namespace MemoryInitializer
                             X = memoryCellX,
                             Y = memoryCellY - 4
                         },
-                        Direction = 4,
+                        Direction = Direction.Down,
                         Control_behavior = new ControlBehavior
                         {
                             Arithmetic_conditions = new ArithmeticConditions
@@ -274,7 +274,7 @@ namespace MemoryInitializer
                             X = memoryCellX,
                             Y = memoryCellY + 2
                         },
-                        Direction = 4,
+                        Direction = Direction.Down,
                         Control_behavior = new ControlBehavior
                         {
                             Decider_conditions = new DeciderConditions
@@ -333,7 +333,7 @@ namespace MemoryInitializer
                             X = memoryCellX,
                             Y = memoryCellY + 4
                         },
-                        Direction = 4,
+                        Direction = Direction.Down,
                         Control_behavior = new ControlBehavior
                         {
                             Decider_conditions = new DeciderConditions

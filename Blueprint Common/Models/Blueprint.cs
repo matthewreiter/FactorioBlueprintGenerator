@@ -141,7 +141,7 @@ namespace BlueprintCommon.Models
         /// <summary>
         /// Direction of the entity.
         /// </summary>
-        public uint? Direction { get; set; }
+        public Direction? Direction { get; set; }
 
         /// <summary>
         /// Orientation of cargo wagon or locomotive, value 0 to 1.
@@ -267,6 +267,14 @@ namespace BlueprintCommon.Models
         /// The name of the train station, optional.
         /// </summary>
         public string Station { get; set; }
+    }
+
+    public enum Direction : uint
+    {
+        Up = 0,
+        Right = 2,
+        Down = 4,
+        Left = 6
     }
 
     public class Inventory
