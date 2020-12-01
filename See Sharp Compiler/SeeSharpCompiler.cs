@@ -42,7 +42,7 @@ namespace SeeSharpCompiler
 
             if (compiledProgram != null)
             {
-                var blueprint = BlueprintGenerator.CreateBlueprintFromCompiledProgram(compiledProgram, width, height, instructionsWriter);
+                var blueprint = BlueprintGenerator.CreateBlueprintFromCompiledProgram(compiledProgram, null, null, null, width, height, instructionsWriter);
                 BlueprintUtil.PopulateIndices(blueprint);
 
                 var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
