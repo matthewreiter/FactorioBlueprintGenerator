@@ -1,11 +1,13 @@
 ﻿using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
 using Microsoft.Extensions.Configuration;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using Icon = BlueprintCommon.Models.Icon;
+using static MemoryInitializer.MemoryUtil;
 using Color = System.Drawing.Color;
+using Icon = BlueprintCommon.Models.Icon;
 
 namespace MemoryInitializer
 {
@@ -23,17 +25,23 @@ namespace MemoryInitializer
             var height = configuration.Height;
             var horizontalKerning = configuration.HorizontalKerning ?? 1;
             var verticalKerning = configuration.VerticalKerning ?? 2;
+            var inputSignal = configuration.InputSignal ?? VirtualSignalNames.Dot;
             var signals = configuration.Signals.Contains(',') ? configuration.Signals.Split(',').ToList() : configuration.Signals.Select(signal => VirtualSignalNames.LetterOrDigit(signal)).ToList();
 
             var fullWidth = width + horizontalKerning;
             var fullHeight = height + verticalKerning;
+
+            const int combinatorsPerRow = 5;
 
             using var fontImage = new Bitmap(fontImageFile);
             var horizontalGlyphs = fontImage.Width / fullWidth;
             var verticalGlyphs = fontImage.Height / fullHeight;
 
             var entities = new List<Entity>();
-            var currentCharacterNumber = 1;
+            var currentCharacterNumber = 0;
+            var previousRowEntityNumber = 0;
+            var previousColumnEntityNumber = 0;
+            var combinatorX = 0;
 
             for (int row = 0; row < verticalGlyphs; row++)
             {
@@ -56,6 +64,74 @@ namespace MemoryInitializer
 
                     if (glyphSignals.Count > 0)
                     {
+                        var combinatorY = currentCharacterNumber / combinatorsPerRow;
+                        var currentCharacterEntityNumber = entities.Count + 1;
+                        var adjacentCharacterEntityNumber = currentCharacterNumber % combinatorsPerRow == 0 ? previousRowEntityNumber : previousColumnEntityNumber;
+
+                        entities.Add(new Entity
+                        {
+                            Entity_number = entities.Count + 1,
+                            Name = ItemNames.DeciderCombinator,
+                            Position = new Position
+                            {
+                                X = (currentCharacterNumber % combinatorsPerRow - combinatorsPerRow) * 2 + 0.5,
+                                Y = combinatorY
+                            },
+                            Direction = Direction.Left,
+                            Control_behavior = new ControlBehavior
+                            {
+                                Decider_conditions = new DeciderConditions
+                                {
+                                    First_signal = SignalID.Create(inputSignal),
+                                    Constant = currentCharacterNumber switch
+                                    {
+                                        < 10 => '0' + currentCharacterNumber,
+                                        >= 10 and < 36 => 'A' + currentCharacterNumber - 10,
+                                        >= 36 and < 62 => 'a' + currentCharacterNumber - 36,
+                                        >= 62 and < 77 => '!' + currentCharacterNumber - 62,
+                                        >= 77 and < 84 => ':' + currentCharacterNumber - 77,
+                                        >= 84 and < 90 => '[' + currentCharacterNumber - 84,
+                                        >= 90 and < 94 => '{' + currentCharacterNumber - 90,
+                                        _ => throw new Exception($"Character {currentCharacterNumber} is out of range")
+                                    },
+                                    Comparator = Comparators.IsEqual,
+                                    Output_signal = SignalID.Create(VirtualSignalNames.Everything),
+                                    Copy_count_from_input = true
+                                }
+                            },
+                            Connections = CreateConnections(new ConnectionPoint
+                            {
+                                Green = new List<ConnectionData>
+                                {
+                                    // Connect to constant combinators holding glyphs
+                                    new ConnectionData
+                                    {
+                                        Entity_id = entities.Count + 2
+                                    }
+                                },
+                                Red = currentCharacterNumber > 0 ? new List<ConnectionData>
+                                {
+                                    // Connect inputs together
+                                    new ConnectionData
+                                    {
+                                        Entity_id = adjacentCharacterEntityNumber,
+                                        Circuit_id = CircuitIds.Input
+                                    }
+                                } : null
+                            }, new ConnectionPoint
+                            {
+                                Green = currentCharacterNumber > 0 ? new List<ConnectionData>
+                                {
+                                    // Connect outputs together
+                                    new ConnectionData
+                                    {
+                                        Entity_id = adjacentCharacterEntityNumber,
+                                        Circuit_id = CircuitIds.Output
+                                    }
+                                } : null
+                            })
+                        });
+
                         for (int index = 0; index < (glyphSignals.Count + 17) / 18; index++)
                         {
                             entities.Add(new Entity
@@ -64,18 +140,39 @@ namespace MemoryInitializer
                                 Name = ItemNames.ConstantCombinator,
                                 Position = new Position
                                 {
-                                    X = currentCharacterNumber,
-                                    Y = index
+                                    X = combinatorX++,
+                                    Y = combinatorY
                                 },
                                 Direction = Direction.Down,
                                 Control_behavior = new ControlBehavior
                                 {
                                     Filters = glyphSignals.Skip(index * 18).Take(18).Select(signal => new Filter { Signal = signal, Count = 1 }).ToList()
-                                }
+                                },
+                                Connections = CreateConnections(new ConnectionPoint
+                                {
+                                    Green = new List<ConnectionData>
+                                    {
+                                        new ConnectionData
+                                        {
+                                            Entity_id = entities.Count
+                                        }
+                                    }
+                                })
                             });
                         }
 
                         currentCharacterNumber++;
+
+                        if (currentCharacterNumber % combinatorsPerRow == 0)
+                        {
+                            combinatorX = 0;
+                        }
+                        else if (currentCharacterNumber % combinatorsPerRow == 1)
+                        {
+                            previousRowEntityNumber = currentCharacterEntityNumber;
+                        }
+
+                        previousColumnEntityNumber = currentCharacterEntityNumber;
                     }
                 }
             }
@@ -132,6 +229,7 @@ namespace MemoryInitializer
         public int Height { get; init; }
         public int? HorizontalKerning { get; init; }
         public int? VerticalKerning { get; init; }
+        public string InputSignal { get; init; }
         public string Signals { get; init; }
     }
 }
