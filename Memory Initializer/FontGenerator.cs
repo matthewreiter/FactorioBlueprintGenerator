@@ -23,22 +23,20 @@ namespace MemoryInitializer
             var fontImageFile = configuration.FontImage;
             var width = configuration.Width;
             var height = configuration.Height;
-            var horizontalKerning = configuration.HorizontalKerning ?? 1;
-            var verticalKerning = configuration.VerticalKerning ?? 2;
+            var combinatorsPerRow = configuration.CombinatorsPerRow ?? 5;
             var inputSignal = configuration.InputSignal ?? VirtualSignalNames.Dot;
             var signals = configuration.Signals.Contains(',') ? configuration.Signals.Split(',').ToList() : configuration.Signals.Select(signal => VirtualSignalNames.LetterOrDigit(signal)).ToList();
 
-            var fullWidth = width + horizontalKerning;
-            var fullHeight = height + verticalKerning;
-
-            const int combinatorsPerRow = 5;
+            var fullWidth = width + 1;
+            var fullHeight = height + 2;
 
             using var fontImage = new Bitmap(fontImageFile);
-            var horizontalGlyphs = fontImage.Width / fullWidth;
+            var horizontalGlyphs = (fontImage.Width - 1) / fullWidth;
             var verticalGlyphs = fontImage.Height / fullHeight;
 
             var entities = new List<Entity>();
             var currentCharacterNumber = 0;
+            var currentCharacterCode = 0;
             var previousRowEntityNumber = 0;
             var previousColumnEntityNumber = 0;
             var combinatorX = 0;
@@ -49,11 +47,21 @@ namespace MemoryInitializer
                 {
                     var glyphSignals = new List<SignalID>();
 
+                    var baseCharacterIndicator = fontImage.GetPixel(column * fullWidth, row * fullHeight);
+                    if (baseCharacterIndicator.R == 0)
+                    {
+                        currentCharacterCode = baseCharacterIndicator.G;
+                    }
+                    else
+                    {
+                        currentCharacterCode++;
+                    }
+
                     for (int y = 0; y < height; y++)
                     {
                         for (int x = 0; x < width; x++)
                         {
-                            var pixel = fontImage.GetPixel(column * fullWidth + x, row * fullHeight + y);
+                            var pixel = fontImage.GetPixel(column * fullWidth + x + 1, row * fullHeight + y + 1);
 
                             if (pixel.ToArgb() == Color.Black.ToArgb())
                             {
@@ -83,17 +91,7 @@ namespace MemoryInitializer
                                 Decider_conditions = new DeciderConditions
                                 {
                                     First_signal = SignalID.Create(inputSignal),
-                                    Constant = currentCharacterNumber switch
-                                    {
-                                        < 10 => '0' + currentCharacterNumber,
-                                        >= 10 and < 36 => 'A' + currentCharacterNumber - 10,
-                                        >= 36 and < 62 => 'a' + currentCharacterNumber - 36,
-                                        >= 62 and < 77 => '!' + currentCharacterNumber - 62,
-                                        >= 77 and < 84 => ':' + currentCharacterNumber - 77,
-                                        >= 84 and < 90 => '[' + currentCharacterNumber - 84,
-                                        >= 90 and < 94 => '{' + currentCharacterNumber - 90,
-                                        _ => throw new Exception($"Character {currentCharacterNumber} is out of range")
-                                    },
+                                    Constant = currentCharacterCode,
                                     Comparator = Comparators.IsEqual,
                                     Output_signal = SignalID.Create(VirtualSignalNames.Everything),
                                     Copy_count_from_input = true
@@ -227,8 +225,7 @@ namespace MemoryInitializer
         public string FontImage { get; init; }
         public int Width { get; init; }
         public int Height { get; init; }
-        public int? HorizontalKerning { get; init; }
-        public int? VerticalKerning { get; init; }
+        public int? CombinatorsPerRow { get; init; }
         public string InputSignal { get; init; }
         public string Signals { get; init; }
     }
