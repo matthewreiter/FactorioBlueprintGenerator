@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net5.0</TargetFramework>
+    <RootNamespace>MusicManager</RootNamespace>
+    <AssemblyName>MusicManager</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Music Box Compiler\Test\MusicConstants.cs" Link="MusicConstants.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\See Sharp Runtime\See Sharp Runtime.csproj" />
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="&quot;$(SolutionDir)IL Assembler\bin\Debug\net5.0\Assembler.exe&quot; --InputProgram=&quot;$(TargetPath)&quot; --OutputBlueprint=&quot;$(ProjectDir)Output/rom.txt&quot; --OutputJson=&quot;$(ProjectDir)Output/rom.json&quot; --OutputInstructions=&quot;$(ProjectDir)Output/instructions.txt&quot; --Width=128 --Height=64 --SnapToGrid=true --X=-15 --Y=47" />
+  </Target>
+
+</Project>
