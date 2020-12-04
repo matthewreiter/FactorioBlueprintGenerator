@@ -11,6 +11,7 @@ namespace SeeSharp.Runtime
 
         public enum SongMetadataField
         {
+            MetadataAddress = Signal.Nine,
             SongAddress = Signal.Zero,
             TrackNumber = Signal.One,
             SongLength = Signal.Two,
@@ -31,22 +32,15 @@ namespace SeeSharp.Runtime
         }
 
         [Inline]
-        public static void SetCurrentSongMetadata(int address)
+        public static void SelectSongMetadata(int address)
         {
             Memory.Write(ConstantAddress, address);
         }
 
         [Inline]
-        public static int GetSongMetadata(SongMetadataField field)
+        public static int GetSelectedSongMetadata(SongMetadataField field)
         {
             return Memory.ReadSignal(ConstantAddress, (Signal)field);
-        }
-
-        [Inline]
-        public static int GetSongAddress(int songConstantAddress)
-        {
-            SetCurrentSongMetadata(songConstantAddress);
-            return GetSongMetadata(SongMetadataField.SongAddress);
         }
 
         [Inline]
