@@ -57,8 +57,8 @@ namespace MemoryInitializer
                 for (int column = 0; column < width; column++)
                 {
                     var memoryCell = row < programRows
-                        ? program?.ElementAtOrDefault(row * width + column) ?? new MemoryCell { Address = 0, IsEnabled = false }
-                        : data?.ElementAtOrDefault((row - programRows) * width + column) ?? new MemoryCell { Address = 0, IsEnabled = false };
+                        ? program?.ElementAtOrDefault(row * width + column) ?? new MemoryCell { Address = -1, IsEnabled = false }
+                        : data?.ElementAtOrDefault((row - programRows) * width + column) ?? new MemoryCell { Address = -1, IsEnabled = false };
                     var memoryCellEntityNumber = (row * width + column) * entitiesPerCell + 1;
                     var memoryCellX = column + (column / 16 + 1) * 2 + xOffset;
                     var memoryCellY = gridHeight - (row + 1) * cellHeight - row / blockHeightInCells * blockGapHeight + yOffset;
