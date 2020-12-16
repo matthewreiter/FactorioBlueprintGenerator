@@ -104,7 +104,7 @@ namespace MusicBoxCompiler
         private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, bool? snapToGrid, int? x, int? y, int width, int height, int volumeLevels, double minVolume, double maxVolume, int baseMetadataAddress, out Addresses addresses)
         {
             const int noteGroupAddressBits = 16;
-            const int noteGroupTimeOffsetBits = 12;
+            const int noteGroupTimeOffsetBits = 11;
 
             var memoryCells = new List<MemoryCell>();
             var noteGroupCells = new List<MemoryCell>();
@@ -142,7 +142,7 @@ namespace MusicBoxCompiler
             NoteTuple CreateNoteTuple(NoteGroup noteGroup)
             {
                 var notes = noteGroup.Notes
-                    .OrderBy(note => (int)note.Instrument * 100 + note.Number)
+                    .OrderBy(note => note.Instrument).ThenBy(note => note.Number)
                     .Select(note => note.Number + ((int)note.Instrument + EncodeVolume(note.Volume) * InstrumentCount) * 256);
 
                 return new(
@@ -179,34 +179,34 @@ namespace MusicBoxCompiler
             currentAddress = initialNoteAddress;
 
             // Add note groups
-            var noteTuplesWithHistograms = allSongs
+            var noteTuples = allSongs
                 .SelectMany(song => song.NoteGroups)
                 .OrderByDescending(noteGroup => noteGroup.Notes.Count)
-                .Select(noteGroup => new NoteTupleWithHistogram(CreateNoteTuple(noteGroup), GetHistogram(noteGroup.Notes)))
+                .Select(noteGroup => CreateNoteTuple(noteGroup))
                 .ToList();
 
-            var noteGroupCellDataByFreeSpace = Enumerable.Range(0, 18).Select(index => new Queue<List<NoteTupleWithHistogram>>()).ToList();
+            var noteGroupCellDataByFreeSpace = Enumerable.Range(0, 18).Select(index => new Queue<List<NoteTuple>>()).ToList();
 
-            foreach (var noteTupleWithHistogram in noteTuplesWithHistograms)
+            foreach (var noteTuple in noteTuples)
             {
-                if (!allNoteTuples.Add(noteTupleWithHistogram.NoteTuple))
+                if (!allNoteTuples.Add(noteTuple))
                 {
                     continue;
                 }
 
-                var spaceRequired = noteTupleWithHistogram.NoteTuple.Count() + 1;
+                var spaceRequired = noteTuple.Count();
 
                 for (int freeSpace = spaceRequired; ; freeSpace++)
                 {
-                    List<NoteTupleWithHistogram> noteGroupCellData = null;
+                    List<NoteTuple> noteGroupCellData = null;
                     if (freeSpace >= noteGroupCellDataByFreeSpace.Count || noteGroupCellDataByFreeSpace[freeSpace].TryDequeue(out noteGroupCellData))
                     {
                         if (noteGroupCellData == null)
                         {
-                            noteGroupCellData = new List<NoteTupleWithHistogram>();
+                            noteGroupCellData = new List<NoteTuple>();
                         }
 
-                        noteGroupCellData.Add(noteTupleWithHistogram);
+                        noteGroupCellData.Add(noteTuple);
 
                         var newFreeSpace = noteGroupCellData.Count < DecoderConstants.AllNoteGroupSignals.Count ? freeSpace - spaceRequired : 0;
                         noteGroupCellDataByFreeSpace[newFreeSpace].Enqueue(noteGroupCellData);
@@ -220,14 +220,10 @@ namespace MusicBoxCompiler
             {
                 var noteGroupAddress = currentNoteGroupAddress++;
 
-                var noteGroupCellIntermediateData = noteGroupCellData.Select((noteTupleWithHistogram, index) =>
+                var noteGroupCellIntermediateData = noteGroupCellData.Select((noteTuple, index) =>
                 {
-                    var noteTuple = noteTupleWithHistogram.NoteTuple;
                     var noteGroupSignals = DecoderConstants.AllNoteGroupSignals[index];
-
-                    var noteGroupFilters = noteTuple.Select((note, index) => CreateItemFilter(noteGroupSignals.NoteSignals[index], note))
-                        .Append(CreateItemFilter(noteGroupSignals.HistogramSignal, noteTupleWithHistogram.Histogram))
-                        .ToList();
+                    var noteGroupFilters = noteTuple.Select((note, index) => CreateItemFilter(noteGroupSignals.NoteSignals[index], note)).ToList();
 
                     return (Tuple: noteTuple, Filters: noteGroupFilters, SubAddress: index);
                 }).ToList();
@@ -292,7 +288,7 @@ namespace MusicBoxCompiler
                         }
 
                         var noteGroupTimeOffset = Math.Min(currentTimeOffset - cellStartTime - currentFilters.Count + 2, (1 << noteGroupTimeOffsetBits) - 1);
-                        currentFilters.Add(CreateFilter((char)('A' + currentFilters.Count - 1), noteGroupAddress + (noteGroupTimeOffset << noteGroupAddressBits) + (noteGroupSubAddress << noteGroupAddressBits + noteGroupTimeOffsetBits)));
+                        currentFilters.Add(CreateFilter((char)('A' + currentFilters.Count - 1), noteGroupAddress + (noteGroupTimeOffset << noteGroupAddressBits) + (noteGroupSubAddress << (noteGroupAddressBits + noteGroupTimeOffsetBits))));
 
                         currentTimeOffset += length;
 
@@ -394,14 +390,6 @@ namespace MusicBoxCompiler
                 ProgramName = "Songs",
                 IconItemNames = new List<string> { ItemNames.ElectronicCircuit, ItemNames.ProgrammableSpeaker }
             }, memoryCells, constantCells);
-        }
-
-        private static int GetHistogram(List<Note> notes)
-        {
-            return notes
-                .GroupBy(note => note.Pitch / 5)
-                .Select(group => Math.Min((int)Math.Ceiling(group.Sum(note => note.Volume)), 3) << (group.Key * 2))
-                .Sum();
         }
 
         private static void WriteOutConstants(string outputConstantsFile, Addresses addresses, string constantsNamespace)
@@ -562,8 +550,6 @@ namespace {constantsNamespace}
                 return GetEnumerator();
             }
         }
-
-        private record NoteTupleWithHistogram(NoteTuple NoteTuple, int Histogram);
     }
 
     public class MusicBoxConfiguration

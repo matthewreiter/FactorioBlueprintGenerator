@@ -19,7 +19,7 @@ namespace MusicBoxCompiler
                 ItemNames.IronPlate,
                 ItemNames.CopperPlate,
                 ItemNames.SolidFuel
-            }, ItemNames.Boiler),
+            }),
             new(new List<string>
             { // Group 2: 10 signals
                 ItemNames.SteelPlate,
@@ -32,7 +32,7 @@ namespace MusicBoxCompiler
                 ItemNames.LightOilBarrel,
                 ItemNames.LubricantBarrel,
                 ItemNames.PetroleumGasBarrel
-            }, ItemNames.SteamEngine),
+            }),
             new(new List<string>
             { // Group 3: 10 signals
                 ItemNames.SulfuricAcidBarrel,
@@ -45,7 +45,7 @@ namespace MusicBoxCompiler
                 ItemNames.AdvancedCircuit,
                 ItemNames.ProcessingUnit,
                 ItemNames.EngineUnit
-            }, ItemNames.SolarPanel),
+            }),
             new(new List<string>
             { // Group 4: 9 signals
                 ItemNames.ElectricEngineUnit,
@@ -57,7 +57,7 @@ namespace MusicBoxCompiler
                 ItemNames.NuclearFuel,
                 ItemNames.Uranium235,
                 ItemNames.Uranium238
-            }, ItemNames.Accumulator),
+            }),
             new(new List<string>
             { // Group 5: 7 signals
                 ItemNames.UraniumFuelCell,
@@ -67,7 +67,7 @@ namespace MusicBoxCompiler
                 ItemNames.MilitarySciencePack,
                 ItemNames.ChemicalSciencePack,
                 ItemNames.ProductionSciencePack
-            }, ItemNames.NuclearReactor),
+            }),
             new(new List<string>
             { // Group 6: 6 signals
                 ItemNames.UtilitySciencePack,
@@ -76,7 +76,7 @@ namespace MusicBoxCompiler
                 ItemNames.IronChest,
                 ItemNames.SteelChest,
                 ItemNames.StorageTank
-            }, ItemNames.HeatPipe),
+            }),
             new(new List<string>
             { // Group 7: 5 signals
                 ItemNames.TransportBelt,
@@ -84,61 +84,71 @@ namespace MusicBoxCompiler
                 ItemNames.ExpressTransportBelt,
                 ItemNames.UndergroundBelt,
                 ItemNames.FastUndergroundBelt
-            }, ItemNames.HeatExchanger),
+            }),
             new(new List<string>
             { // Group 8: 4 signals
                 ItemNames.ExpressUndergroundBelt,
                 ItemNames.Splitter,
                 ItemNames.FastSplitter,
                 ItemNames.ExpressSplitter
-            }, ItemNames.SteamTurbine),
+            }),
             new(new List<string>
             { // Group 9: 4 signals
                 ItemNames.BurnerInserter,
                 ItemNames.Inserter,
                 ItemNames.LongHandedInserter,
                 ItemNames.FastInserter
-            }, ItemNames.BurnerMiningDrill),
+            }),
             new(new List<string>
-            { // Group 10: 3 signal
+            { // Group 10: 3 signals
                 ItemNames.FilterInserter,
                 ItemNames.StackInserter,
                 ItemNames.StackFilterInserter
-            }, ItemNames.ElectricMiningDrill),
+            }),
             new(new List<string>
-            { // Group 11: 3 signal
+            { // Group 11: 3 signals
                 ItemNames.SmallElectricPole,
                 ItemNames.MediumElectricPole,
                 ItemNames.BigElectricPole
-            }, ItemNames.OffshorePump),
+            }),
             new(new List<string>
-            { // Group 12: 3 signal
+            { // Group 12: 3 signals
                 ItemNames.Substation,
                 ItemNames.Pipe,
                 ItemNames.PipeToGround
-            }, ItemNames.Pumpjack),
+            }),
             new(new List<string>
-            { // Group 13: 2 signal
+            { // Group 13: 2 signals
                 ItemNames.Pump,
                 ItemNames.Rail
-            }, ItemNames.StoneFurnace),
+            }),
             new(new List<string>
-            { // Group 14: 2 signal
+            { // Group 14: 2 signals
                 ItemNames.TrainStop,
                 ItemNames.RailSignal
-            }, ItemNames.SteelFurnace),
+            }),
             new(new List<string>
-            { // Group 15: 2 signal
+            { // Group 15: 2 signals
                 ItemNames.RailChainSignal,
                 ItemNames.Locomotive
-            }, ItemNames.ElectricFurnace),
+            }),
             new(new List<string>
-            { // Group 16: 2 signal
+            { // Group 16: 2 signals
                 ItemNames.CargoWagon,
                 ItemNames.FluidWagon
-            }, ItemNames.AssemblyingMachine1)
+            }),
+            new(new List<string>
+            { // Group 17: 2 signals
+                ItemNames.ArtilleryWagon,
+                ItemNames.Car
+            }),
+            new(new List<string>
+            { // Group 18: 2 signals
+                ItemNames.Tank,
+                ItemNames.Spidertron
+            })
         };
 
-        public record NoteGroupSignals(List<string> NoteSignals, string HistogramSignal);
+        public record NoteGroupSignals(List<string> NoteSignals);
     }
 }

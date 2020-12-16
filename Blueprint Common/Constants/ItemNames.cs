@@ -37,6 +37,10 @@
         public const string Locomotive = "locomotive";
         public const string CargoWagon = "cargo-wagon";
         public const string FluidWagon = "fluid-wagon";
+        public const string ArtilleryWagon = "artillery-wagon";
+        public const string Car = "car";
+        public const string Tank = "tank";
+        public const string Spidertron = "spidertron";
 
         public const string ArithmeticCombinator = "arithmetic-combinator";
         public const string DeciderCombinator = "decider-combinator";
