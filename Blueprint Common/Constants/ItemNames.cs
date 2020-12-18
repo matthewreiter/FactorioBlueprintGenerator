@@ -41,11 +41,30 @@
         public const string Car = "car";
         public const string Tank = "tank";
         public const string Spidertron = "spidertron";
-
+        public const string SpidertronRemote = "spidertron-remote";
+        public const string LogisticRobot = "logistic-robot";
+        public const string ConstructionRobot = "construction-robot";
+        public const string ActiveProviderChest = "logistic-chest-active-provider";
+        public const string PassiveProviderChest = "logistic-chest-passive-provider";
+        public const string StorageChest = "logistic-chest-storage";
+        public const string BufferChest = "logistic-chest-buffer";
+        public const string RequesterChest = "logistic-chest-requester";
+        public const string Roboport = "roboport";
+        public const string Lamp = "small-lamp";
+        public const string RedWire = "red-wire";
+        public const string GreenWire = "green-wire";
         public const string ArithmeticCombinator = "arithmetic-combinator";
         public const string DeciderCombinator = "decider-combinator";
         public const string ConstantCombinator = "constant-combinator";
+        public const string PowerSwitch = "power-switch";
         public const string ProgrammableSpeaker = "programmable-speaker";
+        public const string StoneBrick = "stone-brick";
+        public const string Concrete = "concrete";
+        public const string HazardConcrete = "hazard-concrete";
+        public const string RefinedConcrete = "refined-concrete";
+        public const string RefinedHazardConcrete = "refined-hazard-concrete";
+        public const string Landfill = "landfill";
+        public const string CliffExplosives = "cliff-explosives";
 
         // Production
         public const string Blueprint = "blueprint";
@@ -65,7 +84,9 @@
         public const string StoneFurnace = "stone-furnace";
         public const string SteelFurnace = "steel-furnace";
         public const string ElectricFurnace = "electric-furnace";
-        public const string AssemblyingMachine1 = "assembling-machine-1";
+        public const string AssemblingMachine1 = "assembling-machine-1";
+        public const string AssemblingMachine2 = "assembling-machine-2";
+        public const string AssemblingMachine3 = "assembling-machine-3";
 
         // Intermediate products
         public const string Wood = "wood";
