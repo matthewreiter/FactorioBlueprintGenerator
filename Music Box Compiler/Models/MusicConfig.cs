@@ -28,6 +28,10 @@ namespace MusicBoxCompiler.Models
         public Dictionary<Instrument, double> InstrumentVolumes { get; set; }
         public double? Volume { get; set; }
         public bool Loop { get; set; }
+        /// <summary>
+        /// Whether to suppress the gap between this song and the next.
+        /// </summary>
+        public bool Gapless { get; set; }
         public bool Disabled { get; set; }
     }
 }

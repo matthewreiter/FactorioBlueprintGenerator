@@ -10,6 +10,7 @@ namespace MusicBoxCompiler.Models
         public int? AddressIndex { get; set; }
         public List<NoteGroup> NoteGroups { get; set; }
         public bool Loop { get; set; }
+        public bool Gapless { get; set; }
         public MemoryStream DebugStream { get; set; }
     }
 }

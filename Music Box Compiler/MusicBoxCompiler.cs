@@ -64,7 +64,7 @@ namespace MusicBoxCompiler
                                     ".xlsx" => SpreadsheetReader.ReadSongFromSpreadsheet(songConfig.Source, songConfig.SpreadsheetTab),
                                     ".mid" => MidiReader.ReadSong(songConfig.Source, outputMidiEventsFile != null, songConfig.InstrumentOffsets, ProcessMasterVolume(songConfig.Volume), ProcessInstrumentVolumes(songConfig.InstrumentVolumes)),
                                     _ => throw new Exception($"Unsupported source file extension for {songConfig.Source}")
-                                } with { Name = songConfig.Name, DisplayName = songConfig.DisplayName, Loop = songConfig.Loop, AddressIndex = songConfig.AddressIndex }
+                                } with { Name = songConfig.Name, DisplayName = songConfig.DisplayName, Loop = songConfig.Loop, Gapless = songConfig.Gapless, AddressIndex = songConfig.AddressIndex }
                             )
                             .ToList(),
                         Loop = playlistConfig.Loop
@@ -326,7 +326,10 @@ namespace MusicBoxCompiler
                     AddJump(songAddress, isEnabled: song.Loop);
 
                     // Add a pause between songs
-                    currentAddress += 120;
+                    if (!song.Gapless)
+                    {
+                        currentAddress += 120;
+                    }
 
                     // Add song metadata
                     if (song.Name != null)
