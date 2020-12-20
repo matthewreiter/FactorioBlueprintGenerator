@@ -22,6 +22,7 @@ namespace MemoryInitializer
             var yOffset = configuration.Y ?? 0;
             var width = configuration.Width ?? 16;
             var height = configuration.Height ?? 16;
+            var cellSize = configuration.CellSize ?? 1;
             var programRows = configuration.ProgramRows ?? (program != null ? (program.Count - 1) / width + 1 : height / 2);
             var programName = configuration.ProgramName;
             var iconItemNames = configuration.IconItemNames ?? new List<string> { ItemNames.ElectronicCircuit };
@@ -39,13 +40,12 @@ namespace MemoryInitializer
                 height = programRows + (data.Count - 1) / width + 1;
             }
 
-            const int entitiesPerCell = 2;
-            const int cellHeight = 3;
-            const int blockHeightInCells = 64;
-            const int blockGapHeight = 8;
+            var entitiesPerCell = cellSize + 1;
+            var cellHeight = cellSize + 2;
+            var blockHeightInCells = 64 * 3 / (cellSize + 2);
+            var blockGapHeight = 8;
 
-            const int readerEntityOffset = 1;
-
+            var readerEntityOffset = cellSize;
 
             var gridWidth = width + ((width + 7) / 16 + 1) * 2;
             var gridHeight = height * cellHeight + (height - 1) / blockHeightInCells * blockGapHeight;
@@ -72,35 +72,38 @@ namespace MemoryInitializer
                         )
                         .ToList();
 
-                    // Memory cell
-                    entities.Add(new Entity
+                    // Memory sub-cells
+                    for (var subCell = 0; subCell < cellSize; subCell++)
                     {
-                        Entity_number = memoryCellEntityNumber,
-                        Name = ItemNames.ConstantCombinator,
-                        Position = new Position
+                        entities.Add(new Entity
                         {
-                            X = memoryCellX,
-                            Y = memoryCellY
-                        },
-                        Direction = Direction.Down,
-                        Control_behavior = new ControlBehavior
-                        {
-                            Filters = memoryCell.Filters,
-                            Is_on = memoryCell.IsEnabled ? (bool?)null : false
-                        },
-                        Connections = CreateConnections(new ConnectionPoint
-                        {
-                            Green = new List<ConnectionData>
+                            Entity_number = memoryCellEntityNumber + subCell,
+                            Name = ItemNames.ConstantCombinator,
+                            Position = new Position
                             {
-                                // Connection to reader input
-                                new ConnectionData
+                                X = memoryCellX,
+                                Y = memoryCellY + cellSize - subCell - 1
+                            },
+                            Direction = Direction.Down,
+                            Control_behavior = new ControlBehavior
+                            {
+                                Filters = memoryCell.Filters?.Skip(subCell * 18).Take(18).ToList(),
+                                Is_on = memoryCell.IsEnabled ? (bool?)null : false
+                            },
+                            Connections = CreateConnections(new ConnectionPoint
+                            {
+                                Green = new List<ConnectionData>
                                 {
-                                    Entity_id = memoryCellEntityNumber + readerEntityOffset,
-                                    Circuit_id = CircuitIds.Input
+                                    // Connection to reader input or previous memory sub-cell
+                                    new ConnectionData
+                                    {
+                                        Entity_id = memoryCellEntityNumber + (subCell == 0 ? readerEntityOffset : subCell - 1),
+                                        Circuit_id = CircuitIds.Input
+                                    }
                                 }
-                            }
-                        })
-                    });
+                            })
+                        });
+                    }
 
                     // Memory cell reader
                     entities.Add(new Entity
@@ -110,7 +113,7 @@ namespace MemoryInitializer
                         Position = new Position
                         {
                             X = memoryCellX,
-                            Y = memoryCellY + 1.5
+                            Y = memoryCellY + cellSize + 0.5
                         },
                         Direction = Direction.Down,
                         Control_behavior = new ControlBehavior
@@ -180,13 +183,49 @@ namespace MemoryInitializer
 
     public class RomConfiguration
     {
+        /// <summary>
+        /// Whether the blueprint should snap to the grid based on the X and Y offsets.
+        /// </summary>
         public bool? SnapToGrid { get; set; }
+
+        /// <summary>
+        /// The X offset of the blueprint.
+        /// </summary>
         public int? X { get; set; }
+
+        /// <summary>
+        /// The Y offset of the blueprint.
+        /// </summary>
         public int? Y { get; set; }
+
+        /// <summary>
+        /// The width of the ROM, in cells.
+        /// </summary>
         public int? Width { get; set; }
+
+        /// <summary>
+        /// The height of the ROM, in cells.
+        /// </summary>
         public int? Height { get; set; }
+
+        /// <summary>
+        /// The number of constant combinators in each memory cell.
+        /// </summary>
+        public int? CellSize { get; set; }
+
+        /// <summary>
+        /// The number of rows to allocate for the program (the remainder go to data).
+        /// </summary>
         public int? ProgramRows { get; set; }
+
+        /// <summary>
+        /// The name of the program.
+        /// </summary>
         public string ProgramName { get; set; }
+
+        /// <summary>
+        /// The item names to use in the blueprint icon.
+        /// </summary>
         public List<string> IconItemNames { get; set; }
     }
 
