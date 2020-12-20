@@ -376,7 +376,7 @@ namespace MusicBoxCompiler
             }
 
             // Jump back to the beginning
-            AddJump(0);
+            AddJump(baseAddress);
 
             memoryCells.AddRange(noteGroupCells);
 
