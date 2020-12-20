@@ -40,6 +40,7 @@ namespace MusicBoxCompiler
             var y = configuration.Y;
             var width = configuration.Width ?? 16;
             var height = configuration.Height ?? 16;
+            var cellSize = configuration.CellSize ?? 1;
             var volumeLevels = configuration.VolumeLevels ?? 10;
             var minVolume = configuration.MinVolume ?? 0.1;
             var maxVolume = configuration.MaxVolume ?? 1;
@@ -71,7 +72,7 @@ namespace MusicBoxCompiler
                 )
                 .ToList();
 
-            var blueprint = CreateBlueprintFromPlaylists(playlists, baseAddress, snapToGrid, x, y, width, height, volumeLevels, minVolume, maxVolume, baseMetadataAddress, out var addresses);
+            var blueprint = CreateBlueprintFromPlaylists(playlists, baseAddress, snapToGrid, x, y, width, height, cellSize, volumeLevels, minVolume, maxVolume, baseMetadataAddress, out var addresses);
             BlueprintUtil.PopulateIndices(blueprint);
 
             var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
@@ -101,7 +102,7 @@ namespace MusicBoxCompiler
         private static Dictionary<Instrument, double> ProcessInstrumentVolumes(Dictionary<Instrument, double> instrumentVolumes) =>
             instrumentVolumes?.Select(entry => (entry.Key, Value: entry.Value / 100))?.ToDictionary(entry => entry.Key, entry => entry.Value);
 
-        private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, bool? snapToGrid, int? x, int? y, int width, int height, int volumeLevels, double minVolume, double maxVolume, int baseMetadataAddress, out Addresses addresses)
+        private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, bool? snapToGrid, int? x, int? y, int width, int height, int cellSize, int volumeLevels, double minVolume, double maxVolume, int baseMetadataAddress, out Addresses addresses)
         {
             const int noteGroupAddressBits = 16;
             const int noteGroupTimeOffsetBits = 11;
@@ -113,6 +114,7 @@ namespace MusicBoxCompiler
             var noteTuplesToAddresses = new Dictionary<NoteTuple, (int Address, int SubAddress)>();
             var currentAddress = baseAddress;
             var initialNoteAddress = 1 << noteGroupAddressBits;
+            var maxFilters = cellSize * 18;
 
             addresses = new Addresses();
 
@@ -185,7 +187,7 @@ namespace MusicBoxCompiler
                 .Select(noteGroup => CreateNoteTuple(noteGroup))
                 .ToList();
 
-            var noteGroupCellDataByFreeSpace = Enumerable.Range(0, 18).Select(index => new Queue<List<NoteTuple>>()).ToList();
+            var noteGroupCellDataByFreeSpace = Enumerable.Range(0, maxFilters).Select(index => new Queue<List<NoteTuple>>()).ToList();
 
             foreach (var noteTuple in noteTuples)
             {
@@ -223,7 +225,7 @@ namespace MusicBoxCompiler
                 var noteGroupCellIntermediateData = noteGroupCellData.Select((noteTuple, index) =>
                 {
                     var noteGroupSignals = DecoderConstants.AllNoteGroupSignals[index];
-                    var noteGroupFilters = noteTuple.Select((note, index) => CreateItemFilter(noteGroupSignals.NoteSignals[index], note)).ToList();
+                    var noteGroupFilters = noteTuple.Select((note, index) => CreateFilter(noteGroupSignals.NoteSignals[index], note)).ToList();
 
                     return (Tuple: noteTuple, Filters: noteGroupFilters, SubAddress: index);
                 }).ToList();
@@ -287,14 +289,15 @@ namespace MusicBoxCompiler
                             timeDeficit = 0;
                         }
 
+                        var signal = DecoderConstants.NoteGroupReferenceSignals[currentFilters.Count - 1];
                         var noteGroupTimeOffset = Math.Min(currentTimeOffset - cellStartTime - currentFilters.Count + 2, (1 << noteGroupTimeOffsetBits) - 1);
-                        currentFilters.Add(CreateFilter((char)('A' + currentFilters.Count - 1), noteGroupAddress + (noteGroupTimeOffset << noteGroupAddressBits) + (noteGroupSubAddress << (noteGroupAddressBits + noteGroupTimeOffsetBits))));
+                        currentFilters.Add(CreateFilter(signal, noteGroupAddress + (noteGroupTimeOffset << noteGroupAddressBits) + (noteGroupSubAddress << (noteGroupAddressBits + noteGroupTimeOffsetBits))));
 
                         currentTimeOffset += length;
 
-                        if (currentFilters.Count >= 18)
+                        if (currentFilters.Count >= maxFilters)
                         {
-                            const int minimumCellLength = 19; // The number of cycles required to finish loading all of the note groups
+                            var minimumCellLength = maxFilters + 1; // The number of cycles required to finish loading all of the note groups
                             var cellLength = currentTimeOffset - cellStartTime;
 
                             if (cellLength < currentFilters.Count)
@@ -386,6 +389,7 @@ namespace MusicBoxCompiler
                 Y = y,
                 Width = width,
                 Height = height,
+                CellSize = cellSize,
                 ProgramRows = height - 1, // Allocate one line for the constant cells
                 ProgramName = "Songs",
                 IconItemNames = new List<string> { ItemNames.ElectronicCircuit, ItemNames.ProgrammableSpeaker }
@@ -513,14 +517,14 @@ namespace {constantsNamespace}
             }
         }
 
-        private static Filter CreateFilter(char signal, int count)
+        private static Filter CreateFilter(char letterOrDigit, int count)
         {
-            return new Filter { Signal = new SignalID { Name = VirtualSignalNames.LetterOrDigit(signal), Type = SignalTypes.Virtual }, Count = count };
+            return new Filter { Signal = new SignalID { Name = VirtualSignalNames.LetterOrDigit(letterOrDigit), Type = SignalTypes.Virtual }, Count = count };
         }
 
-        private static Filter CreateItemFilter(string name, int count)
+        private static Filter CreateFilter(string signalName, int count)
         {
-            return new Filter { Signal = new SignalID { Name = name, Type = SignalTypes.Item }, Count = count };
+            return new Filter { Signal = SignalID.Create(signalName), Count = count };
         }
 
         private class Addresses
@@ -566,6 +570,7 @@ namespace {constantsNamespace}
         public int? Y { get; set; }
         public int? Width { get; set; }
         public int? Height { get; set; }
+        public int? CellSize { get; set; }
         public int? VolumeLevels { get; set; }
         public double? MinVolume { get; set; }
         public double? MaxVolume { get; set; }

@@ -5,6 +5,45 @@ namespace MusicBoxCompiler
 {
     public class DecoderConstants
     {
+        public static readonly List<string> NoteGroupReferenceSignals = new List<string>
+        {
+            ItemNames.Pistol,
+            ItemNames.SubmachineGun,
+            ItemNames.Shotgun,
+            ItemNames.CombatShotgun,
+            ItemNames.RocketLauncher,
+            ItemNames.Flamethrower,
+            ItemNames.LandMine,
+            ItemNames.FirearmMagazine,
+            ItemNames.PiercingRoundsMagazine,
+            ItemNames.UraniumRoundsMagazine,
+            ItemNames.ShotgunShell,
+            ItemNames.PiercingShotgunShell,
+            ItemNames.CannonShell,
+            ItemNames.ExplosiveCannonShell,
+            ItemNames.UraniumCannonShell,
+            ItemNames.ExplosiveUraniumCannonShell,
+            ItemNames.ArtilleryShell,
+            ItemNames.Rocket,
+            ItemNames.ExplosiveRocket,
+            ItemNames.AtomicBomb,
+            ItemNames.FlamethrowerAmmo,
+            ItemNames.Grenade,
+            ItemNames.ClusterGrenade,
+            ItemNames.PoisonCapsule,
+            ItemNames.SlowdownCapsule,
+            ItemNames.DefenderCapsule,
+            ItemNames.DistractorCapsule,
+            ItemNames.DestroyerCapsule,
+            ItemNames.LightArmor,
+            ItemNames.HeavyArmor,
+            ItemNames.ModularArmor,
+            ItemNames.PowerArmor,
+            ItemNames.PowerArmorMk2,
+            ItemNames.PortableSolarPanel,
+            ItemNames.PortableFusionReactor
+        };
+
         public static readonly List<NoteGroupSignals> AllNoteGroupSignals = new List<NoteGroupSignals>
         {
             new(new List<string>
@@ -146,6 +185,62 @@ namespace MusicBoxCompiler
             { // Group 18: 2 signals
                 ItemNames.Tank,
                 ItemNames.Spidertron
+            }),
+            new(new List<string>
+            { // Group 19: 1 signal
+                ItemNames.SpidertronRemote
+            }),
+            new(new List<string>
+            { // Group 20: 1 signal
+                ItemNames.LogisticRobot
+            }),
+            new(new List<string>
+            { // Group 21: 1 signal
+                ItemNames.ConstructionRobot
+            }),
+            new(new List<string>
+            { // Group 22: 1 signal
+                ItemNames.ActiveProviderChest
+            }),
+            new(new List<string>
+            { // Group 23: 1 signal
+                ItemNames.PassiveProviderChest
+            }),
+            new(new List<string>
+            { // Group 24: 1 signal
+                ItemNames.StorageChest
+            }),
+            new(new List<string>
+            { // Group 25: 1 signal
+                ItemNames.BufferChest
+            }),
+            new(new List<string>
+            { // Group 26: 1 signal
+                ItemNames.RequesterChest
+            }),
+            new(new List<string>
+            { // Group 27: 1 signal
+                ItemNames.Roboport
+            }),
+            new(new List<string>
+            { // Group 28: 1 signal
+                ItemNames.Lamp
+            }),
+            new(new List<string>
+            { // Group 29: 1 signal
+                ItemNames.RedWire
+            }),
+            new(new List<string>
+            { // Group 30: 1 signal
+                ItemNames.GreenWire
+            }),
+            new(new List<string>
+            { // Group 31: 1 signal
+                ItemNames.ArithmeticCombinator
+            }),
+            new(new List<string>
+            { // Group 32: 1 signal
+                ItemNames.ConstantCombinator
             })
         };
 
