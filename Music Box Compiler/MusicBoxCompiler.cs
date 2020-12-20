@@ -51,6 +51,7 @@ namespace MusicBoxCompiler
 
             var playlists = config.Playlists
                 .AsParallel()
+                .Where(playlistConfig => !playlistConfig.Disabled)
                 .Select(playlistConfig =>
                     new Playlist
                     {

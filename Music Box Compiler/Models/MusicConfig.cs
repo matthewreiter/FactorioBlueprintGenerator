@@ -10,8 +10,9 @@ namespace MusicBoxCompiler.Models
     public class PlaylistConfig
     {
         public string Name { get; set; }
-        public List<SongConfig> Songs { get; set; }
         public bool Loop { get; set; }
+        public bool Disabled { get; set; }
+        public List<SongConfig> Songs { get; set; }
     }
 
     public class SongConfig
