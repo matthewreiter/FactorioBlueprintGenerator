@@ -183,6 +183,12 @@ namespace MusicBoxCompiler
                     midiEventWriter.WriteLine($"Instruments not mapped: {string.Join(", ", instrumentsNotMapped)}");
                 }
 
+                var percussionsNotMapped = midiNotes.Where(note => note.Instrument == Instrument.Drumkit && note.RelativeNoteNumber == 0).OrderBy(note => note.RelativeNoteNumber).Select(note => note.OriginalNoteName).Distinct().ToList();
+                if (percussionsNotMapped.Count > 0)
+                {
+                    midiEventWriter.WriteLine($"Percussions not mapped: {string.Join(", ", percussionsNotMapped)}");
+                }
+
                 var instrumentsInSong = midiNotes.Where(note => note.Instrument != Instrument.Unknown).GroupBy(note => note.Instrument, (instrument, notes) => instrument).ToList();
                 if (instrumentsInSong.Count > 0)
                 {
