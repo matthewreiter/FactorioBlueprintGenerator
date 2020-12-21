@@ -116,6 +116,7 @@ namespace MusicBoxCompiler
             var currentAddress = baseAddress;
             var initialNoteAddress = 1 << noteGroupAddressBits;
             var maxFilters = cellSize * 18;
+            var totalPlayTime = 0;
 
             addresses = new Addresses();
 
@@ -322,6 +323,7 @@ namespace MusicBoxCompiler
                     }
 
                     var songLength = currentAddress - songAddress;
+                    totalPlayTime += songLength;
 
                     // Create a jump back to the beginning of the song
                     AddJump(songAddress, isEnabled: song.Loop);
@@ -384,6 +386,7 @@ namespace MusicBoxCompiler
             var romUsed = memoryCells.Count + constantCells.Count;
             var totalRom = width * height;
 
+            Console.WriteLine($"Total play time: {TimeSpan.FromSeconds(totalPlayTime / 60d):h\\:mm\\:ss\\.fff}");
             Console.WriteLine($"ROM usage: {romUsed}/{totalRom} ({(double)romUsed / totalRom * 100:F1}%)");
 
             return RomGenerator.Generate(new RomConfiguration
