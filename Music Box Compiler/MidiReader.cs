@@ -45,7 +45,9 @@ namespace MusicBoxCompiler
             new InstrumentMapping { Instrument = Instrument.SteelDrum, RangeStart = GMInst.FXRain, RangeEnd = GMInst.FXScifi },
             new InstrumentMapping { Instrument = Instrument.LeadGuitar, RangeStart = GMInst.Sitar, RangeEnd = GMInst.Banjo },
             new InstrumentMapping { Instrument = Instrument.SteelDrum, RangeStart = GMInst.TinkleBell, RangeEnd = GMInst.SynthDrum },
-            new InstrumentMapping { Instrument = Instrument.Drumkit, RangeStart = GMInst.ReverseCymbal, RangeEnd = GMInst.ReverseCymbal }
+            new InstrumentMapping { Instrument = Instrument.Drumkit, RangeStart = GMInst.ReverseCymbal, RangeEnd = GMInst.ReverseCymbal },
+            new InstrumentMapping { Instrument = Instrument.BassGuitar, RangeStart = GMInst.GuitarFretNoise, RangeEnd = GMInst.GuitarFretNoise },
+            new InstrumentMapping { Instrument = Instrument.SteelDrum, RangeStart = GMInst.Seashore, RangeEnd = GMInst.Seashore }
         );
         private static readonly Dictionary<int, Drum> DrumMap = new Dictionary<int, Drum>
         {
