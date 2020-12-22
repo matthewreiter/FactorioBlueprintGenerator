@@ -230,7 +230,7 @@ namespace MusicBoxCompiler
                     playedNote = instrument == Instrument.Drumkit ? midiNote.RelativeNoteNumber : midiNote.OriginalNoteNumber + noteOffset;
                     var effectiveNoteNumber = midiNote.RelativeNoteNumber + noteOffset;
                     isNoteInRange = effectiveNoteNumber > 0 && effectiveNoteNumber <= 48;
-                    volume = Math.Min(midiNote.Volume * baseInstrumentVolume * instrumentVolume * masterVolume, 1);
+                    volume = Math.Min(midiNote.Velocity * midiNote.Expression * midiNote.ChannelVolume * baseInstrumentVolume * instrumentVolume * masterVolume, 1);
 
                     if (isNoteInRange)
                     {
@@ -268,7 +268,7 @@ namespace MusicBoxCompiler
                         _ => $"{instrument} {Notes[(playedNote + unreasonablyHighOctave * Notes.Count) % Notes.Count]}{playedNote / Notes.Count - 1}"
                     };
 
-                    midiEventWriter.WriteLine($"{lastTime:mm\\:ss\\.fff}: {midiNote.OriginalInstrumentName} {midiNote.OriginalNoteName} volume {midiNote.Volume:F2}" +
+                    midiEventWriter.WriteLine($"{lastTime:mm\\:ss\\.fff}: {midiNote.OriginalInstrumentName} {midiNote.OriginalNoteName} velocity {midiNote.Velocity:F2} expression {midiNote.Expression:F2} channel volume {midiNote.ChannelVolume:F2}" +
                         (isInstrumentMapped ? $" => {instrumentAndNote} volume {volume:F2}" : "") +
                         (!isNoteInRange ? " (note not in range)" : "") +
                         (!isInstrumentMapped ? " (instrument not mapped)" : ""));
@@ -297,7 +297,7 @@ namespace MusicBoxCompiler
         {
             using var fileReader = File.OpenRead(midiFile);
             var music = SmfTrackMerger.Merge(MidiMusic.Read(fileReader));
-            var machine = new MidiMachine();
+            var machine = new MidiMachine(); // https://github.com/atsushieno/managed-midi/blob/master/Commons.Music.Midi.Shared/MidiMachine.cs
 
             var tempo = MidiMetaType.DefaultTempo;
             var currentTimeMillis = 0d;
@@ -326,6 +326,8 @@ namespace MusicBoxCompiler
                     {
                         var noteNumber = midiEvent.Msb;
                         var isPercussion = midiEvent.Channel == PercussionMidiChannel;
+                        var channelVolume = channel.Controls[MidiCC.Volume];
+                        var expression = channel.Controls[MidiCC.Expression];
                         var instrument = isPercussion
                             ? Instrument.Drumkit
                             : InstrumentMap.TryGetValue(channel.Program, out var instrumentValue) ? instrumentValue : Instrument.Unknown;
@@ -340,7 +342,9 @@ namespace MusicBoxCompiler
                             OriginalNoteName = noteName,
                             OriginalNoteNumber = noteNumber,
                             Instrument = instrument,
-                            Volume = velocity / 127d,
+                            Velocity = velocity / 127d,
+                            Expression = expression > 0 ? expression / 127d : 1,
+                            ChannelVolume = channelVolume > 0 ? channelVolume / 127d : 1,
                             CurrentTime = TimeSpan.FromMilliseconds(currentTimeMillis)
                         };
 
@@ -376,7 +380,9 @@ namespace MusicBoxCompiler
             public int OriginalNoteNumber { get; init; }
             public Instrument Instrument { get; init; }
             public int RelativeNoteNumber { get; init; }
-            public double Volume { get; init; }
+            public double Velocity { get; init; }
+            public double Expression { get; init; }
+            public double ChannelVolume { get; init; }
             public TimeSpan CurrentTime { get; init; }
         }
     }
