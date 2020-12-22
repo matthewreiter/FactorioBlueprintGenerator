@@ -28,7 +28,9 @@ namespace MusicBoxCompiler
             new InstrumentMapping { Instrument = Instrument.Piano, RangeStart = GMInst.DrawbarOrgan, RangeEnd = GMInst.TangoAccordion },
             new InstrumentMapping { Instrument = Instrument.LeadGuitar, RangeStart = GMInst.AcousticGuitarNylon, RangeEnd = GMInst.Guitarharmonics },
             new InstrumentMapping { Instrument = Instrument.BassGuitar, RangeStart = GMInst.AcousticBass, RangeEnd = GMInst.SynthBass2 },
-            new InstrumentMapping { Instrument = Instrument.PluckedStrings, RangeStart = GMInst.Violin, RangeEnd = GMInst.SynthStrings2 },
+            new InstrumentMapping { Instrument = Instrument.PluckedStrings, RangeStart = GMInst.Violin, RangeEnd = GMInst.Cello },
+            new InstrumentMapping { Instrument = Instrument.BassGuitar, RangeStart = GMInst.Contrabass, RangeEnd = GMInst.Contrabass },
+            new InstrumentMapping { Instrument = Instrument.PluckedStrings, RangeStart = GMInst.TremoloStrings, RangeEnd = GMInst.SynthStrings2 },
             new InstrumentMapping { Instrument = Instrument.Celesta, RangeStart = GMInst.ChoirAahs, RangeEnd = GMInst.SynthVoice },
             new InstrumentMapping { Instrument = Instrument.PluckedStrings, RangeStart = GMInst.OrchestraHit, RangeEnd = GMInst.OrchestraHit },
             new InstrumentMapping { Instrument = Instrument.LeadGuitar, RangeStart = GMInst.Trumpet, RangeEnd = GMInst.SynthBrass2 },
@@ -44,10 +46,12 @@ namespace MusicBoxCompiler
             new InstrumentMapping { Instrument = Instrument.Sawtooth, RangeStart = GMInst.PadPolysynth, RangeEnd = GMInst.PadPolysynth },
             new InstrumentMapping { Instrument = Instrument.SteelDrum, RangeStart = GMInst.FXRain, RangeEnd = GMInst.FXScifi },
             new InstrumentMapping { Instrument = Instrument.LeadGuitar, RangeStart = GMInst.Sitar, RangeEnd = GMInst.Banjo },
+            new InstrumentMapping { Instrument = Instrument.SteelDrum, RangeStart = GMInst.Kalimba, RangeEnd = GMInst.Kalimba },
             new InstrumentMapping { Instrument = Instrument.SteelDrum, RangeStart = GMInst.TinkleBell, RangeEnd = GMInst.SynthDrum },
             new InstrumentMapping { Instrument = Instrument.Drumkit, RangeStart = GMInst.ReverseCymbal, RangeEnd = GMInst.ReverseCymbal },
             new InstrumentMapping { Instrument = Instrument.BassGuitar, RangeStart = GMInst.GuitarFretNoise, RangeEnd = GMInst.GuitarFretNoise },
-            new InstrumentMapping { Instrument = Instrument.SteelDrum, RangeStart = GMInst.Seashore, RangeEnd = GMInst.Seashore }
+            new InstrumentMapping { Instrument = Instrument.SteelDrum, RangeStart = GMInst.Seashore, RangeEnd = GMInst.Seashore },
+            new InstrumentMapping { Instrument = Instrument.BassGuitar, RangeStart = GMInst.Applause, RangeEnd = GMInst.Applause }
         );
         private static readonly Dictionary<int, Drum> DrumMap = new Dictionary<int, Drum>
         {
