@@ -344,7 +344,7 @@ namespace MusicBoxCompiler
                     {
                         CreateFilter('0', songAddress),
                         CreateFilter('1', trackNumber),
-                        CreateFilter('2', songLength)
+                        CreateFilter('2', (songLength + 59) / 60 * 60) // Round up to the next second
                     };
 
                     var displayName = song.DisplayName ?? song.Name;
