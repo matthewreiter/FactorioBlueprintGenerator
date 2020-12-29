@@ -26,6 +26,8 @@ namespace MemoryInitializer
             var inputSignal = configuration.InputSignal ?? VirtualSignalNames.Dot;
             var signals = configuration.Signals.Contains(',') ? configuration.Signals.Split(',').ToList() : configuration.Signals.Select(signal => VirtualSignalNames.LetterOrDigit(signal)).ToList();
 
+            const int maxFilters = 20;
+
             var fullWidth = width + 1;
             var fullHeight = height + 2;
 
@@ -129,7 +131,7 @@ namespace MemoryInitializer
                             })
                         });
 
-                        for (int index = 0; index < (glyphSignals.Count + 17) / 18; index++)
+                        for (int index = 0; index < (glyphSignals.Count + maxFilters - 1) / maxFilters; index++)
                         {
                             entities.Add(new Entity
                             {
@@ -143,7 +145,7 @@ namespace MemoryInitializer
                                 Direction = Direction.Down,
                                 Control_behavior = new ControlBehavior
                                 {
-                                    Filters = glyphSignals.Skip(index * 18).Take(18).Select(signal => new Filter { Signal = signal, Count = 1 }).ToList()
+                                    Filters = glyphSignals.Skip(index * maxFilters).Take(maxFilters).Select(signal => new Filter { Signal = signal, Count = 1 }).ToList()
                                 },
                                 Connections = CreateConnections(new ConnectionPoint
                                 {
