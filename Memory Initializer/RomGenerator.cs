@@ -40,6 +40,8 @@ namespace MemoryInitializer
                 height = programRows + (data.Count - 1) / width + 1;
             }
 
+            const int maxFilters = 20;
+
             var entitiesPerCell = cellSize + 1;
             var cellHeight = cellSize + 2;
             var blockHeightInCells = 64 * 3 / (cellSize + 2);
@@ -87,7 +89,7 @@ namespace MemoryInitializer
                             Direction = Direction.Down,
                             Control_behavior = new ControlBehavior
                             {
-                                Filters = memoryCell.Filters?.Skip(subCell * 18).Take(18).ToList(),
+                                Filters = memoryCell.Filters?.Skip(subCell * maxFilters).Take(maxFilters).ToList(),
                                 Is_on = memoryCell.IsEnabled ? (bool?)null : false
                             },
                             Connections = CreateConnections(new ConnectionPoint

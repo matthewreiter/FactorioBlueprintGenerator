@@ -115,7 +115,7 @@ namespace MusicBoxCompiler
             var noteTuplesToAddresses = new Dictionary<NoteTuple, (int Address, int SubAddress)>();
             var currentAddress = baseAddress;
             var initialNoteAddress = 1 << noteGroupAddressBits;
-            var maxFilters = cellSize * 18;
+            var maxFilters = cellSize * 20;
             var totalPlayTime = 0;
 
             addresses = new Addresses();

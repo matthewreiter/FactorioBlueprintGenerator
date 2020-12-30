@@ -41,7 +41,11 @@ namespace MusicBoxCompiler
             ItemNames.PowerArmor,
             ItemNames.PowerArmorMk2,
             ItemNames.PortableSolarPanel,
-            ItemNames.PortableFusionReactor
+            ItemNames.PortableFusionReactor,
+            ItemNames.PersonalBattery,
+            ItemNames.PersonalBatteryMk2,
+            ItemNames.BeltImmunityEquipment,
+            ItemNames.Exoskeleton
         };
 
         public static readonly List<NoteGroupSignals> AllNoteGroupSignals = new List<NoteGroupSignals>
@@ -57,7 +61,7 @@ namespace MusicBoxCompiler
                 ItemNames.RawFish,
                 ItemNames.IronPlate,
                 ItemNames.CopperPlate,
-                ItemNames.SolidFuel
+                ItemNames.SolidFuel,
             }),
             new(new List<string>
             { // Group 2: 10 signals
@@ -70,7 +74,7 @@ namespace MusicBoxCompiler
                 ItemNames.HeavyOilBarrel,
                 ItemNames.LightOilBarrel,
                 ItemNames.LubricantBarrel,
-                ItemNames.PetroleumGasBarrel
+                ItemNames.PetroleumGasBarrel,
             }),
             new(new List<string>
             { // Group 3: 10 signals
@@ -83,10 +87,10 @@ namespace MusicBoxCompiler
                 ItemNames.ElectronicCircuit,
                 ItemNames.AdvancedCircuit,
                 ItemNames.ProcessingUnit,
-                ItemNames.EngineUnit
+                ItemNames.EngineUnit,
             }),
             new(new List<string>
-            { // Group 4: 9 signals
+            { // Group 4: 10 signals
                 ItemNames.ElectricEngineUnit,
                 ItemNames.FlyingRobotFrame,
                 ItemNames.Satellite,
@@ -95,152 +99,159 @@ namespace MusicBoxCompiler
                 ItemNames.RocketFuel,
                 ItemNames.NuclearFuel,
                 ItemNames.Uranium235,
-                ItemNames.Uranium238
+                ItemNames.Uranium238,
+                ItemNames.UraniumFuelCell,
             }),
             new(new List<string>
-            { // Group 5: 7 signals
-                ItemNames.UraniumFuelCell,
+            { // Group 5: 8 signals
                 ItemNames.UsedUpUraniumFuelCell,
                 ItemNames.AutomationSciencePack,
                 ItemNames.LogisticSciencePack,
                 ItemNames.MilitarySciencePack,
                 ItemNames.ChemicalSciencePack,
-                ItemNames.ProductionSciencePack
+                ItemNames.ProductionSciencePack,
+                ItemNames.UtilitySciencePack,
+                ItemNames.SpaceSciencePack,
             }),
             new(new List<string>
             { // Group 6: 6 signals
-                ItemNames.UtilitySciencePack,
-                ItemNames.SpaceSciencePack,
                 ItemNames.WoodenChest,
                 ItemNames.IronChest,
                 ItemNames.SteelChest,
-                ItemNames.StorageTank
+                ItemNames.StorageTank,
+                ItemNames.TransportBelt,
+                ItemNames.FastTransportBelt,
             }),
             new(new List<string>
             { // Group 7: 5 signals
-                ItemNames.TransportBelt,
-                ItemNames.FastTransportBelt,
                 ItemNames.ExpressTransportBelt,
                 ItemNames.UndergroundBelt,
-                ItemNames.FastUndergroundBelt
-            }),
-            new(new List<string>
-            { // Group 8: 4 signals
+                ItemNames.FastUndergroundBelt,
                 ItemNames.ExpressUndergroundBelt,
                 ItemNames.Splitter,
-                ItemNames.FastSplitter,
-                ItemNames.ExpressSplitter
             }),
             new(new List<string>
-            { // Group 9: 4 signals
+            { // Group 8: 5 signals
+                ItemNames.FastSplitter,
+                ItemNames.ExpressSplitter,
                 ItemNames.BurnerInserter,
                 ItemNames.Inserter,
                 ItemNames.LongHandedInserter,
-                ItemNames.FastInserter
             }),
             new(new List<string>
-            { // Group 10: 3 signals
+            { // Group 9: 4 signals
+                ItemNames.FastInserter,
                 ItemNames.FilterInserter,
                 ItemNames.StackInserter,
-                ItemNames.StackFilterInserter
+                ItemNames.StackFilterInserter,
+            }),
+            new(new List<string>
+            { // Group 10: 4 signals
+                ItemNames.SmallElectricPole,
+                ItemNames.MediumElectricPole,
+                ItemNames.BigElectricPole,
+                ItemNames.Substation,
             }),
             new(new List<string>
             { // Group 11: 3 signals
-                ItemNames.SmallElectricPole,
-                ItemNames.MediumElectricPole,
-                ItemNames.BigElectricPole
+                ItemNames.Pipe,
+                ItemNames.PipeToGround,
+                ItemNames.Pump,
             }),
             new(new List<string>
             { // Group 12: 3 signals
-                ItemNames.Substation,
-                ItemNames.Pipe,
-                ItemNames.PipeToGround
+                ItemNames.Rail,
+                ItemNames.TrainStop,
+                ItemNames.RailSignal,
             }),
             new(new List<string>
-            { // Group 13: 2 signals
-                ItemNames.Pump,
-                ItemNames.Rail
+            { // Group 13: 3 signals
+                ItemNames.RailChainSignal,
+                ItemNames.Locomotive,
+                ItemNames.CargoWagon,
             }),
             new(new List<string>
             { // Group 14: 2 signals
-                ItemNames.TrainStop,
-                ItemNames.RailSignal
+                ItemNames.FluidWagon,
+                ItemNames.ArtilleryWagon,
             }),
             new(new List<string>
             { // Group 15: 2 signals
-                ItemNames.RailChainSignal,
-                ItemNames.Locomotive
+                ItemNames.Car,
+                ItemNames.Tank,
             }),
             new(new List<string>
             { // Group 16: 2 signals
-                ItemNames.CargoWagon,
-                ItemNames.FluidWagon
+                ItemNames.Spidertron,
+                ItemNames.SpidertronRemote,
             }),
             new(new List<string>
             { // Group 17: 2 signals
-                ItemNames.ArtilleryWagon,
-                ItemNames.Car
+                ItemNames.LogisticRobot,
+                ItemNames.ConstructionRobot,
             }),
             new(new List<string>
             { // Group 18: 2 signals
-                ItemNames.Tank,
-                ItemNames.Spidertron
+                ItemNames.ActiveProviderChest,
+                ItemNames.PassiveProviderChest,
             }),
             new(new List<string>
-            { // Group 19: 1 signal
-                ItemNames.SpidertronRemote
+            { // Group 19: 2 signal
+                ItemNames.StorageChest,
+                ItemNames.BufferChest,
             }),
             new(new List<string>
-            { // Group 20: 1 signal
-                ItemNames.LogisticRobot
+            { // Group 20: 2 signal
+                ItemNames.RequesterChest,
+                ItemNames.Roboport,
             }),
             new(new List<string>
             { // Group 21: 1 signal
-                ItemNames.ConstructionRobot
+                ItemNames.Lamp,
             }),
             new(new List<string>
             { // Group 22: 1 signal
-                ItemNames.ActiveProviderChest
+                ItemNames.RedWire,
             }),
             new(new List<string>
             { // Group 23: 1 signal
-                ItemNames.PassiveProviderChest
+                ItemNames.GreenWire,
             }),
             new(new List<string>
             { // Group 24: 1 signal
-                ItemNames.StorageChest
+                ItemNames.ArithmeticCombinator,
             }),
             new(new List<string>
             { // Group 25: 1 signal
-                ItemNames.BufferChest
+                ItemNames.DeciderCombinator,
             }),
             new(new List<string>
             { // Group 26: 1 signal
-                ItemNames.RequesterChest
+                ItemNames.ConstantCombinator,
             }),
             new(new List<string>
             { // Group 27: 1 signal
-                ItemNames.Roboport
+                ItemNames.PowerSwitch,
             }),
             new(new List<string>
             { // Group 28: 1 signal
-                ItemNames.Lamp
+                ItemNames.ProgrammableSpeaker,
             }),
             new(new List<string>
             { // Group 29: 1 signal
-                ItemNames.RedWire
+                ItemNames.StoneBrick,
             }),
             new(new List<string>
             { // Group 30: 1 signal
-                ItemNames.GreenWire
+                ItemNames.Concrete,
             }),
             new(new List<string>
             { // Group 31: 1 signal
-                ItemNames.ArithmeticCombinator
+                ItemNames.HazardConcrete,
             }),
             new(new List<string>
             { // Group 32: 1 signal
-                ItemNames.ConstantCombinator
+                ItemNames.RefinedConcrete,
             })
         };
 
