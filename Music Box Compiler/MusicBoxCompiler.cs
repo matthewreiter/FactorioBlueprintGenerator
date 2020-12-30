@@ -65,7 +65,7 @@ namespace MusicBoxCompiler
                                     ".xlsx" => SpreadsheetReader.ReadSongFromSpreadsheet(songConfig.Source, songConfig.SpreadsheetTab),
                                     ".mid" => MidiReader.ReadSong(songConfig.Source, outputMidiEventsFile != null, songConfig.InstrumentOffsets, ProcessMasterVolume(songConfig.Volume), ProcessInstrumentVolumes(songConfig.InstrumentVolumes)),
                                     _ => throw new Exception($"Unsupported source file extension for {songConfig.Source}")
-                                } with { Name = songConfig.Name, DisplayName = songConfig.DisplayName, Loop = songConfig.Loop, Gapless = songConfig.Gapless, AddressIndex = songConfig.AddressIndex }
+                                } with { Name = songConfig.Name, DisplayName = songConfig.DisplayName, Artist = songConfig.Artist, Loop = songConfig.Loop, Gapless = songConfig.Gapless, AddressIndex = songConfig.AddressIndex }
                             )
                             .ToList(),
                         Loop = playlistConfig.Loop
@@ -350,25 +350,12 @@ namespace MusicBoxCompiler
                     var displayName = song.DisplayName ?? song.Name;
                     if (displayName != null)
                     {
-                        const int maxCharactersToDisplay = 24;
-                        var charactersToDisplay = Math.Min(displayName.Length, maxCharactersToDisplay);
-                        var encodedBlock = 0;
-                        var blockIndex = 0;
+                        metadataFilters.AddRange(CreateFiltersForString(displayName, 32, 'A'));
+                    }
 
-                        for (var index = 0; index < charactersToDisplay; index++)
-                        {
-                            var currentCharacter = (byte)displayName[index];
-                            var positionInBlock = index % 4;
-
-                            encodedBlock |= currentCharacter << (positionInBlock * 8);
-
-                            if (positionInBlock == 3 || index == charactersToDisplay - 1)
-                            {
-                                metadataFilters.Add(CreateFilter((char)('A' + blockIndex), encodedBlock));
-                                encodedBlock = 0;
-                                blockIndex++;
-                            }
-                        }
+                    if (song.Artist != null)
+                    {
+                        metadataFilters.AddRange(CreateFiltersForString(song.Artist, 20, 'I'));
                     }
 
                     constantCells.Add(new MemoryCell { Address = metadataAddress, Filters = metadataFilters });
@@ -532,6 +519,28 @@ namespace {constantsNamespace}
         private static Filter CreateFilter(string signalName, int count)
         {
             return new Filter { Signal = SignalID.Create(signalName), Count = count };
+        }
+
+        private static IEnumerable<Filter> CreateFiltersForString(string text, int maxCharactersToDisplay, char initialSignal)
+        {
+            var charactersToDisplay = Math.Min(text.Length, maxCharactersToDisplay);
+            var encodedBlock = 0;
+            var blockIndex = 0;
+
+            for (var index = 0; index < charactersToDisplay; index++)
+            {
+                var currentCharacter = (byte)text[index];
+                var positionInBlock = index % 4;
+
+                encodedBlock |= currentCharacter << (positionInBlock * 8);
+
+                if (positionInBlock == 3 || index == charactersToDisplay - 1)
+                {
+                    yield return CreateFilter((char)(initialSignal + blockIndex), encodedBlock);
+                    encodedBlock = 0;
+                    blockIndex++;
+                }
+            }
         }
 
         private class Addresses

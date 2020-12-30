@@ -7,6 +7,7 @@ namespace MusicBoxCompiler.Models
     {
         public string Name { get; set; }
         public string DisplayName { get; set; }
+        public string Artist { get; set; }
         public int? AddressIndex { get; set; }
         public List<NoteGroup> NoteGroups { get; set; }
         public bool Loop { get; set; }
