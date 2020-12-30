@@ -397,10 +397,10 @@ namespace MusicBoxCompiler
                 Width = width,
                 Height = height,
                 CellSize = cellSize,
-                ProgramRows = height - 1, // Allocate one line for the constant cells
+                ProgramRows = 1, // Allocate one line for the constant cells
                 ProgramName = "Songs",
                 IconItemNames = new List<string> { ItemNames.ElectronicCircuit, ItemNames.ProgrammableSpeaker }
-            }, memoryCells, constantCells);
+            }, constantCells, memoryCells);
         }
 
         private static void WriteOutConstants(string outputConstantsFile, Addresses addresses, string constantsNamespace)
