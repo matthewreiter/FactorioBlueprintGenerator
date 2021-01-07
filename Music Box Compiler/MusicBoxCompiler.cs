@@ -397,9 +397,7 @@ namespace MusicBoxCompiler
                 return;
             }
 
-            File.WriteAllText(outputConstantsFile, $@"using SeeSharp.Runtime;
-
-namespace {constantsNamespace}
+            File.WriteAllText(outputConstantsFile, $@"namespace {constantsNamespace}
 {{
     public static class PlaylistAddresses
     {{
