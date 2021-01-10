@@ -255,7 +255,7 @@ namespace MusicBoxCompiler
                     {
                         if (timeDelta >= TimeSpan.FromMilliseconds(17) || currentNotes.Count >= ChannelCount) // 17 is 1000ms / 60fps, rounded up
                         {
-                            noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = 4 / timeDelta.TotalMinutes, BeatsPerMinute = 1 });
+                            noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = timeDelta });
                             currentNotes = new List<Note>();
                             lastTime = midiNote.CurrentTime;
                         }
@@ -299,7 +299,7 @@ namespace MusicBoxCompiler
                 var currentTime = totalPlayTime;
                 var timeDelta = currentTime - lastTime;
 
-                noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = 4 / timeDelta.TotalMinutes, BeatsPerMinute = 1 });
+                noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = timeDelta });
             }
 
             midiEventWriter?.WriteLine();

@@ -58,6 +58,7 @@ namespace MusicBoxCompiler
             var instrumentOffsets = new Dictionary<Instrument, int>();
             var instrumentVolumes = new Dictionary<Instrument, double>();
             var masterVolume = 1d;
+            var beatsPerMinute = 60d;
 
             while (reader.Read())
             {
@@ -122,7 +123,7 @@ namespace MusicBoxCompiler
                 }
                 else
                 {
-                    ProcessSpreadsheetLines(currentLines, noteGroups);
+                    ProcessSpreadsheetLines(currentLines, noteGroups, ref beatsPerMinute);
 
                     if (!reader.IsDBNull(0) && reader.GetFieldType(0) == typeof(string))
                     {
@@ -219,7 +220,7 @@ namespace MusicBoxCompiler
             }
 
             // Process any remaining lines
-            ProcessSpreadsheetLines(currentLines, noteGroups);
+            ProcessSpreadsheetLines(currentLines, noteGroups, ref beatsPerMinute);
 
             return new Song
             {
@@ -227,7 +228,7 @@ namespace MusicBoxCompiler
             };
         }
 
-        private static void ProcessSpreadsheetLines(List<List<List<List<Note>>>> currentLines, List<NoteGroup> noteGroups)
+        private static void ProcessSpreadsheetLines(List<List<List<List<Note>>>> currentLines, List<NoteGroup> noteGroups, ref double beatsPerMinute)
         {
             if (currentLines.Count > 0)
             {
@@ -247,7 +248,6 @@ namespace MusicBoxCompiler
                     for (int noteListIndex = 0; noteListIndex < noteListCount; noteListIndex++)
                     {
                         var notes = new List<Note>();
-                        int? beatsPerMinute = null;
 
                         foreach (var line in currentLines)
                         {
@@ -267,7 +267,7 @@ namespace MusicBoxCompiler
                             }
                         }
 
-                        noteGroups.Add(new NoteGroup { Notes = notes, Length = length, BeatsPerMinute = beatsPerMinute });
+                        noteGroups.Add(new NoteGroup { Notes = notes, Length = TimeSpan.FromMinutes(4 / length / beatsPerMinute) });
                     }
                 }
 

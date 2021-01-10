@@ -253,7 +253,6 @@ namespace MusicBoxCompiler
                     var metadataAddress = baseMetadataAddress + (song.AddressIndex ?? AllocateNextMetadataAddress());
                     var songAddress = currentAddress;
                     var currentFilters = new List<Filter>();
-                    var currentBeatsPerMinute = 60;
                     var currentTimeOffset = 0;
                     var cellStartTime = 0;
                     var timeDeficit = 0;
@@ -263,11 +262,6 @@ namespace MusicBoxCompiler
                     // Add the notes for the song
                     foreach (var noteGroup in song.NoteGroups)
                     {
-                        if (noteGroup.BeatsPerMinute.HasValue)
-                        {
-                            currentBeatsPerMinute = noteGroup.BeatsPerMinute.Value;
-                        }
-
                         var (noteGroupAddress, noteGroupSubAddress) = noteTuplesToAddresses[CreateNoteTuple(noteGroup)];
 
                         if (currentFilters.Count == 0)
@@ -275,7 +269,7 @@ namespace MusicBoxCompiler
                             currentFilters.Add(CreateFilter('Y', metadataAddress + (currentTimeOffset + 1) * 256));
                         }
 
-                        var length = (int)(14400 / currentBeatsPerMinute / noteGroup.Length) - timeDeficit;
+                        var length = (int)(noteGroup.Length.TotalSeconds * 60) - timeDeficit;
 
                         // We can't have multiple note groups play too close too each other.
                         // However, to avoid delaying future notes we capture the amount that the length is adjusted
