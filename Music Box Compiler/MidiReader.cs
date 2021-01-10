@@ -135,7 +135,7 @@ namespace MusicBoxCompiler
                 .ToDictionary(entry => entry.channel, entry => entry.Instrument);
         }
 
-        public static Song ReadSong(string midiFile, bool debug, Dictionary<Instrument, int> instrumentOffsets, double masterVolume, Dictionary<Instrument, double> instrumentVolumes)
+        public static Song ReadSong(string midiFile, bool debug, Dictionary<Instrument, int> instrumentOffsets, double masterVolume, Dictionary<Instrument, double> instrumentVolumes, bool allowInstrumentFallback)
         {
             const int unreasonablyHighOctave = 12; // This is to ensure that we don't have a negative number before calculating the octave, which would throw off the result
 
@@ -236,6 +236,20 @@ namespace MusicBoxCompiler
                     var effectiveNoteNumber = midiNote.RelativeNoteNumber + noteOffset;
                     isNoteInRange = effectiveNoteNumber > 0 && effectiveNoteNumber <= 48;
                     volume = Math.Min(midiNote.Velocity * midiNote.Expression * midiNote.ChannelVolume * baseInstrumentVolume * instrumentVolume * masterVolume, 1);
+
+                    if (!isNoteInRange && instrument != Instrument.Drumkit && allowInstrumentFallback)
+                    {
+                        var fallbackInstrument = effectiveNoteNumber <= 0 ? Instrument.LeadGuitar : Instrument.Celesta;
+                        var fallbackEffectiveNoteNumber = effectiveNoteNumber + GetBaseInstrumentOffset(fallbackInstrument) - GetBaseInstrumentOffset(instrument);
+                        var isFallbackNoteInRange = fallbackEffectiveNoteNumber > 0 && fallbackEffectiveNoteNumber <= 48;
+
+                        if (isFallbackNoteInRange)
+                        {
+                            instrument = fallbackInstrument;
+                            effectiveNoteNumber = fallbackEffectiveNoteNumber;
+                            isNoteInRange = true;
+                        }
+                    }
 
                     if (isNoteInRange)
                     {
@@ -355,13 +369,11 @@ namespace MusicBoxCompiler
 
                         if (instrument != Instrument.Unknown)
                         {
-                            var baseNoteOffset = BaseInstrumentOffsets.TryGetValue(instrument, out var baseOffsetValue) ? baseOffsetValue : 0;
-
                             var relativeNoteNumber = isPercussion
                                 ? DrumMap.TryGetValue(noteNumber, out var drum) ? (int)drum : 0
                                 : instrument == Instrument.Drumkit
                                     ? (int)Drum.ReverseCymbal
-                                    : noteNumber + baseNoteOffset;
+                                    : noteNumber + GetBaseInstrumentOffset(instrument);
 
                             note = note with { RelativeNoteNumber = relativeNoteNumber };
                         }
@@ -377,6 +389,9 @@ namespace MusicBoxCompiler
 
             return (notes, totalPlayTime);
         }
+
+        private static int GetBaseInstrumentOffset(Instrument instrument) =>
+            BaseInstrumentOffsets.TryGetValue(instrument, out var baseOffsetValue) ? baseOffsetValue : 0;
 
         private record MidiNote
         {
