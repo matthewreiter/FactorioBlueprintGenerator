@@ -127,6 +127,8 @@ namespace MusicBoxCompiler
             { Instrument.Square, 0.5 },
             { Instrument.Sawtooth, 0.75 }
         };
+        private const Instrument LowFallbackInstrument = Instrument.LeadGuitar;
+        private const Instrument HighFallbackInstrument = Instrument.Celesta;
 
         private static Dictionary<int, Instrument> CreateInstrumentMap(params InstrumentMapping[] mappings)
         {
@@ -239,7 +241,7 @@ namespace MusicBoxCompiler
 
                     if (!isNoteInRange && instrument != Instrument.Drumkit && allowInstrumentFallback)
                     {
-                        var fallbackInstrument = effectiveNoteNumber <= 0 ? Instrument.LeadGuitar : Instrument.Celesta;
+                        var fallbackInstrument = effectiveNoteNumber <= 0 ? LowFallbackInstrument : HighFallbackInstrument;
                         var fallbackEffectiveNoteNumber = effectiveNoteNumber + GetBaseInstrumentOffset(fallbackInstrument) - GetBaseInstrumentOffset(instrument);
                         var isFallbackNoteInRange = fallbackEffectiveNoteNumber > 0 && fallbackEffectiveNoteNumber <= 48;
 
