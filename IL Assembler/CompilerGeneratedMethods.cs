@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace Assembler
 {
@@ -80,11 +81,38 @@ namespace Assembler
                                 AddInstructions(Instruction.NoOp(1));
                                 AddInstruction(Instruction.IncrementRegister(7, -1)); // Decrement the inner loop counter
                                 AddInstruction(Instruction.WriteMemory(addressRegister: 3, addressValue: 2, inputRegister: 8, autoIncrement: 1)); // Write initial data to the array
-                                AddInstruction(Instruction.JumpIf(innerLoopOffset - (Instructions.Count + 1), conditionLeftRegister: 7, conditionRightImmediateValue: 0, ConditionOperator.GreaterThan)); // Jump to the beginning of the inner loop
+                                AddInstruction(Instruction.JumpIf(innerLoopOffset - (Instructions.Count + 1), conditionLeftRegister: 7, conditionRightImmediateValue: 0, conditionOperator: ConditionOperator.GreaterThan)); // Jump to the beginning of the inner loop
 
                                 // Outer loop end
                                 AddInstruction(Instruction.IncrementRegister(4, 1)); // Increment the source pointer
-                                AddInstruction(Instruction.JumpIf(outerLoopOffset - (Instructions.Count + 1), conditionLeftRegister: 5, conditionRightImmediateValue: 0, ConditionOperator.GreaterThan)); // Jump to the beginning of the outer loop
+                                AddInstruction(Instruction.JumpIf(outerLoopOffset - (Instructions.Count + 1), conditionLeftRegister: 5, conditionRightImmediateValue: 0, conditionOperator: ConditionOperator.GreaterThan)); // Jump to the beginning of the outer loop
+                                AddReturn();
+                            }
+                        }
+                    }
+                },
+                {
+                    typeof(Thread), new Dictionary<string, Action>
+                    {
+                        {
+                            nameof(Thread.Sleep), () =>
+                            {
+                                ReadArgument(0, outputRegister: 3); // Duration in milliseconds
+                                AddInstruction(Instruction.ReadMemory(outputRegister: 4, addressValue: Clock.RelativeTicksAddress)); // Get the current time
+                                AddInstructions(Instruction.NoOp(3));
+                                AddInstruction(Instruction.BinaryOperation(Operation.Divide, outputRegister: 3, leftInputRegister: 3, rightImmediateValue: 16)); // Convert duration to ticks
+                                AddInstructions(Instruction.NoOp(4));
+                                AddInstruction(Instruction.BinaryOperation(Operation.Add, outputRegister: 3, leftInputRegister: 3, rightInputRegister: 4)); // Calculate the end time
+
+                                // Loop
+                                var loopOffset = Instructions.Count;
+                                AddInstruction(Instruction.ReadMemory(outputRegister: 4, addressValue: Clock.RelativeTicksAddress)); // Get the current time
+                                AddInstructions(Instruction.NoOp(4));
+                                AddInstruction(Instruction.BinaryOperation(Operation.Subtract, outputRegister: 4, leftInputRegister: 4, rightInputRegister: 3)); // Calculate the remaining time
+                                AddInstructions(Instruction.NoOp(4));
+                                AddInstruction(Instruction.JumpIf(loopOffset - (Instructions.Count + 1), conditionLeftRegister: 4, conditionRightImmediateValue: 0, conditionOperator: ConditionOperator.LessThan));
+                                AddInstruction(Instruction.JumpIf(loopOffset - (Instructions.Count + 1), conditionLeftRegister: 4, conditionRightImmediateValue: 1 << 30, conditionOperator: ConditionOperator.GreaterThan)); // Handle the time wrapping around
+
                                 AddReturn();
                             }
                         }
