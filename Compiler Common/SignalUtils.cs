@@ -10,7 +10,7 @@ namespace CompilerCommon
         /// <summary>
         /// The maximum number of signals in a single memory cell.
         /// </summary>
-        public const int MaxSignals = 18;
+        public const int MaxSignals = 20;
 
         // The numeric value of the signal is its index plus 1
         private static readonly List<string> OrderedVirtualSignals = Enumerable.Range('0', 10).Concat(Enumerable.Range('A', 26))
