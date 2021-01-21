@@ -7,7 +7,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
 
 namespace Assembler
 {
@@ -62,6 +61,7 @@ namespace Assembler
                 var ilInstructions = !isCompilerGenerated ? method.GetInstructions() : new List<ILInstruction> { };
                 var methodBody = !isCompilerGenerated ? method.GetMethodBody() : null;
                 var nonInlineableParameters = new HashSet<int>();
+                var nonRegisterLocals = new HashSet<int>();
                 var methodCalls = new HashSet<ILInstruction>();
 
                 AddType(method.DeclaringType);
@@ -126,6 +126,12 @@ namespace Assembler
                         var operand = Convert.ToInt32(ilInstruction.Operand);
                         nonInlineableParameters.Add(operand);
                     }
+                    else if (opCodeValue == OpCodes.Ldloca.Value ||
+                        opCodeValue == OpCodes.Ldloca_S.Value)
+                    {
+                        var operand = Convert.ToInt32(ilInstruction.Operand);
+                        nonRegisterLocals.Add(operand);
+                    }
                 }
 
                 var (sourceSinkMap, discontinuityMap) = AnalyzeStack(ilInstructions, methodBody);
@@ -137,6 +143,7 @@ namespace Assembler
                     SourceSinkMap = sourceSinkMap,
                     DiscontinuityMap = discontinuityMap,
                     NonInlineableParameters = nonInlineableParameters,
+                    NonRegisterLocals = nonRegisterLocals,
                     MethodCalls = methodCalls
                 };
             }
@@ -352,6 +359,7 @@ namespace Assembler
             public Dictionary<ILInstruction, Sink> SourceSinkMap { get; set; }
             public Dictionary<ILInstruction, ILInstruction> DiscontinuityMap { get; set; }
             public HashSet<int> NonInlineableParameters { get; set; }
+            public HashSet<int> NonRegisterLocals { get; set; }
             public HashSet<ILInstruction> MethodCalls { get; set; }
         }
 
