@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using static MusicBoxCompiler.Constants;
 using GMInst = Commons.Music.Midi.GeneralMidi.Instruments;
 using Percussions = Commons.Music.Midi.GeneralMidi.Percussions;
@@ -146,9 +147,32 @@ namespace MusicBoxCompiler
 
             midiEventWriter?.WriteLine(midiFile);
 
-            var (midiNotes, totalPlayTime) = ReadMidiFile(midiFile);
+            var midiData = ReadMidiFile(midiFile);
+            var midiNotes = midiData.Notes;
+            var totalPlayTime = midiData.TotalPlayTime;
+            var trackName = midiData.TrackName;
+            var text = midiData.Text;
+            var copyright = midiData.Copyright;
 
-            midiEventWriter?.WriteLine($"Total play time: {totalPlayTime}");
+            if (midiEventWriter != null)
+            {
+                midiEventWriter.WriteLine($"Total play time: {totalPlayTime}");
+
+                if (trackName != null)
+                {
+                    midiEventWriter.WriteLine($"Track name: {trackName}");
+                }
+
+                if (text != null)
+                {
+                    midiEventWriter.WriteLine($"Text: {text}");
+                }
+
+                if (copyright != null)
+                {
+                    midiEventWriter.WriteLine($"Copyright: {copyright}");
+                }
+            }
 
             if (instrumentOffsets == null)
             {
@@ -314,7 +338,7 @@ namespace MusicBoxCompiler
             };
         }
 
-        private static (List<MidiNote> MidiNotes, TimeSpan TotalPlayTime) ReadMidiFile(string midiFile)
+        private static MidiData ReadMidiFile(string midiFile)
         {
             using var fileReader = File.OpenRead(midiFile);
             var music = SmfTrackMerger.Merge(MidiMusic.Read(fileReader));
@@ -324,6 +348,9 @@ namespace MusicBoxCompiler
             var currentTimeMillis = 0d;
             var lastNoteTimeMillis = 0d;
             var notes = new List<MidiNote>();
+            var trackName = new List<string>();
+            var text = new List<string>();
+            var copyright = new List<string>();
 
             foreach (var midiMessage in music.Tracks[0].Messages)
             {
@@ -338,6 +365,22 @@ namespace MusicBoxCompiler
                 }
 
                 machine.ProcessEvent(midiEvent);
+
+                if (midiEvent.EventType == MidiEvent.Meta)
+                {
+                    switch (midiEvent.MetaType)
+                    {
+                        case MidiMetaType.TrackName:
+                            trackName.Add(Encoding.ASCII.GetString(midiEvent.ExtraData));
+                            break;
+                        case MidiMetaType.Text:
+                            text.Add(Encoding.ASCII.GetString(midiEvent.ExtraData));
+                            break;
+                        case MidiMetaType.Copyright:
+                            copyright.Add(Encoding.ASCII.GetString(midiEvent.ExtraData));
+                            break;
+                    }
+                }
 
                 if (midiEvent.EventType == MidiEvent.NoteOn)
                 {
@@ -389,11 +432,27 @@ namespace MusicBoxCompiler
             var maxEndOfSongSilenceMillis = 3000; // Truncate the song if the end is more than 3 seconds after the last note
             var totalPlayTime = TimeSpan.FromMilliseconds(Math.Min(currentTimeMillis, lastNoteTimeMillis + maxEndOfSongSilenceMillis));
 
-            return (notes, totalPlayTime);
+            return new MidiData()
+            {
+                Notes = notes,
+                TotalPlayTime = totalPlayTime,
+                TrackName = trackName.Count > 0 ? string.Join(", ", trackName) : null,
+                Text = text.Count > 0 ? string.Join("", text) : null,
+                Copyright = copyright.Count > 0 ? string.Join(", ", copyright) : null
+            };
         }
 
         private static int GetBaseInstrumentOffset(Instrument instrument) =>
             BaseInstrumentOffsets.TryGetValue(instrument, out var baseOffsetValue) ? baseOffsetValue : 0;
+
+        private record MidiData
+        {
+            public List<MidiNote> Notes { get; init; }
+            public TimeSpan TotalPlayTime { get; init; }
+            public string TrackName { get; init; }
+            public string Text { get; init; }
+            public string Copyright { get; init; }
+        }
 
         private record MidiNote
         {
