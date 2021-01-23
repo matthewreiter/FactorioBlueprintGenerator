@@ -13,8 +13,7 @@ while (true)
 
     if (requestedSong > 0 && requestedSong != currentSong)
     {
-        MusicBox.SelectSongMetadata(requestedSong);
-        var songAddress = MusicBox.GetSelectedSongMetadata(MusicBox.SongMetadataField.SongAddress);
+        var songAddress = GetSongAddress(requestedSong);
 
         if (isLow)
         {
@@ -22,28 +21,28 @@ while (true)
         }
         else
         {
-            SetPosition(songAddress);
+            MusicBox.Position = songAddress;
         }
     }
 
-    if (charge < 50 && !isLow)
+    if (charge < 30 && !isLow)
     {
-        MusicBox.SelectSongMetadata(SongMetadataAddresses.Cynthia);
-        var cynthia = MusicBox.GetSelectedSongMetadata(MusicBox.SongMetadataField.SongAddress);
+        var cynthia = GetSongAddress(SongMetadataAddresses.Cynthia);
 
         previousPosition = MusicBox.Position;
-        SetPosition(cynthia);
+        MusicBox.Position = cynthia;
     }
-    else if (charge > 55 && isLow)
+    else if (charge > 40 && isLow)
     {
-        SetPosition(previousPosition);
+        MusicBox.Position = previousPosition;
+        Thread.Sleep(10000);
     }
 
     NumericDisplay.Value = MusicBox.GetPlayingSongMetadata(MusicBox.SongMetadataField.TrackNumber);
 }
 
-void SetPosition(int position)
+static int GetSongAddress(int metadataAddress)
 {
-    MusicBox.Position = position;
-    Thread.Sleep(10000);
+    MusicBox.SelectSongMetadata(metadataAddress);
+    return MusicBox.GetSelectedSongMetadata(MusicBox.SongMetadataField.SongAddress);
 }
