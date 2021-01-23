@@ -22,7 +22,7 @@ while (true)
         }
         else
         {
-            MusicBox.Position = songAddress;
+            SetPosition(songAddress);
         }
     }
 
@@ -32,14 +32,18 @@ while (true)
         var cynthia = MusicBox.GetSelectedSongMetadata(MusicBox.SongMetadataField.SongAddress);
 
         previousPosition = MusicBox.Position;
-        MusicBox.Position = cynthia;
-        Thread.Sleep(10000);
+        SetPosition(cynthia);
     }
     else if (charge > 55 && isLow)
     {
-        MusicBox.Position = previousPosition;
-        Thread.Sleep(10000);
+        SetPosition(previousPosition);
     }
 
     NumericDisplay.Value = MusicBox.GetPlayingSongMetadata(MusicBox.SongMetadataField.TrackNumber);
+}
+
+void SetPosition(int position)
+{
+    MusicBox.Position = position;
+    Thread.Sleep(10000);
 }
