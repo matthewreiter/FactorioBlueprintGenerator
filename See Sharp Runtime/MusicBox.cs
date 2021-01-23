@@ -8,6 +8,7 @@ namespace SeeSharp.Runtime
         private const int CurrentPositionAddress = BaseAddress;
         private const int ConstantAddress = BaseAddress + 1;
         private const int PlayingSongMetadataAddress = BaseAddress + 2;
+        private const int RequestedSongAddress = BaseAddress + 3;
 
         public enum SongMetadataField
         {
@@ -26,9 +27,15 @@ namespace SeeSharp.Runtime
         public static int Position
         {
             [Inline]
-            get { return Memory.Read(CurrentPositionAddress); }
+            get => Memory.Read(CurrentPositionAddress);
             [Inline]
-            set { Memory.Write(CurrentPositionAddress, value - 4); }
+            set => Memory.Write(CurrentPositionAddress, value - 4);
+        }
+
+        public static int RequestedSong
+        {
+            [Inline]
+            get => Memory.Read(RequestedSongAddress);
         }
 
         [Inline]

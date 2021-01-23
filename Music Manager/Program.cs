@@ -7,11 +7,28 @@ var previousPosition = 0;
 while (true)
 {
     var charge = FactoryNetwork.GetValue(Signal.A);
-    var isLow = MusicBox.GetPlayingSongMetadata(MusicBox.SongMetadataField.MetadataAddress) == SongMetadataAddresses.Cynthia;
+    var currentSong = MusicBox.GetPlayingSongMetadata(MusicBox.SongMetadataField.MetadataAddress);
+    var isLow = currentSong == SongMetadataAddresses.Cynthia;
+    var requestedSong = MusicBox.RequestedSong;
+
+    if (requestedSong > 0 && requestedSong != currentSong)
+    {
+        MusicBox.SelectSongMetadata(requestedSong);
+        var songAddress = MusicBox.GetSelectedSongMetadata(MusicBox.SongMetadataField.SongAddress);
+
+        if (isLow)
+        {
+            previousPosition = songAddress;
+        }
+        else
+        {
+            MusicBox.Position = songAddress;
+        }
+    }
 
     if (charge < 50 && !isLow)
     {
-        MusicBox.SelectSongMetadata(SongMetadataAddresses.Cynthia); // Do this each time in case songs are redeployed while the program is running
+        MusicBox.SelectSongMetadata(SongMetadataAddresses.Cynthia);
         var cynthia = MusicBox.GetSelectedSongMetadata(MusicBox.SongMetadataField.SongAddress);
 
         previousPosition = MusicBox.Position;
