@@ -32,7 +32,6 @@ namespace MusicBoxCompiler
             var outputBlueprintFile = configuration.OutputBlueprint;
             var outputJsonFile = configuration.OutputJson;
             var outputConstantsFile = configuration.OutputConstants;
-            var outputCommandsFile = configuration.OutputCommands;
             var outputMidiEventsFile = configuration.OutputMidiEvents;
             var baseAddress = configuration.BaseAddress ?? 1;
             var snapToGrid = configuration.SnapToGrid;
@@ -86,7 +85,6 @@ namespace MusicBoxCompiler
             BlueprintUtil.WriteOutJson(outputJsonFile, blueprintWrapper);
             WriteOutConstants(outputConstantsFile, addresses, constantsNamespace);
             WriteOutMidiEvents(outputMidiEventsFile, playlists);
-            WriteOutCommands(outputCommandsFile, memoryCells, volumeLevels, minVolume, maxVolume);
         }
 
         private static MusicConfig LoadConfig(string configFile)
@@ -428,81 +426,6 @@ namespace MusicBoxCompiler
             }
         }
 
-        private static void WriteOutCommands(string outputCommandsFile, List<Entity> memoryCells, int volumeLevels, double minVolume, double maxVolume)
-        {
-            if (outputCommandsFile == null)
-            {
-                return;
-            }
-
-            var commands = memoryCells
-                .Select((entity, index) => (entity, index))
-                .Where(entityWithIndex => entityWithIndex.entity.Control_behavior != null)
-                .Select(entityWithIndex =>
-                {
-                    var (entity, address) = entityWithIndex;
-                    var isEnabled = entity.Control_behavior?.Is_on ?? true;
-
-                    var signals = entity.Control_behavior?.Filters
-                        ?.Select(filter =>
-                        {
-                            var signalName = filter.Signal.Name;
-
-                            Match match;
-                            if ((match = NoteSignalRegex.Match(signalName)).Success)
-                            {
-                                var configuration = filter.Count / 256 - 1;
-                                var instrument = (Instrument)(configuration % InstrumentCount + 1);
-                                var encodedVolume = configuration / InstrumentCount;
-
-                                var note = filter.Count % 256 - 1;
-                                var instrumentAndNote = instrument switch
-                                {
-                                    Instrument.Drumkit => Constants.Drums.ElementAtOrDefault(note) ?? note.ToString(),
-                                    _ => $"{instrument} {Notes.ElementAtOrDefault(note % Notes.Count) ?? (note % Notes.Count).ToString()}{(note + 5) / Notes.Count + 1}"
-                                };
-                                var volume = maxVolume - (double)encodedVolume / (volumeLevels - 1) * (maxVolume - minVolume);
-                                return $"{instrumentAndNote} at {(int)(volume * 100)}% volume";
-                            }
-                            else if ((match = NoteGroupSignalRegex.Match(signalName)).Success)
-                            {
-                                const int maxAddresses = 1 << 20;
-                                var relativeNoteGroupAddress = filter.Count % maxAddresses;
-                                var noteGroupTimeOffset = filter.Count / maxAddresses;
-
-                                return $"note group {relativeNoteGroupAddress} with time offset {noteGroupTimeOffset}";
-                            }
-                            else if (signalName == VirtualSignalNames.LetterOrDigit('U'))
-                            {
-                                //return $"jump by {filter.Count} to {address + 1 + filter.Count}";
-                                return $"jump by {filter.Count}";
-                            }
-                            else if (signalName == VirtualSignalNames.LetterOrDigit('Y'))
-                            {
-                                return $"offset {filter.Count % 65536}, track {filter.Count / 65536}";
-                            }
-                            else if (signalName == VirtualSignalNames.LetterOrDigit('Z'))
-                            {
-                                return $"histogram {filter.Count:X}";
-                            }
-                            else
-                            {
-                                return null;
-                            }
-                        })
-                        ?.Where(note => note != null);
-
-                    return signals != null ? $"{address:D4}: {string.Join(", ", signals)}{(!isEnabled ? " (disabled)" : "")}" : null;
-                })
-                .Where(command => command != null);
-
-            using var outputStream = new StreamWriter(outputCommandsFile);
-            foreach (var command in commands)
-            {
-                outputStream.WriteLine(command);
-            }
-        }
-
         private static Filter CreateFilter(char letterOrDigit, int count)
         {
             return new Filter { Signal = new SignalID { Name = VirtualSignalNames.LetterOrDigit(letterOrDigit), Type = SignalTypes.Virtual }, Count = count };
@@ -570,7 +493,6 @@ namespace MusicBoxCompiler
         public string OutputBlueprint { get; set; }
         public string OutputJson { get; set; }
         public string OutputConstants { get; set; }
-        public string OutputCommands { get; set; }
         public string OutputMidiEvents { get; set; }
         public int? BaseAddress { get; set; }
         public bool? SnapToGrid { get; set; }
