@@ -154,14 +154,17 @@ namespace Assembler
                 .ToHashSet();
         }
 
-        private (Dictionary<ILInstruction, Sink> SourceSinkMap, Dictionary<ILInstruction, ILInstruction> DiscontinuityMap) AnalyzeStack(List<ILInstruction> ilInstructions, MethodBody methodBody)
+        /// <summary>
+        /// Tracks the state of the stack over time to determine data flow between instructions that push values onto the stack and those that pop values off the stack.
+        /// </summary>
+        private static (Dictionary<ILInstruction, Sink> SourceSinkMap, Dictionary<ILInstruction, ILInstruction> DiscontinuityMap) AnalyzeStack(List<ILInstruction> ilInstructions, MethodBody methodBody)
         {
             var stack = ImmutableStack<ImmutableHashSet<ILInstruction>>.Empty;
-            var stackSnapshots = new Dictionary<ILInstruction, ImmutableStack<ImmutableHashSet<ILInstruction>>>();
-            var sourceSinkMap = new Dictionary<ILInstruction, Sink>();
-            var jumpSourceMap = new Dictionary<int, List<ILInstruction>>();
-            var discontinuityMap = new Dictionary<ILInstruction, ILInstruction>();
-            var isDiscontinuity = false;
+            var stackSnapshots = new Dictionary<ILInstruction, ImmutableStack<ImmutableHashSet<ILInstruction>>>(); // Maps an instruction to all possible stacks at that point
+            var sourceSinkMap = new Dictionary<ILInstruction, Sink>(); // Maps an instruction that pushes a value onto the stack with the instruction that pops it off
+            var jumpSourceMap = new Dictionary<int, List<ILInstruction>>(); // Maps an instruction offset to a list of instructions that make forward jumps to it
+            var discontinuityMap = new Dictionary<ILInstruction, ILInstruction>(); // Maps an instruction immediately after an unconditional forward jump to an instruction that makes a forward jump to it
+            var isDiscontinuity = false; // Whether the previous instruction was an unconditional forward jump
 
             var exceptionHandlingClauses = methodBody?.ExceptionHandlingClauses;
             var exceptionHandlerOffsets = exceptionHandlingClauses != null
@@ -177,6 +180,7 @@ namespace Assembler
                 var opCodeValue = opCode.Value;
                 var offset = ilInstruction.Offset;
 
+                // Determine the number of values popped off the stack by the current instruction
                 var popCount = opCode.StackBehaviourPop switch
                 {
                     StackBehaviour.Pop1 => 1,
@@ -200,6 +204,7 @@ namespace Assembler
                     _ => 0
                 };
 
+                // Determine the number of values pushed onto the stack by the current instruction
                 var pushCount = opCode.StackBehaviourPush switch
                 {
                     StackBehaviour.Push1 => 1,
@@ -212,37 +217,9 @@ namespace Assembler
                     _ => 0
                 };
 
+                // If there are any instructions that make forward jumps to the current instruction, attempt to reconcile all possible stacks at this point
                 if (jumpSourceMap.TryGetValue(offset, out var currentJumpSources))
                 {
-                    static ImmutableStack<ImmutableHashSet<ILInstruction>> MergeStacks(ImmutableStack<ImmutableHashSet<ILInstruction>> stack1, ImmutableStack<ImmutableHashSet<ILInstruction>> stack2)
-                    {
-                        var tempStack = new Stack<ImmutableHashSet<ILInstruction>>();
-
-                        while (stack1 != stack2)
-                        {
-                            if (stack1.IsEmpty != stack2.IsEmpty)
-                            {
-                                throw new Exception("Unable to reconcile the stack after a jump/branch.");
-                            }
-                            else if (stack1.IsEmpty)
-                            {
-                                break;
-                            }
-
-                            stack1 = stack1.Pop(out var instructions1);
-                            stack2 = stack2.Pop(out var instructions2);
-
-                            tempStack.Push(instructions1.Concat(instructions2).ToImmutableHashSet());
-                        }
-
-                        while (tempStack.Count > 0)
-                        {
-                            stack1 = stack1.Push(tempStack.Pop());
-                        }
-
-                        return stack1;
-                    }
-
                     var stacks = new List<ImmutableStack<ImmutableHashSet<ILInstruction>>>();
 
                     if (isDiscontinuity)
@@ -262,14 +239,22 @@ namespace Assembler
                         }
                     }
 
-                    stack = stacks.Aggregate((stack1, stack2) => MergeStacks(stack1, stack2));
+                    stack = stacks.Aggregate(MergeStacks);
+                }
+                else if (isDiscontinuity)
+                {
+                    // Since the previous instruction jumps away and there are no forward jumps to this instruction,
+                    // the only way to get here is a backwards jump. We should be able to assume that the stack is empty in this scenario.
+                    stack = ImmutableStack<ImmutableHashSet<ILInstruction>>.Empty;
                 }
 
+                // Thrown exceptions are pushed onto the stack before control is transferred to the exception handler
                 if (exceptionHandlerOffsets.Contains(offset))
                 {
                     stack = stack.Push(null);
                 }
 
+                // Handle values popped off the stack by the current instruction
                 for (int index = 0; index < popCount; index++)
                 {
                     stack = stack.Pop(out var sourceInstructions);
@@ -285,6 +270,7 @@ namespace Assembler
                     }
                 }
 
+                // Handle values pushed onto the stack by the current instruction
                 for (int index = 0; index < pushCount; index++)
                 {
                     stack = stack.Push(ImmutableHashSet<ILInstruction>.Empty.Add(ilInstruction));
@@ -292,9 +278,7 @@ namespace Assembler
 
                 isDiscontinuity = false;
 
-                if (opCodeValue == OpCodes.Call.Value ||
-                    opCodeValue == OpCodes.Callvirt.Value ||
-                    opCodeValue == OpCodes.Newobj.Value)
+                if (opCode.FlowControl == FlowControl.Call)
                 {
                     var operand = (MethodBase)ilInstruction.Operand;
                     var parameters = operand.GetParameters();
@@ -345,11 +329,45 @@ namespace Assembler
                         }
                     }
                 }
+                else if (opCode.FlowControl == FlowControl.Return ||
+                    opCode.FlowControl == FlowControl.Throw)
+                {
+                    isDiscontinuity = true;
+                }
 
                 stackSnapshots[ilInstruction] = stack;
             }
 
             return (sourceSinkMap, discontinuityMap);
+        }
+
+        private static ImmutableStack<ImmutableHashSet<ILInstruction>> MergeStacks(ImmutableStack<ImmutableHashSet<ILInstruction>> stack1, ImmutableStack<ImmutableHashSet<ILInstruction>> stack2)
+        {
+            var tempStack = new Stack<ImmutableHashSet<ILInstruction>>();
+
+            while (stack1 != stack2)
+            {
+                if (stack1.IsEmpty != stack2.IsEmpty)
+                {
+                    throw new Exception("Unable to reconcile the stack after a jump/branch/return.");
+                }
+                else if (stack1.IsEmpty)
+                {
+                    break;
+                }
+
+                stack1 = stack1.Pop(out var instructions1);
+                stack2 = stack2.Pop(out var instructions2);
+
+                tempStack.Push(instructions1.Concat(instructions2).ToImmutableHashSet());
+            }
+
+            while (tempStack.Count > 0)
+            {
+                stack1 = stack1.Push(tempStack.Pop());
+            }
+
+            return stack1;
         }
 
         private class MethodAnalysis
