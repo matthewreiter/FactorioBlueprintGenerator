@@ -72,6 +72,23 @@ namespace MusicBoxCompiler
                 )
                 .ToList();
 
+            playlists.Add(new Playlist
+            {
+                Songs = new List<Song>
+                {
+                    new Song
+                    {
+                        Name = "Blank",
+                        DisplayName = "",
+                        AddressIndex = 1000 - baseMetadataAddress,
+                        NoteGroups = new List<NoteGroup>
+                        {
+                            new NoteGroup { Length = TimeSpan.FromSeconds(10), Notes = new List<Note> { } }
+                        },
+                    }
+                }
+            });
+
             var blueprint = CreateBlueprintFromPlaylists(playlists, baseAddress, snapToGrid, x, y, width, height, cellSize, volumeLevels, minVolume, maxVolume, baseMetadataAddress, out var addresses);
             BlueprintUtil.PopulateIndices(blueprint);
 
