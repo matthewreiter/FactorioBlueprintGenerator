@@ -16,6 +16,7 @@ namespace Assembler
         private void InitializeCompilerGeneratedMethods()
         {
             var throwHelper = Type.GetType("System.ThrowHelper");
+            var sr = Type.GetType("System.SR");
 
             compilerGeneratedMethods = new Dictionary<Type, Dictionary<string, Action>>
             {
@@ -126,6 +127,18 @@ namespace Assembler
                     .ToDictionary(name => name, name => (Action)(() =>
                     {
                         AddReturn();
+                    }))
+                },
+                {
+                    sr, sr.GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
+                    .Where(method => method.ReturnType == typeof(string))
+                    .Select(method => method.Name)
+                    .Distinct()
+                    .ToDictionary(name => name, name => (Action)(() =>
+                    {
+                        AddInstruction(Instruction.SetRegisterToImmediateValue(ReturnRegister, 0));
+                        var adjustedStackPointer = AdjustStackPointer(-methodContext.ParametersSize);
+                        AddInstructions(Instruction.NoOp(adjustedStackPointer ? 3 : 4));
                     }))
                 }
             };
