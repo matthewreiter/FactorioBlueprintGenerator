@@ -105,6 +105,7 @@ namespace MusicBoxCompiler
         {
             const int noteGroupAddressBits = 16;
             const int noteGroupTimeOffsetBits = 11;
+            const int metadataAddressBits = 10;
 
             var memoryCells = new List<MemoryCell>();
             var noteGroupCells = new List<MemoryCell>();
@@ -264,7 +265,7 @@ namespace MusicBoxCompiler
 
                         if (currentFilters.Count == 0)
                         {
-                            currentFilters.Add(CreateFilter('Y', metadataAddress + (currentTimeOffset + 1) * 256));
+                            currentFilters.Add(CreateFilter('Y', metadataAddress + ((currentTimeOffset + 1) << metadataAddressBits)));
                         }
 
                         var length = (int)(noteGroup.Length.TotalSeconds * 60) - timeDeficit;
