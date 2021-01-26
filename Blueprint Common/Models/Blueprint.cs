@@ -548,6 +548,7 @@ namespace BlueprintCommon.Models
         public CircuitParameters Circuit_parameters { get; set; }
 
         public bool? Is_on { get; set; }
+        public bool? Use_colors { get; set; }
     }
 
     public class Filter
