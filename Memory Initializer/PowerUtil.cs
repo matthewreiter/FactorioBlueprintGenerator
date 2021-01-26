@@ -53,7 +53,7 @@ namespace MemoryInitializer
                         Position = new Position
                         {
                             X = column * 18 + 0.5 + xOffset,
-                            Y = row * 18 + 2.5 + yOffset
+                            Y = row * 18 + 0.5 + yOffset
                         },
                         Neighbors = neighbors
                     };
