@@ -4,7 +4,8 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static MemoryInitializer.MemoryUtil;
+using static MemoryInitializer.ConnectionUtil;
+using static MemoryInitializer.PowerUtil;
 
 namespace MemoryInitializer
 {

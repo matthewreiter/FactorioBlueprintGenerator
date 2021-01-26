@@ -2,6 +2,6 @@
 {
     public static class BlueprintVersions
     {
-        public const long CurrentVersion = 281474976710656;
+        public const long CurrentVersion = 281479272857600;
     }
 }

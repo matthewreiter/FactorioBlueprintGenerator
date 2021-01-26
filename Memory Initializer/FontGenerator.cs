@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using static MemoryInitializer.MemoryUtil;
+using static MemoryInitializer.ConnectionUtil;
 using Color = System.Drawing.Color;
 using Icon = BlueprintCommon.Models.Icon;
 

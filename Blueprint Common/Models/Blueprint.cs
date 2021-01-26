@@ -158,6 +158,12 @@ namespace BlueprintCommon.Models
         public Dictionary<string, ConnectionPoint> Connections { get; set; }
 
         /// <summary>
+        /// IDs of the entities to which this entity is connected. Used by power poles.
+        /// </summary>
+        [JsonPropertyName("neighbours")]
+        public List<int> Neighbors { get; set; }
+
+        /// <summary>
         /// Item requests by this entity, this is what defines the item-request-proxy when the blueprint is placed, optional.
         /// 1 or more instances of key/value pairs. Key is the name of the item, string. Value is the amount of items to be requested.
         /// </summary>
