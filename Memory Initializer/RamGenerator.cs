@@ -255,11 +255,7 @@ namespace MemoryInitializer
                 {
                     new Icon
                     {
-                        Signal = new SignalID
-                        {
-                            Type = SignalTypes.Item,
-                            Name = ItemNames.AdvancedCircuit
-                        }
+                        Signal = SignalID.Create(ItemNames.AdvancedCircuit)
                     }
                 },
                 Entities = entities,

@@ -25,7 +25,7 @@ namespace MemoryInitializer
             var cellSize = configuration.CellSize ?? 1;
             var programRows = configuration.ProgramRows ?? (program != null ? (program.Count - 1) / width + 1 : height / 2);
             var programName = configuration.ProgramName;
-            var iconItemNames = configuration.IconItemNames ?? new List<string> { ItemNames.ElectronicCircuit };
+            var iconNames = configuration.IconNames ?? new List<string> { ItemNames.ElectronicCircuit };
 
             if (program != null && program.Count > programRows * width)
             {
@@ -166,13 +166,9 @@ namespace MemoryInitializer
             return new Blueprint
             {
                 Label = $"{width}x{height} ROM{(programName != null ? $": {programName}": "")}",
-                Icons = iconItemNames.Select(name => new Icon
+                Icons = iconNames.Select(name => new Icon
                 {
-                    Signal = new SignalID
-                    {
-                        Type = SignalTypes.Item,
-                        Name = name
-                    }
+                    Signal = SignalID.Create(name)
                 }).ToList(),
                 Entities = entities,
                 SnapToGrid = snapToGrid ? new SnapToGrid { X = (ulong)gridWidth, Y = (ulong)gridHeight } : null,
@@ -226,9 +222,9 @@ namespace MemoryInitializer
         public string ProgramName { get; set; }
 
         /// <summary>
-        /// The item names to use in the blueprint icon.
+        /// The item or virtual signal names to use in the blueprint icon.
         /// </summary>
-        public List<string> IconItemNames { get; set; }
+        public List<string> IconNames { get; set; }
     }
 
     public class MemoryCell

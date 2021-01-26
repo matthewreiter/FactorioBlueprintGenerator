@@ -171,11 +171,7 @@ namespace MemoryInitializer
                 {
                     new Icon
                     {
-                        Signal = new SignalID
-                        {
-                            Type = SignalTypes.Item,
-                            Name = ItemNames.ProgrammableSpeaker
-                        }
+                        Signal = SignalID.Create(ItemNames.ProgrammableSpeaker)
                     }
                 },
                 Entities = entities,

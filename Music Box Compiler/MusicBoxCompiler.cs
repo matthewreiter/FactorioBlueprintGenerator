@@ -396,7 +396,7 @@ namespace MusicBoxCompiler
                 CellSize = cellSize,
                 ProgramRows = 1, // Allocate one line for the constant cells
                 ProgramName = "Songs",
-                IconItemNames = new List<string> { ItemNames.ElectronicCircuit, ItemNames.ProgrammableSpeaker }
+                IconNames = new List<string> { ItemNames.ElectronicCircuit, ItemNames.ProgrammableSpeaker }
             }, constantCells, memoryCells);
         }
 

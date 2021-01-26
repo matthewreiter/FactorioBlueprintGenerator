@@ -183,35 +183,19 @@ namespace MemoryInitializer
                 {
                     new Icon
                     {
-                        Signal = new SignalID
-                        {
-                            Type = SignalTypes.Item,
-                            Name = ItemNames.ConstantCombinator
-                        }
+                        Signal = SignalID.Create(ItemNames.ConstantCombinator)
                     },
                     new Icon
                     {
-                        Signal = new SignalID
-                        {
-                            Type = SignalTypes.Virtual,
-                            Name = VirtualSignalNames.LetterOrDigit('A')
-                        }
+                        Signal = SignalID.CreateLetterOrDigit('A')
                     },
                     new Icon
                     {
-                        Signal = new SignalID
-                        {
-                            Type = SignalTypes.Virtual,
-                            Name = VirtualSignalNames.LetterOrDigit('B')
-                        }
+                        Signal = SignalID.CreateLetterOrDigit('B')
                     },
                     new Icon
                     {
-                        Signal = new SignalID
-                        {
-                            Type = SignalTypes.Virtual,
-                            Name = VirtualSignalNames.LetterOrDigit('C')
-                        }
+                        Signal = SignalID.CreateLetterOrDigit('C')
                     }
                 },
                 Entities = entities,
