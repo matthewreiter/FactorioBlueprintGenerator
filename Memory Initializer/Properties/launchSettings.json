@@ -12,6 +12,10 @@
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/registers.txt\" --OutputJson=\"$(ProjectDir)/Test/registers.json\" --MemoryType=Registers --RegisterCount=32"
     },
+    "Screen": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/screen.txt\" --OutputJson=\"$(ProjectDir)/Test/screen.json\" --MemoryType=Screen --Width=178 --Height=124"
+    },
     "Speakers": {
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/speakers.txt\" --OutputJson=\"$(ProjectDir)/Test/speakers.json\" --MemoryType=Speaker --Height=6 --SpeakersPerConfiguration=6 --VolumeLevels=4 --MinVolume=0.5 --BaseAddress=33793 --ReverseAddressY=true --IncludePower=true"

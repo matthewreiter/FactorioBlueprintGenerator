@@ -3,6 +3,8 @@
     public static class VirtualSignalNames
     {
         public const string Everything = "signal-everything";
+        public const string Anything = "signal-anything";
+        public const string Each = "signal-each";
         public const string Check = "signal-check";
         public const string Info = "signal-info";
         public const string Dot = "signal-dot";

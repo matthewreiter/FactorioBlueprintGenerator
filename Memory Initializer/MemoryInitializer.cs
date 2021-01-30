@@ -18,6 +18,7 @@ namespace MemoryInitializer
                 "ROM" => RomGenerator.Generate(configuration),
                 "RAM" => RamGenerator.Generate(configuration),
                 "Registers" => RegisterGenerator.Generate(configuration),
+                "Screen" => ScreenGenerator.Generate(configuration),
                 "Speaker" => SpeakerGenerator.Generate(configuration),
                 "MusicBoxSpeaker" => MusicBoxSpeakerGenerator.Generate(configuration),
                 "Font" => FontGenerator.Generate(configuration),
