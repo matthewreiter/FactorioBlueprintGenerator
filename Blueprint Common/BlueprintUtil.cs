@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using zlib;
@@ -74,6 +75,27 @@ namespace BlueprintCommon
         public static BlueprintWrapper DeserializeBlueprintWrapper(string json)
         {
             return JsonSerializer.Deserialize<BlueprintWrapper>(json, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        }
+
+        public static void PopulateEntityNumbers(List<Entity> entities)
+        {
+            var currentEntityNumber = 1;
+            var reservedEntityNumbers = entities.Select(entity => entity.Entity_number).ToHashSet();
+
+            int AllocateNextEntityNumber()
+            {
+                while (reservedEntityNumbers.Contains(currentEntityNumber))
+                {
+                    currentEntityNumber++;
+                }
+
+                return currentEntityNumber++;
+            }
+
+            foreach (var entity in entities)
+            {
+                entity.Entity_number = AllocateNextEntityNumber();
+            }
         }
 
         public static void PopulateIndices(Blueprint blueprint)
