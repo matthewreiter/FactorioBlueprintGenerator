@@ -401,7 +401,13 @@ namespace BlueprintCommon.Models
         /// <summary>
         /// The circuit connector id of the entity this connection is connected to.
         /// </summary>
-        public int? Circuit_id { get; set; }
+        public CircuitId? Circuit_id { get; set; }
+    }
+
+    public enum CircuitId
+    {
+        Input = 1,
+        Output = 2
     }
 
     public class ItemFilter

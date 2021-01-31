@@ -101,7 +101,7 @@ namespace MemoryInitializer
                                     new ConnectionData
                                     {
                                         Entity_id = memoryCellEntityNumber + (subCell == 0 ? readerEntityOffset : subCell - 1),
-                                        Circuit_id = CircuitIds.Input
+                                        Circuit_id = CircuitId.Input
                                     }
                                 }
                             })
@@ -136,7 +136,7 @@ namespace MemoryInitializer
                             Red = adjacentMemoryCells.Select(entityNumber => new ConnectionData
                             {
                                 Entity_id = entityNumber + readerEntityOffset,
-                                Circuit_id = CircuitIds.Input
+                                Circuit_id = CircuitId.Input
                             }).ToList(),
                             Green = new List<ConnectionData>
                             {
@@ -152,7 +152,7 @@ namespace MemoryInitializer
                             Green = adjacentMemoryCells.Select(entityNumber => new ConnectionData
                             {
                                 Entity_id = entityNumber + readerEntityOffset,
-                                Circuit_id = CircuitIds.Output
+                                Circuit_id = CircuitId.Output
                             }).ToList()
                         })
                     });

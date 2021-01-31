@@ -114,7 +114,7 @@ namespace MemoryInitializer
                                     new ConnectionData
                                     {
                                         Entity_id = adjacentCharacterEntityNumber,
-                                        Circuit_id = CircuitIds.Input
+                                        Circuit_id = CircuitId.Input
                                     }
                                 } : null
                             }, new ConnectionPoint
@@ -125,7 +125,7 @@ namespace MemoryInitializer
                                     new ConnectionData
                                     {
                                         Entity_id = adjacentCharacterEntityNumber,
-                                        Circuit_id = CircuitIds.Output
+                                        Circuit_id = CircuitId.Output
                                     }
                                 } : null
                             })

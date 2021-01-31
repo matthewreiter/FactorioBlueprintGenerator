@@ -80,7 +80,7 @@ namespace MemoryInitializer.Screen
                                     new ConnectionData
                                     {
                                         Entity_id = width * height + column * entitiesPerController + 1,
-                                        Circuit_id = CircuitIds.Output
+                                        Circuit_id = CircuitId.Output
                                     }
                                 }
                                 : new List<ConnectionData> { })
@@ -128,7 +128,7 @@ namespace MemoryInitializer.Screen
                         Red = adjacentControllers.Select(entityNumber => new ConnectionData
                         {
                             Entity_id = entityNumber,
-                            Circuit_id = CircuitIds.Input
+                            Circuit_id = CircuitId.Input
                         }).ToList(),
                         Green = new List<ConnectionData>
                         {
@@ -136,13 +136,13 @@ namespace MemoryInitializer.Screen
                             new ConnectionData
                             {
                                 Entity_id = controllerEntityNumber + writerEntityOffset,
-                                Circuit_id = CircuitIds.Output
+                                Circuit_id = CircuitId.Output
                             },
                             // Connection to own output (data feedback)
                             new ConnectionData
                             {
                                 Entity_id = controllerEntityNumber,
-                                Circuit_id = CircuitIds.Output
+                                Circuit_id = CircuitId.Output
                             }
                         }
                     }, new ConnectionPoint
@@ -158,7 +158,7 @@ namespace MemoryInitializer.Screen
                             new ConnectionData
                             {
                                 Entity_id = controllerEntityNumber,
-                                Circuit_id = CircuitIds.Input
+                                Circuit_id = CircuitId.Input
                             }
                         }
                     })
@@ -194,14 +194,14 @@ namespace MemoryInitializer.Screen
                             new ConnectionData
                             {
                                 Entity_id = controllerEntityNumber + addressMatcherEntityOffset,
-                                Circuit_id = CircuitIds.Output
+                                Circuit_id = CircuitId.Output
                             }
                         },
                         // Connection to adjacent writer input (data in)
                         Green = adjacentControllers.Select(entityNumber => new ConnectionData
                         {
                             Entity_id = entityNumber + writerEntityOffset,
-                            Circuit_id = CircuitIds.Input
+                            Circuit_id = CircuitId.Input
                         }).ToList()
                     }, new ConnectionPoint
                     {
@@ -211,7 +211,7 @@ namespace MemoryInitializer.Screen
                             new ConnectionData
                             {
                                 Entity_id = controllerEntityNumber,
-                                Circuit_id = CircuitIds.Input
+                                Circuit_id = CircuitId.Input
                             }
                         }
                     })
@@ -245,7 +245,7 @@ namespace MemoryInitializer.Screen
                         Red = adjacentControllers.Select(entityNumber => new ConnectionData
                         {
                             Entity_id = entityNumber + addressMatcherEntityOffset,
-                            Circuit_id = CircuitIds.Input
+                            Circuit_id = CircuitId.Input
                         }).ToList()
                     }, new ConnectionPoint
                     {
@@ -255,7 +255,7 @@ namespace MemoryInitializer.Screen
                             new ConnectionData
                             {
                                 Entity_id = controllerEntityNumber + writerEntityOffset,
-                                Circuit_id = CircuitIds.Input
+                                Circuit_id = CircuitId.Input
                             }
                         }
                     })

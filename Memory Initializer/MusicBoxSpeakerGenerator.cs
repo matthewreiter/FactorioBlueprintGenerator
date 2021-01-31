@@ -94,7 +94,7 @@ namespace MemoryInitializer
                             Red = adjacentMemoryCells.Select(entityNumber => new ConnectionData
                             {
                                 Entity_id = entityNumber + playerEntityOffset,
-                                Circuit_id = CircuitIds.Input
+                                Circuit_id = CircuitId.Input
                             }).ToList()
                         }, new ConnectionPoint
                         {
@@ -139,7 +139,7 @@ namespace MemoryInitializer
                                 new ConnectionData
                                 {
                                     Entity_id = baseEntityNumber + playerEntityOffset,
-                                    Circuit_id = CircuitIds.Output
+                                    Circuit_id = CircuitId.Output
                                 }
                             }
                         }),
