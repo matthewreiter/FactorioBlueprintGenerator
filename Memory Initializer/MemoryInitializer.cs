@@ -1,5 +1,6 @@
 ﻿using BlueprintCommon;
 using BlueprintCommon.Models;
+using MemoryInitializer.Screen;
 using Microsoft.Extensions.Configuration;
 using System;
 
@@ -19,6 +20,7 @@ namespace MemoryInitializer
                 "RAM" => RamGenerator.Generate(configuration),
                 "Registers" => RegisterGenerator.Generate(configuration),
                 "Screen" => ScreenGenerator.Generate(configuration),
+                "SpriteShifter" => SpriteShifterGenerator.Generate(configuration),
                 "Speaker" => SpeakerGenerator.Generate(configuration),
                 "MusicBoxSpeaker" => MusicBoxSpeakerGenerator.Generate(configuration),
                 "Font" => FontGenerator.Generate(configuration),
