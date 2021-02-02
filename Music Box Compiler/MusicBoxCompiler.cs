@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -17,9 +16,6 @@ namespace MusicBoxCompiler
     public static class MusicBoxCompiler
     {
         private const int InstrumentCount = 12;
-        private static readonly List<string> Notes = new List<string> { "F", "F#", "G", "G#", "A", "A#", "B", "C", "C#", "D", "D#", "E" };
-        private static readonly Regex NoteSignalRegex = new Regex(@"^signal-(\d)$");
-        private static readonly Regex NoteGroupSignalRegex = new Regex(@"^signal-([A-Q])$");
 
         public static void Run(IConfigurationRoot configuration)
         {
