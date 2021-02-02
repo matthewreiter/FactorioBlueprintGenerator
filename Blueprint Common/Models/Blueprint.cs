@@ -91,6 +91,14 @@ namespace BlueprintCommon.Models
         /// Index of the icon, 1-based.
         /// </summary>
         public int Index { get; set; }
+
+        public static Icon Create(string signalName)
+        {
+            return new Icon
+            {
+                Signal = SignalID.Create(signalName)
+            };
+        }
     }
 
     public class SignalID
@@ -567,6 +575,15 @@ namespace BlueprintCommon.Models
         /// Index of the filter, 1-based.
         /// </summary>
         public int Index { get; set; }
+
+        public static Filter Create(string signalName, int count = 1)
+        {
+            return new Filter
+            {
+                Signal = SignalID.Create(signalName),
+                Count = count
+            };
+        }
     }
 
     public class ArithmeticConditions

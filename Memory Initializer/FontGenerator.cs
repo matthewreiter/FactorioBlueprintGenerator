@@ -20,6 +20,7 @@ namespace MemoryInitializer
         {
             var fontImageFile = configuration.FontImage;
             var combinatorsPerRow = configuration.CombinatorsPerRow ?? 5;
+            var useOneSignalPerRow = configuration.UseOneSignalPerRow ?? false;
             var inputSignal = configuration.InputSignal ?? VirtualSignalNames.Dot;
             var signals = configuration.Signals.Contains(',') ? configuration.Signals.Split(',').ToList() : configuration.Signals.Select(signal => VirtualSignalNames.LetterOrDigit(signal)).ToList();
 
@@ -45,15 +46,32 @@ namespace MemoryInitializer
                     combinatorX = 0;
                 }
 
-                var glyphSignals = new List<SignalID>();
+                var glyphFilters = new List<Filter>();
 
                 for (int y = 0; y < height; y++)
                 {
-                    for (int x = 0; x < width; x++)
+                    if (useOneSignalPerRow)
                     {
-                        if (glyphPixels[y, x])
+                        var rowSignal = 0;
+
+                        for (int x = 0; x < width; x++)
                         {
-                            glyphSignals.Add(SignalID.Create(signals[y * width + x]));
+                            if (glyphPixels[y, x])
+                            {
+                                rowSignal |= 1 << x;
+                            }
+                        }
+
+                        glyphFilters.Add(Filter.Create(signals[y], rowSignal));
+                    }
+                    else
+                    {
+                        for (int x = 0; x < width; x++)
+                        {
+                            if (glyphPixels[y, x])
+                            {
+                                glyphFilters.Add(Filter.Create(signals[y * width + x]));
+                            }
                         }
                     }
                 }
@@ -85,7 +103,7 @@ namespace MemoryInitializer
 
                 var glyph = new List<Entity>();
 
-                for (int index = 0; index < (glyphSignals.Count + maxFilters - 1) / maxFilters; index++)
+                for (int index = 0; index < (glyphFilters.Count + maxFilters - 1) / maxFilters; index++)
                 {
                     var glyphPart = new Entity
                     {
@@ -98,7 +116,7 @@ namespace MemoryInitializer
                         Direction = Direction.Down,
                         Control_behavior = new ControlBehavior
                         {
-                            Filters = glyphSignals.Skip(index * maxFilters).Take(maxFilters).Select(signal => new Filter { Signal = signal, Count = 1 }).ToList()
+                            Filters = glyphFilters.Skip(index * maxFilters).Take(maxFilters).ToList()
                         }
                     };
                     glyph.Add(glyphPart);
@@ -137,22 +155,10 @@ namespace MemoryInitializer
                 Label = $"{width}x{height} Font",
                 Icons = new List<Icon>
                 {
-                    new Icon
-                    {
-                        Signal = SignalID.Create(ItemNames.ConstantCombinator)
-                    },
-                    new Icon
-                    {
-                        Signal = SignalID.CreateLetterOrDigit('A')
-                    },
-                    new Icon
-                    {
-                        Signal = SignalID.CreateLetterOrDigit('B')
-                    },
-                    new Icon
-                    {
-                        Signal = SignalID.CreateLetterOrDigit('C')
-                    }
+                    Icon.Create(ItemNames.ConstantCombinator),
+                    Icon.Create(VirtualSignalNames.LetterOrDigit('A')),
+                    Icon.Create(VirtualSignalNames.LetterOrDigit('B')),
+                    Icon.Create(VirtualSignalNames.LetterOrDigit('C'))
                 },
                 Entities = entities,
                 Item = ItemNames.Blueprint,
@@ -165,6 +171,7 @@ namespace MemoryInitializer
     {
         public string FontImage { get; init; }
         public int? CombinatorsPerRow { get; init; }
+        public bool? UseOneSignalPerRow { get; init; }
         public string InputSignal { get; init; }
         public string Signals { get; init; }
     }
