@@ -30,7 +30,7 @@
     },
     "Font": {
       "commandName": "Project",
-      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/font.txt\" --OutputJson=\"$(ProjectDir)/Test/font.json\" --FontImage=\"$(ProjectDir)/Fonts/5x7 Font.png\" --MemoryType=Font --Width=5 --Height=7 --Signals=0123456789ABCDEFGHIJKLMNOPQRSTUVWXY"
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/font.txt\" --OutputJson=\"$(ProjectDir)/Test/font.json\" --FontImage=\"$(ProjectDir)/Fonts/5x7 Font.png\" --MemoryType=Font --Signals=0123456789ABCDEFGHIJKLMNOPQRSTUVWXY"
     }
   }
 }
