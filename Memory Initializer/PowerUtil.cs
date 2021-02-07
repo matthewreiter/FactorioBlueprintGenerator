@@ -7,8 +7,10 @@ namespace MemoryInitializer
 {
     public class PowerUtil
     {
-        public static IEnumerable<Entity> CreateSubstations(int substationWidth, int substationHeight, int xOffset, int yOffset, int baseEntityNumber, GridConnectivity connectivity = GridConnectivity.Full)
+        public static List<Entity> CreateSubstations(int substationWidth, int substationHeight, int xOffset, int yOffset, int baseEntityNumber, GridConnectivity connectivity = GridConnectivity.Full)
         {
+            var substations = new List<Entity>();
+
             for (int row = 0; row < substationHeight; row++)
             {
                 for (int column = 0; column < substationWidth; column++)
@@ -46,7 +48,7 @@ namespace MemoryInitializer
                         }
                     }
 
-                    yield return new Entity
+                    substations.Add(new Entity
                     {
                         Entity_number = entityNumber,
                         Name = ItemNames.Substation,
@@ -56,9 +58,11 @@ namespace MemoryInitializer
                             Y = row * 18 + 0.5 + yOffset
                         },
                         Neighbors = neighbors
-                    };
+                    });
                 }
             }
+
+            return substations;
         }
 
         [Flags]

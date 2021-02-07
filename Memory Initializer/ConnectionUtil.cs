@@ -75,6 +75,24 @@ namespace MemoryInitializer
             AddOneWayConnection(secondEntity, secondCircuitId, firstEntity, firstCircuitId);
         }
 
+        public static void AddNeighbor(Entity firstEntity, Entity secondEntity)
+        {
+            static void AddOneWayNeighbor(Entity startEntity, Entity endEntity)
+            {
+                var neighbors = startEntity.Neighbors;
+                if (neighbors == null)
+                {
+                    neighbors = new List<int>();
+                    startEntity.Neighbors = neighbors;
+                }
+
+                neighbors.Add(endEntity.Entity_number);
+            }
+
+            AddOneWayNeighbor(firstEntity, secondEntity);
+            AddOneWayNeighbor(secondEntity, firstEntity);
+        }
+
         public enum CircuitColor
         {
             Red,

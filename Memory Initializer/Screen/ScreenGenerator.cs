@@ -3,7 +3,6 @@ using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
-using System.Linq;
 using static MemoryInitializer.ConnectionUtil;
 using static MemoryInitializer.PowerUtil;
 
@@ -22,21 +21,12 @@ namespace MemoryInitializer.Screen
             var height = configuration.Height ?? 18;
 
             const int cycle = 2;
+            const int parallelCycle = 32;
 
             var entities = new List<Entity>();
             var pixels = new Entity[height, width];
-
-            var columnMemory = new Entity[width];
-            var columnWriters = new Entity[width];
-            var columnAddressMatchers = new Entity[width];
-            var columnCyclicWriters = new Entity[width];
-            var columnCyclicMatchers = new Entity[width];
-
-            var rowMemory = new Entity[height];
-            var rowWriters = new Entity[height];
-            var rowAddressMatchers = new Entity[height];
-            var rowCyclicWriters = new Entity[height];
-            var rowCyclicMatchers = new Entity[height];
+            var columnControllers = new Controller[width];
+            var rowControllers = new Controller[height];
 
             // Pixels
             for (var row = 0; row < height; row++)
@@ -101,7 +91,6 @@ namespace MemoryInitializer.Screen
                         }
                     }
                 };
-                columnMemory[column] = memory;
                 entities.Add(memory);
 
                 // Writer
@@ -126,7 +115,6 @@ namespace MemoryInitializer.Screen
                         }
                     }
                 };
-                columnWriters[column] = writer;
                 entities.Add(writer);
 
                 // Address matcher
@@ -151,7 +139,6 @@ namespace MemoryInitializer.Screen
                         }
                     }
                 };
-                columnAddressMatchers[column] = addressMatcher;
                 entities.Add(addressMatcher);
 
                 // Cyclic writer
@@ -176,7 +163,6 @@ namespace MemoryInitializer.Screen
                         }
                     }
                 };
-                columnCyclicWriters[column] = cyclicWriter;
                 entities.Add(cyclicWriter);
 
                 // Cyclic address matcher
@@ -201,8 +187,133 @@ namespace MemoryInitializer.Screen
                         }
                     }
                 };
-                columnCyclicMatchers[column] = cyclicMatcher;
                 entities.Add(cyclicMatcher);
+
+                // Parallel writer
+                var parallelWriter = new Entity
+                {
+                    Name = ItemNames.DeciderCombinator,
+                    Position = new Position
+                    {
+                        X = column + 2,
+                        Y = height + 14.5
+                    },
+                    Direction = Direction.Up,
+                    Control_behavior = new ControlBehavior
+                    {
+                        Decider_conditions = new DeciderConditions
+                        {
+                            First_signal = SignalID.Create(VirtualSignalNames.Check),
+                            Constant = 0,
+                            Comparator = Comparators.IsEqual,
+                            Output_signal = SignalID.Create(VirtualSignalNames.Everything),
+                            Copy_count_from_input = true
+                        }
+                    }
+                };
+                entities.Add(parallelWriter);
+
+                // Parallel address range low
+                var parallelAddressRangeLow = new Entity
+                {
+                    Name = ItemNames.DeciderCombinator,
+                    Position = new Position
+                    {
+                        X = column + 2,
+                        Y = height + 26.5
+                    },
+                    Direction = Direction.Up,
+                    Control_behavior = new ControlBehavior
+                    {
+                        Decider_conditions = new DeciderConditions
+                        {
+                            First_signal = SignalID.Create(VirtualSignalNames.Info),
+                            Constant = column + 1,
+                            Comparator = Comparators.LessThan,
+                            Output_signal = SignalID.Create(VirtualSignalNames.Check),
+                            Copy_count_from_input = false
+                        }
+                    }
+                };
+                entities.Add(parallelAddressRangeLow);
+
+                // Parallel address range high
+                var parallelAddressRangeHigh = new Entity
+                {
+                    Name = ItemNames.DeciderCombinator,
+                    Position = new Position
+                    {
+                        X = column + 2,
+                        Y = height + 28.5
+                    },
+                    Direction = Direction.Up,
+                    Control_behavior = new ControlBehavior
+                    {
+                        Decider_conditions = new DeciderConditions
+                        {
+                            First_signal = SignalID.Create(VirtualSignalNames.Info),
+                            Constant = column + parallelCycle + 1,
+                            Comparator = Comparators.GreaterThanOrEqualTo,
+                            Output_signal = SignalID.Create(VirtualSignalNames.Check),
+                            Copy_count_from_input = false
+                        }
+                    }
+                };
+                entities.Add(parallelAddressRangeHigh);
+
+                var isOdd = column % 2 == 1;
+                var horizontalLinkName = column % 18 == 16 ? ItemNames.Substation : ItemNames.BigElectricPole;
+
+                // Horizontal link 1
+                var horizontalLink1 = new Entity
+                {
+                    Name = horizontalLinkName,
+                    Position = new Position
+                    {
+                        X = column + 2.5,
+                        Y = height + 16.5 + (isOdd ? 2 : 0)
+                    }
+                };
+                entities.Add(horizontalLink1);
+
+                // Horizontal link 2
+                var horizontalLink2 = new Entity
+                {
+                    Name = horizontalLinkName,
+                    Position = new Position
+                    {
+                        X = column + 2.5,
+                        Y = height + 22.5 + (isOdd ? 2 : 0)
+                    }
+                };
+                entities.Add(horizontalLink2);
+
+                // Vertical link
+                var verticalLink = new Entity
+                {
+                    Name = ItemNames.MediumElectricPole,
+                    Position = new Position
+                    {
+                        X = column + 2,
+                        Y = height + 20
+                    }
+                };
+                entities.Add(verticalLink);
+
+                columnControllers[column] = new Controller
+                {
+                    Memory = memory,
+                    Writer = writer,
+                    AddressMatcher = addressMatcher,
+                    CyclicWriter = cyclicWriter,
+                    CyclicMatcher = cyclicMatcher,
+                    ParallelWriter = parallelWriter,
+                    ParallelAddressRangeLow = parallelAddressRangeLow,
+                    ParallelAddressRangeHigh = parallelAddressRangeHigh,
+                    HorizontalLink1 = horizontalLink1,
+                    HorizontalLink2 = horizontalLink2,
+                    VerticalLink = verticalLink
+                };
             }
 
             // Row controllers
@@ -230,7 +341,6 @@ namespace MemoryInitializer.Screen
                         }
                     }
                 };
-                rowMemory[row] = memory;
                 entities.Add(memory);
 
                 // Writer
@@ -255,7 +365,6 @@ namespace MemoryInitializer.Screen
                         }
                     }
                 };
-                rowWriters[row] = writer;
                 entities.Add(writer);
 
                 // Address matcher
@@ -280,7 +389,6 @@ namespace MemoryInitializer.Screen
                         }
                     }
                 };
-                rowAddressMatchers[row] = addressMatcher;
                 entities.Add(addressMatcher);
 
                 // Cyclic Writer
@@ -305,7 +413,6 @@ namespace MemoryInitializer.Screen
                         }
                     }
                 };
-                rowCyclicWriters[row] = cyclicWriter;
                 entities.Add(cyclicWriter);
 
                 // Cyclic matcher
@@ -330,11 +437,24 @@ namespace MemoryInitializer.Screen
                         }
                     }
                 };
-                rowCyclicMatchers[row] = cyclicMatcher;
                 entities.Add(cyclicMatcher);
+
+                rowControllers[row] = new Controller
+                {
+                    Memory = memory,
+                    Writer = writer,
+                    AddressMatcher = addressMatcher,
+                    CyclicWriter = cyclicWriter,
+                    CyclicMatcher = cyclicMatcher
+                };
             }
 
             BlueprintUtil.PopulateEntityNumbers(entities);
+
+            var substationWidth = (width + 8) / 18 + 1;
+            var substationHeight = (height + 8) / 18 + 1;
+            var substations = CreateSubstations(substationWidth, substationHeight, 0, 0, entities.Count + 1, GridConnectivity.Top | GridConnectivity.Vertical);
+            entities.AddRange(substations);
 
             // Pixel connections
             for (var row = 0; row < height; row++)
@@ -371,33 +491,48 @@ namespace MemoryInitializer.Screen
             for (var column = 0; column < width; column++)
             {
                 var pixel = pixels[height - 1, column];
-                var memory = columnMemory[column];
-                var writer = columnWriters[column];
-                var addressMatcher = columnAddressMatchers[column];
-                var cyclicWriter = columnCyclicWriters[column];
-                var cyclicMatcher = columnCyclicMatchers[column];
+                var controller = columnControllers[column];
+                var isFirstHalfOfParallelCycle = column % parallelCycle < parallelCycle / 2;
 
-                AddConnection(CircuitColor.Green, memory, CircuitId.Output, pixel, null); // Data out
-                AddConnection(CircuitColor.Green, memory, CircuitId.Output, memory, CircuitId.Input); // Data feedback
-                AddConnection(CircuitColor.Green, writer, CircuitId.Output, memory, CircuitId.Input); // Data transfer
-                AddConnection(CircuitColor.Red, addressMatcher, CircuitId.Output, writer, CircuitId.Input); // Enable
-                AddConnection(CircuitColor.Red, cyclicWriter, CircuitId.Output, writer, CircuitId.Output); // Cyclic data transfer
-                AddConnection(CircuitColor.Red, cyclicMatcher, CircuitId.Output, cyclicWriter, CircuitId.Input); // Cyclic enable
+                AddConnection(CircuitColor.Green, controller.Memory, CircuitId.Output, pixel, null); // Data out
+                AddConnection(CircuitColor.Green, controller.Memory, CircuitId.Output, controller.Memory, CircuitId.Input); // Data feedback
+                AddConnection(CircuitColor.Green, controller.Writer, CircuitId.Output, controller.Memory, CircuitId.Input); // Data transfer
+                AddConnection(CircuitColor.Red, controller.AddressMatcher, CircuitId.Output, controller.Writer, CircuitId.Input); // Enable
+                AddConnection(CircuitColor.Red, controller.CyclicWriter, CircuitId.Output, controller.Writer, CircuitId.Output); // Cyclic data transfer
+                AddConnection(CircuitColor.Red, controller.CyclicMatcher, CircuitId.Output, controller.CyclicWriter, CircuitId.Input); // Cyclic enable
+                AddConnection(CircuitColor.Red, controller.ParallelWriter, CircuitId.Output, controller.CyclicWriter, CircuitId.Output); // Parallel data transfer
+                AddConnection(CircuitColor.Red, controller.VerticalLink, null, controller.ParallelWriter, CircuitId.Input); // Parallel enable low
+                AddConnection(CircuitColor.Red, controller.ParallelAddressRangeLow, CircuitId.Output, controller.VerticalLink, null); // Parallel enable low
+                AddConnection(CircuitColor.Red, controller.ParallelAddressRangeHigh, CircuitId.Output, controller.ParallelAddressRangeLow, CircuitId.Output); // Parallel enable high
+                AddConnection(CircuitColor.Red, controller.ParallelAddressRangeHigh, CircuitId.Input, controller.ParallelAddressRangeLow, CircuitId.Input); // Parallel address in
+                AddConnection(CircuitColor.Green, isFirstHalfOfParallelCycle ? controller.HorizontalLink1 : controller.HorizontalLink2, null, controller.ParallelWriter, CircuitId.Input); // Parallel data in
 
                 var adjacentColumn = column - 1;
                 if (adjacentColumn >= 0)
                 {
-                    var adjacentMemory = columnMemory[adjacentColumn];
-                    var adjacentWriter = columnWriters[adjacentColumn];
-                    var adjacentAddressMatcher = columnAddressMatchers[adjacentColumn];
-                    var adjacentCyclicWriter = columnCyclicWriters[adjacentColumn];
-                    var adjacentCyclicMatcher = columnCyclicMatchers[adjacentColumn];
+                    var adjacentController = columnControllers[adjacentColumn];
 
-                    AddConnection(CircuitColor.Red, memory, CircuitId.Input, adjacentMemory, CircuitId.Input); // Full data in
-                    AddConnection(CircuitColor.Green, writer, CircuitId.Input, adjacentWriter, CircuitId.Input); // Addressable data in
-                    AddConnection(CircuitColor.Red, addressMatcher, CircuitId.Input, adjacentAddressMatcher, CircuitId.Input); // Address in
-                    AddConnection(CircuitColor.Green, cyclicWriter, CircuitId.Input, adjacentCyclicWriter, CircuitId.Input); // Cyclic data in
-                    AddConnection(CircuitColor.Red, cyclicMatcher, CircuitId.Input, adjacentCyclicMatcher, CircuitId.Input); // Cyclic address in
+                    AddConnection(CircuitColor.Red, controller.Memory, CircuitId.Input, adjacentController.Memory, CircuitId.Input); // Full data in
+                    AddConnection(CircuitColor.Green, controller.Writer, CircuitId.Input, adjacentController.Writer, CircuitId.Input); // Addressable data in
+                    AddConnection(CircuitColor.Red, controller.AddressMatcher, CircuitId.Input, adjacentController.AddressMatcher, CircuitId.Input); // Address in
+                    AddConnection(CircuitColor.Green, controller.CyclicWriter, CircuitId.Input, adjacentController.CyclicWriter, CircuitId.Input); // Cyclic data in
+                    AddConnection(CircuitColor.Red, controller.CyclicMatcher, CircuitId.Input, adjacentController.CyclicMatcher, CircuitId.Input); // Cyclic address in
+                    AddConnection(CircuitColor.Red, controller.ParallelAddressRangeHigh, CircuitId.Input, adjacentController.ParallelAddressRangeHigh, CircuitId.Input); // Parallel address in
+                }
+
+                var adjancentLinkColumn = column - parallelCycle / 2;
+                if (adjancentLinkColumn >= 0)
+                {
+                    var previousCycleController = columnControllers[adjancentLinkColumn];
+
+                    AddConnection(CircuitColor.Green, controller.HorizontalLink1, null, previousCycleController.HorizontalLink1, null); // Parallel data in
+                    AddConnection(CircuitColor.Green, controller.HorizontalLink2, null, previousCycleController.HorizontalLink2, null); // Parallel data in
+                }
+
+                if (controller.HorizontalLink1.Name == ItemNames.Substation)
+                {
+                    AddNeighbor(controller.HorizontalLink1, substations[(substationHeight - 1) * substationWidth + column / 18 + 1]);
+                    AddNeighbor(controller.HorizontalLink2, controller.HorizontalLink1);
                 }
             }
 
@@ -405,40 +540,27 @@ namespace MemoryInitializer.Screen
             for (var row = 0; row < height; row++)
             {
                 var pixel = pixels[row, 0];
-                var memory = rowMemory[row];
-                var writer = rowWriters[row];
-                var addressMatcher = rowAddressMatchers[row];
-                var cyclicWriter = rowCyclicWriters[row];
-                var cyclicMatcher = rowCyclicMatchers[row];
+                var controller = rowControllers[row];
 
-                AddConnection(CircuitColor.Red, memory, CircuitId.Output, pixel, null); // Data out
-                AddConnection(CircuitColor.Red, memory, CircuitId.Output, memory, CircuitId.Input); // Data feedback
-                AddConnection(CircuitColor.Red, writer, CircuitId.Output, memory, CircuitId.Input); // Data transfer
-                AddConnection(CircuitColor.Red, addressMatcher, CircuitId.Output, writer, CircuitId.Input); // Enable
-                AddConnection(CircuitColor.Red, cyclicWriter, CircuitId.Output, writer, CircuitId.Output); // Cyclic data transfer
-                AddConnection(CircuitColor.Red, cyclicMatcher, CircuitId.Output, cyclicWriter, CircuitId.Input); // Cyclic enable
+                AddConnection(CircuitColor.Red, controller.Memory, CircuitId.Output, pixel, null); // Data out
+                AddConnection(CircuitColor.Red, controller.Memory, CircuitId.Output, controller.Memory, CircuitId.Input); // Data feedback
+                AddConnection(CircuitColor.Red, controller.Writer, CircuitId.Output, controller.Memory, CircuitId.Input); // Data transfer
+                AddConnection(CircuitColor.Red, controller.AddressMatcher, CircuitId.Output, controller.Writer, CircuitId.Input); // Enable
+                AddConnection(CircuitColor.Red, controller.CyclicWriter, CircuitId.Output, controller.Writer, CircuitId.Output); // Cyclic data transfer
+                AddConnection(CircuitColor.Red, controller.CyclicMatcher, CircuitId.Output, controller.CyclicWriter, CircuitId.Input); // Cyclic enable
 
                 var adjacentRow = row - 1;
                 if (adjacentRow >= 0)
                 {
-                    var adjacentMemory = rowMemory[adjacentRow];
-                    var adjacentWriter = rowWriters[adjacentRow];
-                    var adjacentAddressMatcher = rowAddressMatchers[adjacentRow];
-                    var adjacentCyclicWriter = rowCyclicWriters[adjacentRow];
-                    var adjacentCyclicMatcher = rowCyclicMatchers[adjacentRow];
+                    var adjacentController = rowControllers[adjacentRow];
 
-                    AddConnection(CircuitColor.Green, memory, CircuitId.Input, adjacentMemory, CircuitId.Input); // Full data in
-                    AddConnection(CircuitColor.Green, writer, CircuitId.Input, adjacentWriter, CircuitId.Input); // Addressable data in
-                    AddConnection(CircuitColor.Red, addressMatcher, CircuitId.Input, adjacentAddressMatcher, CircuitId.Input); // Address in
-                    AddConnection(CircuitColor.Green, cyclicWriter, CircuitId.Input, adjacentCyclicWriter, CircuitId.Input); // Cyclic data in
-                    AddConnection(CircuitColor.Red, cyclicMatcher, CircuitId.Input, adjacentCyclicMatcher, CircuitId.Input); // Cyclic address in
+                    AddConnection(CircuitColor.Green, controller.Memory, CircuitId.Input, adjacentController.Memory, CircuitId.Input); // Full data in
+                    AddConnection(CircuitColor.Green, controller.Writer, CircuitId.Input, adjacentController.Writer, CircuitId.Input); // Addressable data in
+                    AddConnection(CircuitColor.Red, controller.AddressMatcher, CircuitId.Input, adjacentController.AddressMatcher, CircuitId.Input); // Address in
+                    AddConnection(CircuitColor.Green, controller.CyclicWriter, CircuitId.Input, adjacentController.CyclicWriter, CircuitId.Input); // Cyclic data in
+                    AddConnection(CircuitColor.Red, controller.CyclicMatcher, CircuitId.Input, adjacentController.CyclicMatcher, CircuitId.Input); // Cyclic address in
                 }
             }
-
-            var substationWidth = (width + 8) / 18 + 1;
-            var substationHeight = (height + 8) / 18 + 1;
-
-            entities.AddRange(CreateSubstations(substationWidth, substationHeight, 0, 0, entities.Count + 1, GridConnectivity.Top | GridConnectivity.Vertical));
 
             return new Blueprint
             {
@@ -454,6 +576,21 @@ namespace MemoryInitializer.Screen
                 Item = ItemNames.Blueprint,
                 Version = BlueprintVersions.CurrentVersion
             };
+        }
+
+        private class Controller
+        {
+            public Entity Memory { get; set; }
+            public Entity Writer { get; set; }
+            public Entity AddressMatcher { get; set; }
+            public Entity CyclicWriter { get; set; }
+            public Entity CyclicMatcher { get; set; }
+            public Entity ParallelWriter { get; set; }
+            public Entity ParallelAddressRangeLow { get; set; }
+            public Entity ParallelAddressRangeHigh { get; set; }
+            public Entity HorizontalLink1 { get; set; }
+            public Entity HorizontalLink2 { get; set; }
+            public Entity VerticalLink { get; set; }
         }
     }
 
