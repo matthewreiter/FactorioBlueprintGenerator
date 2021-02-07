@@ -27,38 +27,13 @@ namespace MemoryInitializer.Screen
             var inputSignals = Enumerable.Range('0', 10).Concat(Enumerable.Range('A', 22))
                 .Select(letterOrDigit => VirtualSignalNames.LetterOrDigit((char)letterOrDigit))
                 .ToList();
+            var inputSignalCount = inputSignals.Count;
 
             var entities = new List<Entity>();
-            var outputMaps = new Entity[(signalCount + maxFilters - 1) / maxFilters];
-            var inputMaps = new Entity[inputSignals.Count];
+            var inputMaps = new Entity[inputSignalCount];
             var shifters = new Shifter[shifterCount];
 
-            // Output signal maps
-            for (var index = 0; index < outputMaps.Length; index++)
-            {
-                var outputSignalMap = new Entity
-                {
-                    Name = ItemNames.ConstantCombinator,
-                    Position = new Position
-                    {
-                        X = 0,
-                        Y = index + 1
-                    },
-                    Direction = Direction.Right,
-                    Control_behavior = new ControlBehavior
-                    {
-                        Filters = ScreenUtil.PixelSignals.Skip(index * maxFilters).Take(Math.Min(maxFilters, signalCount - index * maxFilters)).Select((signal, signalIndex) => new Filter
-                        {
-                            Signal = SignalID.Create(signal),
-                            Count = index * maxFilters + signalIndex + 1
-                        }).ToList()
-                    }
-                };
-                outputMaps[index] = outputSignalMap;
-                entities.Add(outputSignalMap);
-            }
-
-            for (var processorIndex = 0; processorIndex < inputSignals.Count; processorIndex++)
+            for (var processorIndex = 0; processorIndex < inputSignalCount; processorIndex++)
             {
                 var inputSignal = inputSignals[processorIndex];
                 var y = processorIndex + 1;
@@ -68,7 +43,7 @@ namespace MemoryInitializer.Screen
                     Name = ItemNames.ConstantCombinator,
                     Position = new Position
                     {
-                        X = 1,
+                        X = 0,
                         Y = y
                     },
                     Direction = Direction.Right,
@@ -83,7 +58,7 @@ namespace MemoryInitializer.Screen
 
             for (var shifterIndex = 0; shifterIndex < shifterCount; shifterIndex++)
             {
-                var shifterX = shifterIndex * 8 + shifterIndex / 2 * 2 + 4;
+                var shifterX = shifterIndex * 8 + shifterIndex / 2 * 2 + 3;
 
                 var inputSquared = new Entity
                 {
@@ -152,8 +127,8 @@ namespace MemoryInitializer.Screen
                 entities.Add(negativeInputSquared);
 
                 // Input signal processors
-                var signalProcessors = new SignalProcessor[inputSignals.Count];
-                for (var processorIndex = 0; processorIndex < inputSignals.Count; processorIndex++)
+                var signalProcessors = new SignalProcessor[inputSignalCount];
+                for (var processorIndex = 0; processorIndex < inputSignalCount; processorIndex++)
                 {
                     var inputSignal = inputSignals[processorIndex];
                     var y = processorIndex + 1;
@@ -256,34 +231,53 @@ namespace MemoryInitializer.Screen
                     };
                 }
 
+                // Output signal maps
+                var outputMaps = new Entity[(signalCount + maxFilters - 1) / maxFilters];
+                for (var index = 0; index < outputMaps.Length; index++)
+                {
+                    var outputSignalMap = new Entity
+                    {
+                        Name = ItemNames.ConstantCombinator,
+                        Position = new Position
+                        {
+                            X = shifterX + index,
+                            Y = inputSignalCount + 1
+                        },
+                        Direction = Direction.Right,
+                        Control_behavior = new ControlBehavior
+                        {
+                            Filters = ScreenUtil.PixelSignals.Skip(index * maxFilters).Take(Math.Min(maxFilters, signalCount - index * maxFilters)).Select((signal, signalIndex) => new Filter
+                            {
+                                Signal = SignalID.Create(signal),
+                                Count = index * maxFilters + signalIndex + 1
+                            }).ToList()
+                        }
+                    };
+                    outputMaps[index] = outputSignalMap;
+                    entities.Add(outputSignalMap);
+                }
+
                 shifters[shifterIndex] = new Shifter
                 {
                     InputSquared = inputSquared,
                     BufferedInput = bufferedInput,
                     NegativeInputSquared = negativeInputSquared,
-                    SignalProcessors = signalProcessors
+                    SignalProcessors = signalProcessors,
+                    OutputMaps = outputMaps
                 };
             }
 
             BlueprintUtil.PopulateEntityNumbers(entities);
 
             var substationWidth = shifterCount / 2 + 1;
-            var substationHeight = (inputSignals.Count + 1) / 18 + 1;
-            entities.AddRange(CreateSubstations(substationWidth, substationHeight, 2, 8, entities.Count + 1));
+            var substationHeight = (inputSignalCount + 1) / 18 + 1;
+            entities.AddRange(CreateSubstations(substationWidth, substationHeight, 1, 8, entities.Count + 1));
 
             for (var shifterIndex = 0; shifterIndex < shifters.Length; shifterIndex++)
             {
                 var shifter = shifters[shifterIndex];
                 var firstProcessor = shifter.SignalProcessors[0];
-
-                // Output signal map connections
-                for (var processorIndex = 1; processorIndex < outputMaps.Length; processorIndex++)
-                {
-                    var outputSignalMap = outputMaps[processorIndex];
-                    var adjacentOutputSignalMap = outputMaps[processorIndex - 1];
-
-                    AddConnection(CircuitColor.Green, outputSignalMap, null, adjacentOutputSignalMap, null);
-                }
+                var lastProcessor = shifter.SignalProcessors[inputSignalCount - 1];
 
                 AddConnection(CircuitColor.Green, shifter.InputSquared, CircuitId.Input, shifter.BufferedInput, CircuitId.Input);
                 AddConnection(CircuitColor.Red, shifter.InputSquared, CircuitId.Output, shifter.NegativeInputSquared, CircuitId.Input);
@@ -291,21 +285,10 @@ namespace MemoryInitializer.Screen
                 AddConnection(CircuitColor.Green, shifter.BufferedInput, CircuitId.Output, firstProcessor.OutputCleaner, CircuitId.Input);
                 AddConnection(CircuitColor.Green, shifter.NegativeInputSquared, CircuitId.Output, firstProcessor.OutputGenerator, CircuitId.Output);
                 AddConnection(CircuitColor.Green, firstProcessor.OutputGenerator, CircuitId.Output, firstProcessor.OutputCleaner, CircuitId.Output);
-
-                if (shifterIndex == 0)
-                {
-                    AddConnection(CircuitColor.Green, firstProcessor.InputChecker, CircuitId.Input, outputMaps[0], null);
-                }
-                else
-                {
-                    var adjacentShifter = shifters[shifterIndex - 1];
-                    var adjacentProcessor = adjacentShifter.SignalProcessors[0];
-
-                    AddConnection(CircuitColor.Green, firstProcessor.InputChecker, CircuitId.Input, adjacentProcessor.InputChecker, CircuitId.Input);
-                }
+                AddConnection(CircuitColor.Green, lastProcessor.InputChecker, CircuitId.Input, shifter.OutputMaps[0], null);
 
                 // Input signal processor connections
-                for (var processorIndex = 0; processorIndex < inputSignals.Count; processorIndex++)
+                for (var processorIndex = 0; processorIndex < inputSignalCount; processorIndex++)
                 {
                     var processor = shifter.SignalProcessors[processorIndex];
 
@@ -365,6 +348,7 @@ namespace MemoryInitializer.Screen
             public Entity BufferedInput { get; set; }
             public Entity NegativeInputSquared { get; set; }
             public SignalProcessor[] SignalProcessors { get; set; }
+            public Entity[] OutputMaps { get; set; }
         }
 
         private class SignalProcessor
