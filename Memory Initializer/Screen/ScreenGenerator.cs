@@ -196,7 +196,7 @@ namespace MemoryInitializer.Screen
                     Position = new Position
                     {
                         X = column + 2,
-                        Y = height + 14.5
+                        Y = height + 18.5
                     },
                     Direction = Direction.Up,
                     Control_behavior = new ControlBehavior
@@ -220,7 +220,7 @@ namespace MemoryInitializer.Screen
                     Position = new Position
                     {
                         X = column + 2,
-                        Y = height + 26.5
+                        Y = height + 14.5
                     },
                     Direction = Direction.Up,
                     Control_behavior = new ControlBehavior
@@ -244,7 +244,7 @@ namespace MemoryInitializer.Screen
                     Position = new Position
                     {
                         X = column + 2,
-                        Y = height + 28.5
+                        Y = height + 16.5
                     },
                     Direction = Direction.Up,
                     Control_behavior = new ControlBehavior
@@ -262,16 +262,15 @@ namespace MemoryInitializer.Screen
                 entities.Add(parallelAddressRangeHigh);
 
                 var isOdd = column % 2 == 1;
-                var horizontalLinkName = column % 18 == 16 ? ItemNames.Substation : ItemNames.BigElectricPole;
 
                 // Horizontal link 1
                 var horizontalLink1 = new Entity
                 {
-                    Name = horizontalLinkName,
+                    Name = column % 18 == 16 ? ItemNames.Substation : ItemNames.BigElectricPole,
                     Position = new Position
                     {
                         X = column + 2.5,
-                        Y = height + 16.5 + (isOdd ? 2 : 0)
+                        Y = height + 20.5 + (isOdd ? 2 : 0)
                     }
                 };
                 entities.Add(horizontalLink1);
@@ -279,26 +278,14 @@ namespace MemoryInitializer.Screen
                 // Horizontal link 2
                 var horizontalLink2 = new Entity
                 {
-                    Name = horizontalLinkName,
+                    Name = ItemNames.BigElectricPole,
                     Position = new Position
                     {
                         X = column + 2.5,
-                        Y = height + 22.5 + (isOdd ? 2 : 0)
+                        Y = height + 24.5 + (isOdd ? 2 : 0)
                     }
                 };
                 entities.Add(horizontalLink2);
-
-                // Vertical link
-                var verticalLink = new Entity
-                {
-                    Name = ItemNames.MediumElectricPole,
-                    Position = new Position
-                    {
-                        X = column + 2,
-                        Y = height + 20
-                    }
-                };
-                entities.Add(verticalLink);
 
                 columnControllers[column] = new Controller
                 {
@@ -311,8 +298,7 @@ namespace MemoryInitializer.Screen
                     ParallelAddressRangeLow = parallelAddressRangeLow,
                     ParallelAddressRangeHigh = parallelAddressRangeHigh,
                     HorizontalLink1 = horizontalLink1,
-                    HorizontalLink2 = horizontalLink2,
-                    VerticalLink = verticalLink
+                    HorizontalLink2 = horizontalLink2
                 };
             }
 
@@ -501,8 +487,7 @@ namespace MemoryInitializer.Screen
                 AddConnection(CircuitColor.Red, controller.CyclicWriter, CircuitId.Output, controller.Writer, CircuitId.Output); // Cyclic data transfer
                 AddConnection(CircuitColor.Red, controller.CyclicMatcher, CircuitId.Output, controller.CyclicWriter, CircuitId.Input); // Cyclic enable
                 AddConnection(CircuitColor.Red, controller.ParallelWriter, CircuitId.Output, controller.CyclicWriter, CircuitId.Output); // Parallel data transfer
-                AddConnection(CircuitColor.Red, controller.VerticalLink, null, controller.ParallelWriter, CircuitId.Input); // Parallel enable low
-                AddConnection(CircuitColor.Red, controller.ParallelAddressRangeLow, CircuitId.Output, controller.VerticalLink, null); // Parallel enable low
+                AddConnection(CircuitColor.Red, controller.ParallelAddressRangeLow, CircuitId.Output, controller.ParallelWriter, CircuitId.Input); // Parallel enable low
                 AddConnection(CircuitColor.Red, controller.ParallelAddressRangeHigh, CircuitId.Output, controller.ParallelAddressRangeLow, CircuitId.Output); // Parallel enable high
                 AddConnection(CircuitColor.Red, controller.ParallelAddressRangeHigh, CircuitId.Input, controller.ParallelAddressRangeLow, CircuitId.Input); // Parallel address in
                 AddConnection(CircuitColor.Green, isFirstHalfOfParallelCycle ? controller.HorizontalLink1 : controller.HorizontalLink2, null, controller.ParallelWriter, CircuitId.Input); // Parallel data in
@@ -532,7 +517,6 @@ namespace MemoryInitializer.Screen
                 if (controller.HorizontalLink1.Name == ItemNames.Substation)
                 {
                     AddNeighbor(controller.HorizontalLink1, substations[(substationHeight - 1) * substationWidth + column / 18 + 1]);
-                    AddNeighbor(controller.HorizontalLink2, controller.HorizontalLink1);
                 }
             }
 
@@ -590,7 +574,6 @@ namespace MemoryInitializer.Screen
             public Entity ParallelAddressRangeHigh { get; set; }
             public Entity HorizontalLink1 { get; set; }
             public Entity HorizontalLink2 { get; set; }
-            public Entity VerticalLink { get; set; }
         }
     }
 
