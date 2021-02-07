@@ -22,7 +22,7 @@ namespace MemoryInitializer.Screen
             var signalCount = configuration.SignalCount ?? ScreenUtil.PixelSignals.Count;
 
             const int maxFilters = 20;
-            const int shifterCount = 16;
+            const int shifterCount = 32;
 
             var inputSignals = Enumerable.Range('0', 10).Concat(Enumerable.Range('A', 22))
                 .Select(letterOrDigit => VirtualSignalNames.LetterOrDigit((char)letterOrDigit))
@@ -33,17 +33,27 @@ namespace MemoryInitializer.Screen
             var inputMaps = new Entity[inputSignalCount];
             var shifters = new Shifter[shifterCount];
 
+            // Input maps
             for (var processorIndex = 0; processorIndex < inputSignalCount; processorIndex++)
             {
                 var inputSignal = inputSignals[processorIndex];
-                var y = processorIndex + 1;
+                var y = processorIndex * 4 + 3;
+
+                if (y % 18 == 8)
+                {
+                    y--;
+                }
+                else if (y % 18 == 9)
+                {
+                    y++;
+                }
 
                 var inputMap = new Entity
                 {
                     Name = ItemNames.ConstantCombinator,
                     Position = new Position
                     {
-                        X = 0,
+                        X = 1,
                         Y = y
                     },
                     Direction = Direction.Right,
@@ -56,19 +66,20 @@ namespace MemoryInitializer.Screen
                 entities.Add(inputMap);
             }
 
+            // Shifters
             for (var shifterIndex = 0; shifterIndex < shifterCount; shifterIndex++)
             {
-                var shifterX = shifterIndex * 8 + shifterIndex / 2 * 2 + 3;
+                var shifterX = shifterIndex * 2 + shifterIndex / 8 * 2 + 2;
 
                 var inputSquared = new Entity
                 {
                     Name = ItemNames.ArithmeticCombinator,
                     Position = new Position
                     {
-                        X = 1.5 + shifterX,
-                        Y = 0
+                        X = shifterX,
+                        Y = 0.5
                     },
-                    Direction = Direction.Right,
+                    Direction = Direction.Down,
                     Control_behavior = new ControlBehavior
                     {
                         Arithmetic_conditions = new ArithmeticConditions
@@ -87,8 +98,8 @@ namespace MemoryInitializer.Screen
                     Name = ItemNames.ArithmeticCombinator,
                     Position = new Position
                     {
-                        X = 3.5 + shifterX,
-                        Y = 0
+                        X = 0.5 + shifterX,
+                        Y = 2
                     },
                     Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
@@ -109,10 +120,10 @@ namespace MemoryInitializer.Screen
                     Name = ItemNames.ArithmeticCombinator,
                     Position = new Position
                     {
-                        X = 5.5 + shifterX,
-                        Y = 0
+                        X = 1 + shifterX,
+                        Y = 0.5
                     },
-                    Direction = Direction.Right,
+                    Direction = Direction.Up,
                     Control_behavior = new ControlBehavior
                     {
                         Arithmetic_conditions = new ArithmeticConditions
@@ -131,7 +142,7 @@ namespace MemoryInitializer.Screen
                 for (var processorIndex = 0; processorIndex < inputSignalCount; processorIndex++)
                 {
                     var inputSignal = inputSignals[processorIndex];
-                    var y = processorIndex + 1;
+                    var y = processorIndex * 4 + 3;
 
                     var inputChecker = new Entity
                     {
@@ -161,8 +172,8 @@ namespace MemoryInitializer.Screen
                         Name = ItemNames.ArithmeticCombinator,
                         Position = new Position
                         {
-                            X = 2.5 + shifterX,
-                            Y = y
+                            X = 0.5 + shifterX,
+                            Y = 1 + y
                         },
                         Direction = Direction.Right,
                         Control_behavior = new ControlBehavior
@@ -183,8 +194,8 @@ namespace MemoryInitializer.Screen
                         Name = ItemNames.ArithmeticCombinator,
                         Position = new Position
                         {
-                            X = 4.5 + shifterX,
-                            Y = y
+                            X = 0.5 + shifterX,
+                            Y = 2 + y
                         },
                         Direction = Direction.Right,
                         Control_behavior = new ControlBehavior
@@ -205,8 +216,8 @@ namespace MemoryInitializer.Screen
                         Name = ItemNames.ArithmeticCombinator,
                         Position = new Position
                         {
-                            X = 6.5 + shifterX,
-                            Y = y
+                            X = 0.5 + shifterX,
+                            Y = 3 + y
                         },
                         Direction = Direction.Right,
                         Control_behavior = new ControlBehavior
@@ -240,8 +251,8 @@ namespace MemoryInitializer.Screen
                         Name = ItemNames.ConstantCombinator,
                         Position = new Position
                         {
-                            X = shifterX + index,
-                            Y = inputSignalCount + 1
+                            X = index % 2 + shifterX,
+                            Y = index / 2 + inputSignalCount * 4 + 3
                         },
                         Direction = Direction.Right,
                         Control_behavior = new ControlBehavior
@@ -269,9 +280,9 @@ namespace MemoryInitializer.Screen
 
             BlueprintUtil.PopulateEntityNumbers(entities);
 
-            var substationWidth = shifterCount / 2 + 1;
-            var substationHeight = (inputSignalCount + 1) / 18 + 1;
-            entities.AddRange(CreateSubstations(substationWidth, substationHeight, 1, 8, entities.Count + 1));
+            var substationWidth = shifterCount / 8 + 1;
+            var substationHeight = (inputSignalCount * 4 + 3) / 18 + 1;
+            entities.AddRange(CreateSubstations(substationWidth, substationHeight, 0, 8, entities.Count + 1));
 
             for (var shifterIndex = 0; shifterIndex < shifters.Length; shifterIndex++)
             {
@@ -286,6 +297,7 @@ namespace MemoryInitializer.Screen
                 AddConnection(CircuitColor.Green, shifter.NegativeInputSquared, CircuitId.Output, firstProcessor.OutputGenerator, CircuitId.Output);
                 AddConnection(CircuitColor.Green, firstProcessor.OutputGenerator, CircuitId.Output, firstProcessor.OutputCleaner, CircuitId.Output);
                 AddConnection(CircuitColor.Green, lastProcessor.InputChecker, CircuitId.Input, shifter.OutputMaps[0], null);
+                AddConnection(CircuitColor.Green, shifter.OutputMaps[1], null, shifter.OutputMaps[0], null);
 
                 // Input signal processor connections
                 for (var processorIndex = 0; processorIndex < inputSignalCount; processorIndex++)
@@ -319,6 +331,15 @@ namespace MemoryInitializer.Screen
                         AddConnection(CircuitColor.Green, processor.OutputCleaner, CircuitId.Input, adjacentProcessor.OutputCleaner, CircuitId.Input);
                         AddConnection(CircuitColor.Green, processor.OutputCleaner, CircuitId.Output, adjacentProcessor.OutputCleaner, CircuitId.Output);
                     }
+                }
+
+                // Output signal map connections
+                for (var outputMapIndex = 2; outputMapIndex < shifter.OutputMaps.Length; outputMapIndex++)
+                {
+                    var outputMap = shifter.OutputMaps[outputMapIndex];
+                    var adjacentOutputMap = shifter.OutputMaps[outputMapIndex - 2];
+
+                    AddConnection(CircuitColor.Green, outputMap, null, adjacentOutputMap, null);
                 }
             }
 
