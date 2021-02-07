@@ -71,6 +71,17 @@ namespace MemoryInitializer.Screen
             {
                 var shifterX = shifterIndex * 2 + shifterIndex / 8 * 2 + 2;
 
+                var outputLink = new Entity
+                {
+                    Name = ItemNames.BigElectricPole,
+                    Position = new Position
+                    {
+                        X = 0.5 + shifterX,
+                        Y = -1.5
+                    }
+                };
+                entities.Add(outputLink);
+
                 var inputSquared = new Entity
                 {
                     Name = ItemNames.ArithmeticCombinator,
@@ -270,6 +281,7 @@ namespace MemoryInitializer.Screen
 
                 shifters[shifterIndex] = new Shifter
                 {
+                    OutputLink = outputLink,
                     InputSquared = inputSquared,
                     BufferedInput = bufferedInput,
                     NegativeInputSquared = negativeInputSquared,
@@ -281,8 +293,8 @@ namespace MemoryInitializer.Screen
             BlueprintUtil.PopulateEntityNumbers(entities);
 
             var substationWidth = shifterCount / 8 + 1;
-            var substationHeight = (inputSignalCount * 4 + 3) / 18 + 1;
-            entities.AddRange(CreateSubstations(substationWidth, substationHeight, 0, 8, entities.Count + 1));
+            var substationHeight = (inputSignalCount * 4 + 3) / 18 + 2;
+            entities.AddRange(CreateSubstations(substationWidth, substationHeight, 0, -10, entities.Count + 1));
 
             for (var shifterIndex = 0; shifterIndex < shifters.Length; shifterIndex++)
             {
@@ -290,6 +302,7 @@ namespace MemoryInitializer.Screen
                 var firstProcessor = shifter.SignalProcessors[0];
                 var lastProcessor = shifter.SignalProcessors[inputSignalCount - 1];
 
+                AddConnection(CircuitColor.Green, shifter.NegativeInputSquared, CircuitId.Output, shifter.OutputLink, null);
                 AddConnection(CircuitColor.Green, shifter.InputSquared, CircuitId.Input, shifter.BufferedInput, CircuitId.Input);
                 AddConnection(CircuitColor.Red, shifter.InputSquared, CircuitId.Output, shifter.NegativeInputSquared, CircuitId.Input);
                 AddConnection(CircuitColor.Green, shifter.BufferedInput, CircuitId.Input, firstProcessor.InputBuffer, CircuitId.Input);
@@ -365,6 +378,7 @@ namespace MemoryInitializer.Screen
 
         private class Shifter
         {
+            public Entity OutputLink { get; set; }
             public Entity InputSquared { get; set; }
             public Entity BufferedInput { get; set; }
             public Entity NegativeInputSquared { get; set; }
