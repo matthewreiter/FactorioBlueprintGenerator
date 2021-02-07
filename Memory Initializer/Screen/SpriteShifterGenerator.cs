@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using static MemoryInitializer.ConnectionUtil;
+using static MemoryInitializer.PowerUtil;
 
 namespace MemoryInitializer.Screen
 {
@@ -21,6 +22,7 @@ namespace MemoryInitializer.Screen
             var signalCount = configuration.SignalCount ?? ScreenUtil.PixelSignals.Count;
 
             const int maxFilters = 20;
+            const int shifterCount = 16;
 
             var inputSignals = Enumerable.Range('0', 10).Concat(Enumerable.Range('A', 22))
                 .Select(letterOrDigit => VirtualSignalNames.LetterOrDigit((char)letterOrDigit))
@@ -29,10 +31,7 @@ namespace MemoryInitializer.Screen
             var entities = new List<Entity>();
             var outputMaps = new Entity[(signalCount + maxFilters - 1) / maxFilters];
             var inputMaps = new Entity[inputSignals.Count];
-            var inputCheckers = new Entity[inputSignals.Count];
-            var inputBuffers = new Entity[inputSignals.Count];
-            var outputGenerators = new Entity[inputSignals.Count];
-            var outputCleaners = new Entity[inputSignals.Count];
+            var shifters = new Shifter[shifterCount];
 
             // Output signal maps
             for (var index = 0; index < outputMaps.Length; index++)
@@ -42,8 +41,8 @@ namespace MemoryInitializer.Screen
                     Name = ItemNames.ConstantCombinator,
                     Position = new Position
                     {
-                        X = index + 1,
-                        Y = 0
+                        X = 0,
+                        Y = index + 1
                     },
                     Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
@@ -59,235 +58,284 @@ namespace MemoryInitializer.Screen
                 entities.Add(outputSignalMap);
             }
 
-            var inputSquared = new Entity
+            for (var processorIndex = 0; processorIndex < inputSignals.Count; processorIndex++)
             {
-                Name = ItemNames.ArithmeticCombinator,
-                Position = new Position
-                {
-                    X = 1.5,
-                    Y = 1
-                },
-                Direction = Direction.Right,
-                Control_behavior = new ControlBehavior
-                {
-                    Arithmetic_conditions = new ArithmeticConditions
-                    {
-                        First_signal = SignalID.Create(VirtualSignalNames.Each),
-                        Second_constant = 2,
-                        Operation = ArithmeticOperations.Exponentiation,
-                        Output_signal = SignalID.Create(VirtualSignalNames.Each)
-                    }
-                }
-            };
-            entities.Add(inputSquared);
-
-            var bufferedInput = new Entity
-            {
-                Name = ItemNames.ArithmeticCombinator,
-                Position = new Position
-                {
-                    X = 3.5,
-                    Y = 1
-                },
-                Direction = Direction.Right,
-                Control_behavior = new ControlBehavior
-                {
-                    Arithmetic_conditions = new ArithmeticConditions
-                    {
-                        First_signal = SignalID.Create(VirtualSignalNames.Each),
-                        Second_constant = 1,
-                        Operation = ArithmeticOperations.Multiplication,
-                        Output_signal = SignalID.Create(VirtualSignalNames.Each)
-                    }
-                }
-            };
-            entities.Add(bufferedInput);
-
-            var negativeInputSquared = new Entity
-            {
-                Name = ItemNames.ArithmeticCombinator,
-                Position = new Position
-                {
-                    X = 5.5,
-                    Y = 1
-                },
-                Direction = Direction.Right,
-                Control_behavior = new ControlBehavior
-                {
-                    Arithmetic_conditions = new ArithmeticConditions
-                    {
-                        First_signal = SignalID.Create(VirtualSignalNames.Each),
-                        Second_constant = -1,
-                        Operation = ArithmeticOperations.Multiplication,
-                        Output_signal = SignalID.Create(VirtualSignalNames.Each)
-                    }
-                }
-            };
-            entities.Add(negativeInputSquared);
-
-            // Input signal processors
-            for (var index = 0; index < inputSignals.Count; index++)
-            {
-                var inputSignal = inputSignals[index];
-                var y = index + 2;
+                var inputSignal = inputSignals[processorIndex];
+                var y = processorIndex + 1;
 
                 var inputMap = new Entity
                 {
                     Name = ItemNames.ConstantCombinator,
                     Position = new Position
                     {
-                        X = 0,
+                        X = 1,
                         Y = y
                     },
                     Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
                     {
-                        Filters = new List<Filter> { new Filter { Signal = SignalID.Create(VirtualSignalNames.Dot), Count = index + 1 } }
+                        Filters = new List<Filter> { new Filter { Signal = SignalID.Create(VirtualSignalNames.Dot), Count = processorIndex + 1 } }
                     }
                 };
-                inputMaps[index] = inputMap;
+                inputMaps[processorIndex] = inputMap;
                 entities.Add(inputMap);
+            }
 
-                var inputChecker = new Entity
-                {
-                    Name = ItemNames.DeciderCombinator,
-                    Position = new Position
-                    {
-                        X = 1.5,
-                        Y = y
-                    },
-                    Direction = Direction.Right,
-                    Control_behavior = new ControlBehavior
-                    {
-                        Decider_conditions = new DeciderConditions
-                        {
-                            First_signal = SignalID.Create(VirtualSignalNames.Each),
-                            Second_signal = SignalID.Create(VirtualSignalNames.Dot),
-                            Comparator = Comparators.IsEqual,
-                            Output_signal = SignalID.Create(VirtualSignalNames.Each),
-                            Copy_count_from_input = false
-                        }
-                    }
-                };
-                inputCheckers[index] = inputChecker;
-                entities.Add(inputChecker);
+            for (var shifterIndex = 0; shifterIndex < shifterCount; shifterIndex++)
+            {
+                var shifterX = shifterIndex * 8 + shifterIndex / 2 * 2 + 4;
 
-                var inputBuffer = new Entity
+                var inputSquared = new Entity
                 {
                     Name = ItemNames.ArithmeticCombinator,
                     Position = new Position
                     {
-                        X = 3.5,
-                        Y = y
+                        X = 1.5 + shifterX,
+                        Y = 0
                     },
                     Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
                     {
                         Arithmetic_conditions = new ArithmeticConditions
                         {
-                            First_signal = SignalID.Create(inputSignal),
+                            First_signal = SignalID.Create(VirtualSignalNames.Each),
+                            Second_constant = 2,
+                            Operation = ArithmeticOperations.Exponentiation,
+                            Output_signal = SignalID.Create(VirtualSignalNames.Each)
+                        }
+                    }
+                };
+                entities.Add(inputSquared);
+
+                var bufferedInput = new Entity
+                {
+                    Name = ItemNames.ArithmeticCombinator,
+                    Position = new Position
+                    {
+                        X = 3.5 + shifterX,
+                        Y = 0
+                    },
+                    Direction = Direction.Right,
+                    Control_behavior = new ControlBehavior
+                    {
+                        Arithmetic_conditions = new ArithmeticConditions
+                        {
+                            First_signal = SignalID.Create(VirtualSignalNames.Each),
                             Second_constant = 1,
-                            Operation = ArithmeticOperations.Multiplication,
-                            Output_signal = SignalID.Create(inputSignal)
-                        }
-                    }
-                };
-                inputBuffers[index] = inputBuffer;
-                entities.Add(inputBuffer);
-
-                var outputGenerator = new Entity
-                {
-                    Name = ItemNames.ArithmeticCombinator,
-                    Position = new Position
-                    {
-                        X = 5.5,
-                        Y = y
-                    },
-                    Direction = Direction.Right,
-                    Control_behavior = new ControlBehavior
-                    {
-                        Arithmetic_conditions = new ArithmeticConditions
-                        {
-                            First_signal = SignalID.Create(VirtualSignalNames.Each),
-                            Second_signal = SignalID.Create(inputSignal),
                             Operation = ArithmeticOperations.Multiplication,
                             Output_signal = SignalID.Create(VirtualSignalNames.Each)
                         }
                     }
                 };
-                outputGenerators[index] = outputGenerator;
-                entities.Add(outputGenerator);
+                entities.Add(bufferedInput);
 
-                var outputCleaner = new Entity
+                var negativeInputSquared = new Entity
                 {
                     Name = ItemNames.ArithmeticCombinator,
                     Position = new Position
                     {
-                        X = 7.5,
-                        Y = y
+                        X = 5.5 + shifterX,
+                        Y = 0
                     },
                     Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
                     {
                         Arithmetic_conditions = new ArithmeticConditions
                         {
-                            First_signal = SignalID.Create(inputSignal),
+                            First_signal = SignalID.Create(VirtualSignalNames.Each),
                             Second_constant = -1,
                             Operation = ArithmeticOperations.Multiplication,
-                            Output_signal = SignalID.Create(VirtualSignalNames.Dot)
+                            Output_signal = SignalID.Create(VirtualSignalNames.Each)
                         }
                     }
                 };
-                outputCleaners[index] = outputCleaner;
-                entities.Add(outputCleaner);
+                entities.Add(negativeInputSquared);
+
+                // Input signal processors
+                var signalProcessors = new SignalProcessor[inputSignals.Count];
+                for (var processorIndex = 0; processorIndex < inputSignals.Count; processorIndex++)
+                {
+                    var inputSignal = inputSignals[processorIndex];
+                    var y = processorIndex + 1;
+
+                    var inputChecker = new Entity
+                    {
+                        Name = ItemNames.DeciderCombinator,
+                        Position = new Position
+                        {
+                            X = 0.5 + shifterX,
+                            Y = y
+                        },
+                        Direction = Direction.Right,
+                        Control_behavior = new ControlBehavior
+                        {
+                            Decider_conditions = new DeciderConditions
+                            {
+                                First_signal = SignalID.Create(VirtualSignalNames.Each),
+                                Second_signal = SignalID.Create(VirtualSignalNames.Dot),
+                                Comparator = Comparators.IsEqual,
+                                Output_signal = SignalID.Create(VirtualSignalNames.Each),
+                                Copy_count_from_input = false
+                            }
+                        }
+                    };
+                    entities.Add(inputChecker);
+
+                    var inputBuffer = new Entity
+                    {
+                        Name = ItemNames.ArithmeticCombinator,
+                        Position = new Position
+                        {
+                            X = 2.5 + shifterX,
+                            Y = y
+                        },
+                        Direction = Direction.Right,
+                        Control_behavior = new ControlBehavior
+                        {
+                            Arithmetic_conditions = new ArithmeticConditions
+                            {
+                                First_signal = SignalID.Create(inputSignal),
+                                Second_constant = 1,
+                                Operation = ArithmeticOperations.Multiplication,
+                                Output_signal = SignalID.Create(inputSignal)
+                            }
+                        }
+                    };
+                    entities.Add(inputBuffer);
+
+                    var outputGenerator = new Entity
+                    {
+                        Name = ItemNames.ArithmeticCombinator,
+                        Position = new Position
+                        {
+                            X = 4.5 + shifterX,
+                            Y = y
+                        },
+                        Direction = Direction.Right,
+                        Control_behavior = new ControlBehavior
+                        {
+                            Arithmetic_conditions = new ArithmeticConditions
+                            {
+                                First_signal = SignalID.Create(VirtualSignalNames.Each),
+                                Second_signal = SignalID.Create(inputSignal),
+                                Operation = ArithmeticOperations.Multiplication,
+                                Output_signal = SignalID.Create(VirtualSignalNames.Each)
+                            }
+                        }
+                    };
+                    entities.Add(outputGenerator);
+
+                    var outputCleaner = new Entity
+                    {
+                        Name = ItemNames.ArithmeticCombinator,
+                        Position = new Position
+                        {
+                            X = 6.5 + shifterX,
+                            Y = y
+                        },
+                        Direction = Direction.Right,
+                        Control_behavior = new ControlBehavior
+                        {
+                            Arithmetic_conditions = new ArithmeticConditions
+                            {
+                                First_signal = SignalID.Create(inputSignal),
+                                Second_constant = -1,
+                                Operation = ArithmeticOperations.Multiplication,
+                                Output_signal = SignalID.Create(VirtualSignalNames.Dot)
+                            }
+                        }
+                    };
+                    entities.Add(outputCleaner);
+
+                    signalProcessors[processorIndex] = new SignalProcessor
+                    {
+                        InputChecker = inputChecker,
+                        InputBuffer = inputBuffer,
+                        OutputGenerator = outputGenerator,
+                        OutputCleaner = outputCleaner
+                    };
+                }
+
+                shifters[shifterIndex] = new Shifter
+                {
+                    InputSquared = inputSquared,
+                    BufferedInput = bufferedInput,
+                    NegativeInputSquared = negativeInputSquared,
+                    SignalProcessors = signalProcessors
+                };
             }
 
             BlueprintUtil.PopulateEntityNumbers(entities);
 
-            // Output signal map connections
-            for (var index = 1; index < outputMaps.Length; index++)
+            var substationWidth = shifterCount / 2 + 1;
+            var substationHeight = (inputSignals.Count + 1) / 18 + 1;
+            entities.AddRange(CreateSubstations(substationWidth, substationHeight, 2, 8, entities.Count + 1));
+
+            for (var shifterIndex = 0; shifterIndex < shifters.Length; shifterIndex++)
             {
-                var outputSignalMap = outputMaps[index];
-                var adjacentOutputSignalMap = outputMaps[index - 1];
+                var shifter = shifters[shifterIndex];
+                var firstProcessor = shifter.SignalProcessors[0];
 
-                AddConnection(CircuitColor.Red, outputSignalMap, null, adjacentOutputSignalMap, null);
-                AddConnection(CircuitColor.Green, outputSignalMap, null, adjacentOutputSignalMap, null);
-            }
-
-            AddConnection(CircuitColor.Green, inputSquared, CircuitId.Input, bufferedInput, CircuitId.Input);
-            AddConnection(CircuitColor.Red, inputSquared, CircuitId.Output, negativeInputSquared, CircuitId.Input);
-            AddConnection(CircuitColor.Green, outputMaps[0], null, inputCheckers[0], CircuitId.Input);
-            AddConnection(CircuitColor.Green, bufferedInput, CircuitId.Input, inputBuffers[0], CircuitId.Input);
-            AddConnection(CircuitColor.Green, bufferedInput, CircuitId.Output, outputCleaners[0], CircuitId.Input);
-            AddConnection(CircuitColor.Green, negativeInputSquared, CircuitId.Output, outputGenerators[0], CircuitId.Output);
-            AddConnection(CircuitColor.Green, outputGenerators[0], CircuitId.Output, outputCleaners[0], CircuitId.Output);
-
-            // Input signal processor connections
-            for (var index = 0; index < inputSignals.Count; index++)
-            {
-                var inputMap = inputMaps[index];
-                var inputChecker = inputCheckers[index];
-                var inputBuffer = inputBuffers[index];
-                var outputGenerator = outputGenerators[index];
-                var outputCleaner = outputCleaners[index];
-
-                AddConnection(CircuitColor.Red, inputMap, null, inputChecker, CircuitId.Input);
-                AddConnection(CircuitColor.Red, inputChecker, CircuitId.Output, inputBuffer, CircuitId.Output);
-                AddConnection(CircuitColor.Red, inputBuffer, CircuitId.Output, outputGenerator, CircuitId.Input);
-
-                var adjacentProcessor = index - 1;
-                if (adjacentProcessor >= 0)
+                // Output signal map connections
+                for (var processorIndex = 1; processorIndex < outputMaps.Length; processorIndex++)
                 {
-                    var adjacentInputChecker = inputCheckers[adjacentProcessor];
-                    var adjacentInputBuffer = inputBuffers[adjacentProcessor];
-                    var adjacentOutputGenerator = outputGenerators[adjacentProcessor];
-                    var adjacentOutputCleaner = outputCleaners[adjacentProcessor];
+                    var outputSignalMap = outputMaps[processorIndex];
+                    var adjacentOutputSignalMap = outputMaps[processorIndex - 1];
 
-                    AddConnection(CircuitColor.Green, inputChecker, CircuitId.Input, adjacentInputChecker, CircuitId.Input);
-                    AddConnection(CircuitColor.Green, inputBuffer, CircuitId.Input, adjacentInputBuffer, CircuitId.Input);
-                    AddConnection(CircuitColor.Green, outputGenerator, CircuitId.Output, adjacentOutputGenerator, CircuitId.Output);
-                    AddConnection(CircuitColor.Green, outputCleaner, CircuitId.Input, adjacentOutputCleaner, CircuitId.Input);
-                    AddConnection(CircuitColor.Green, outputCleaner, CircuitId.Output, adjacentOutputCleaner, CircuitId.Output);
+                    AddConnection(CircuitColor.Green, outputSignalMap, null, adjacentOutputSignalMap, null);
+                }
+
+                AddConnection(CircuitColor.Green, shifter.InputSquared, CircuitId.Input, shifter.BufferedInput, CircuitId.Input);
+                AddConnection(CircuitColor.Red, shifter.InputSquared, CircuitId.Output, shifter.NegativeInputSquared, CircuitId.Input);
+                AddConnection(CircuitColor.Green, shifter.BufferedInput, CircuitId.Input, firstProcessor.InputBuffer, CircuitId.Input);
+                AddConnection(CircuitColor.Green, shifter.BufferedInput, CircuitId.Output, firstProcessor.OutputCleaner, CircuitId.Input);
+                AddConnection(CircuitColor.Green, shifter.NegativeInputSquared, CircuitId.Output, firstProcessor.OutputGenerator, CircuitId.Output);
+                AddConnection(CircuitColor.Green, firstProcessor.OutputGenerator, CircuitId.Output, firstProcessor.OutputCleaner, CircuitId.Output);
+
+                if (shifterIndex == 0)
+                {
+                    AddConnection(CircuitColor.Green, firstProcessor.InputChecker, CircuitId.Input, outputMaps[0], null);
+                }
+                else
+                {
+                    var adjacentShifter = shifters[shifterIndex - 1];
+                    var adjacentProcessor = adjacentShifter.SignalProcessors[0];
+
+                    AddConnection(CircuitColor.Green, firstProcessor.InputChecker, CircuitId.Input, adjacentProcessor.InputChecker, CircuitId.Input);
+                }
+
+                // Input signal processor connections
+                for (var processorIndex = 0; processorIndex < inputSignals.Count; processorIndex++)
+                {
+                    var processor = shifter.SignalProcessors[processorIndex];
+
+                    AddConnection(CircuitColor.Red, processor.InputChecker, CircuitId.Output, processor.InputBuffer, CircuitId.Output);
+                    AddConnection(CircuitColor.Red, processor.InputBuffer, CircuitId.Output, processor.OutputGenerator, CircuitId.Input);
+
+                    if (shifterIndex == 0)
+                    {
+                        var inputMap = inputMaps[processorIndex];
+
+                        AddConnection(CircuitColor.Red, processor.InputChecker, CircuitId.Input, inputMap, null);
+                    }
+                    else
+                    {
+                        var adjacentShifter = shifters[shifterIndex - 1];
+                        var adjacentProcessor = adjacentShifter.SignalProcessors[processorIndex];
+
+                        AddConnection(CircuitColor.Red, processor.InputChecker, CircuitId.Input, adjacentProcessor.InputChecker, CircuitId.Input);
+                    }
+
+                    if (processorIndex > 0)
+                    {
+                        var adjacentProcessor = shifter.SignalProcessors[processorIndex - 1];
+
+                        AddConnection(CircuitColor.Green, processor.InputChecker, CircuitId.Input, adjacentProcessor.InputChecker, CircuitId.Input);
+                        AddConnection(CircuitColor.Green, processor.InputBuffer, CircuitId.Input, adjacentProcessor.InputBuffer, CircuitId.Input);
+                        AddConnection(CircuitColor.Green, processor.OutputGenerator, CircuitId.Output, adjacentProcessor.OutputGenerator, CircuitId.Output);
+                        AddConnection(CircuitColor.Green, processor.OutputCleaner, CircuitId.Input, adjacentProcessor.OutputCleaner, CircuitId.Input);
+                        AddConnection(CircuitColor.Green, processor.OutputCleaner, CircuitId.Output, adjacentProcessor.OutputCleaner, CircuitId.Output);
+                    }
                 }
             }
 
@@ -309,6 +357,22 @@ namespace MemoryInitializer.Screen
                 Item = ItemNames.Blueprint,
                 Version = BlueprintVersions.CurrentVersion
             };
+        }
+
+        private class Shifter
+        {
+            public Entity InputSquared { get; set; }
+            public Entity BufferedInput { get; set; }
+            public Entity NegativeInputSquared { get; set; }
+            public SignalProcessor[] SignalProcessors { get; set; }
+        }
+
+        private class SignalProcessor
+        {
+            public Entity InputChecker { get; set; }
+            public Entity InputBuffer { get; set; }
+            public Entity OutputGenerator { get; set; }
+            public Entity OutputCleaner { get; set; }
         }
     }
 
