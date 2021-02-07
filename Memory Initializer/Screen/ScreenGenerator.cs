@@ -484,9 +484,9 @@ namespace MemoryInitializer.Screen
                 AddConnection(CircuitColor.Green, controller.Memory, CircuitId.Output, controller.Memory, CircuitId.Input); // Data feedback
                 AddConnection(CircuitColor.Green, controller.Writer, CircuitId.Output, controller.Memory, CircuitId.Input); // Data transfer
                 AddConnection(CircuitColor.Red, controller.AddressMatcher, CircuitId.Output, controller.Writer, CircuitId.Input); // Enable
-                AddConnection(CircuitColor.Red, controller.CyclicWriter, CircuitId.Output, controller.Writer, CircuitId.Output); // Cyclic data transfer
+                AddConnection(CircuitColor.Green, controller.CyclicWriter, CircuitId.Output, controller.Writer, CircuitId.Output); // Cyclic data transfer
                 AddConnection(CircuitColor.Red, controller.CyclicMatcher, CircuitId.Output, controller.CyclicWriter, CircuitId.Input); // Cyclic enable
-                AddConnection(CircuitColor.Red, controller.ParallelWriter, CircuitId.Output, controller.CyclicWriter, CircuitId.Output); // Parallel data transfer
+                AddConnection(CircuitColor.Green, controller.ParallelWriter, CircuitId.Output, controller.CyclicWriter, CircuitId.Output); // Parallel data transfer
                 AddConnection(CircuitColor.Red, controller.ParallelAddressRangeLow, CircuitId.Output, controller.ParallelWriter, CircuitId.Input); // Parallel enable low
                 AddConnection(CircuitColor.Red, controller.ParallelAddressRangeHigh, CircuitId.Output, controller.ParallelAddressRangeLow, CircuitId.Output); // Parallel enable high
                 AddConnection(CircuitColor.Red, controller.ParallelAddressRangeHigh, CircuitId.Input, controller.ParallelAddressRangeLow, CircuitId.Input); // Parallel address in
