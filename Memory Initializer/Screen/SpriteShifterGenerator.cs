@@ -28,6 +28,7 @@ namespace MemoryInitializer.Screen
                 .Select(letterOrDigit => VirtualSignalNames.LetterOrDigit((char)letterOrDigit))
                 .ToList();
             var inputSignalCount = inputSignals.Count;
+            var offsetSignal = VirtualSignalNames.Dot;
 
             var entities = new List<Entity>();
             var inputMaps = new Entity[inputSignalCount];
@@ -59,7 +60,7 @@ namespace MemoryInitializer.Screen
                     Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
                     {
-                        Filters = new List<Filter> { new Filter { Signal = SignalID.Create(VirtualSignalNames.Dot), Count = processorIndex + 1 } }
+                        Filters = new List<Filter> { Filter.Create(offsetSignal, processorIndex + 1) }
                     }
                 };
                 inputMaps[processorIndex] = inputMap;
@@ -169,7 +170,7 @@ namespace MemoryInitializer.Screen
                             Decider_conditions = new DeciderConditions
                             {
                                 First_signal = SignalID.Create(VirtualSignalNames.Each),
-                                Second_signal = SignalID.Create(VirtualSignalNames.Dot),
+                                Second_signal = SignalID.Create(offsetSignal),
                                 Comparator = Comparators.IsEqual,
                                 Output_signal = SignalID.Create(VirtualSignalNames.Each),
                                 Copy_count_from_input = false
@@ -238,7 +239,7 @@ namespace MemoryInitializer.Screen
                                 First_signal = SignalID.Create(inputSignal),
                                 Second_constant = -1,
                                 Operation = ArithmeticOperations.Multiplication,
-                                Output_signal = SignalID.Create(VirtualSignalNames.Dot)
+                                Output_signal = SignalID.Create(offsetSignal)
                             }
                         }
                     };
@@ -279,14 +280,46 @@ namespace MemoryInitializer.Screen
                     entities.Add(outputSignalMap);
                 }
 
+                var offsetBuffer = new Entity
+                {
+                    Name = ItemNames.ArithmeticCombinator,
+                    Position = new Position
+                    {
+                        X = 0.5 + shifterX,
+                        Y = outputMaps[^1].Position.Y + 1
+                    },
+                    Direction = Direction.Right,
+                    Control_behavior = new ControlBehavior
+                    {
+                        Arithmetic_conditions = new ArithmeticConditions
+                        {
+                            First_signal = SignalID.Create(offsetSignal),
+                            Second_constant = 1,
+                            Operation = ArithmeticOperations.Multiplication,
+                            Output_signal = SignalID.Create(offsetSignal)
+                        }
+                    }
+                };
+                entities.Add(offsetBuffer);
+
+                var horizontalShifter = CreateHorizontalShifter(shifterIndex, shifterX);
+                entities.Add(horizontalShifter.BitShifter);
+                entities.Add(horizontalShifter.BitIsolator);
+                entities.Add(horizontalShifter.ValueSpreader);
+                entities.Add(horizontalShifter.ReferenceSignalSubtractor);
+                entities.Add(horizontalShifter.MaskChecker);
+                entities.Add(horizontalShifter.Mask);
+
                 shifters[shifterIndex] = new Shifter
                 {
+                    HorizontalShifter = horizontalShifter,
                     OutputLink = outputLink,
                     InputSquared = inputSquared,
                     BufferedInput = bufferedInput,
                     NegativeInputSquared = negativeInputSquared,
                     SignalProcessors = signalProcessors,
-                    OutputMaps = outputMaps
+                    OutputMaps = outputMaps,
+                    OffsetBuffer = offsetBuffer
                 };
             }
 
@@ -301,6 +334,7 @@ namespace MemoryInitializer.Screen
                 var shifter = shifters[shifterIndex];
                 var firstProcessor = shifter.SignalProcessors[0];
                 var lastProcessor = shifter.SignalProcessors[inputSignalCount - 1];
+                var adjacentShifter = shifterIndex > 0 ? shifters[shifterIndex - 1] : null;
 
                 AddConnection(CircuitColor.Green, shifter.NegativeInputSquared, CircuitId.Output, shifter.OutputLink, null);
                 AddConnection(CircuitColor.Green, shifter.InputSquared, CircuitId.Input, shifter.BufferedInput, CircuitId.Input);
@@ -311,6 +345,7 @@ namespace MemoryInitializer.Screen
                 AddConnection(CircuitColor.Green, firstProcessor.OutputGenerator, CircuitId.Output, firstProcessor.OutputCleaner, CircuitId.Output);
                 AddConnection(CircuitColor.Green, lastProcessor.InputChecker, CircuitId.Input, shifter.OutputMaps[0], null);
                 AddConnection(CircuitColor.Green, shifter.OutputMaps[1], null, shifter.OutputMaps[0], null);
+                AddConnection(CircuitColor.Green, shifter.OffsetBuffer, CircuitId.Output, shifter.OutputMaps[^1], null);
 
                 // Input signal processor connections
                 for (var processorIndex = 0; processorIndex < inputSignalCount; processorIndex++)
@@ -328,7 +363,6 @@ namespace MemoryInitializer.Screen
                     }
                     else
                     {
-                        var adjacentShifter = shifters[shifterIndex - 1];
                         var adjacentProcessor = adjacentShifter.SignalProcessors[processorIndex];
 
                         AddConnection(CircuitColor.Red, processor.InputChecker, CircuitId.Input, adjacentProcessor.InputChecker, CircuitId.Input);
@@ -354,6 +388,14 @@ namespace MemoryInitializer.Screen
 
                     AddConnection(CircuitColor.Green, outputMap, null, adjacentOutputMap, null);
                 }
+
+                if (adjacentShifter != null)
+                {
+                    AddConnection(CircuitColor.Green, shifter.OffsetBuffer, CircuitId.Input, adjacentShifter.OffsetBuffer, CircuitId.Input);
+                }
+
+                AddHorizontalShifterConnections(shifter.HorizontalShifter, adjacentShifter?.HorizontalShifter);
+                AddConnection(CircuitColor.Green, shifter.HorizontalShifter.Mask, CircuitId.Output, shifter.InputSquared, CircuitId.Input);
             }
 
             return new Blueprint
@@ -361,14 +403,8 @@ namespace MemoryInitializer.Screen
                 Label = $"Sprite Shifter",
                 Icons = new List<Icon>
                 {
-                    new Icon
-                    {
-                        Signal = SignalID.Create(ItemNames.DeciderCombinator)
-                    },
-                    new Icon
-                    {
-                        Signal = SignalID.Create(ItemNames.DeciderCombinator)
-                    }
+                    Icon.Create(ItemNames.DeciderCombinator),
+                    Icon.Create(ItemNames.DeciderCombinator)
                 },
                 Entities = entities,
                 Item = ItemNames.Blueprint,
@@ -376,14 +412,186 @@ namespace MemoryInitializer.Screen
             };
         }
 
+        private static HorizontalShifter CreateHorizontalShifter(int shifterIndex, double shifterX)
+        {
+            var maskSignal = VirtualSignalNames.LetterOrDigit('X');
+
+            var bitShifter = new Entity
+            {
+                Name = ItemNames.ArithmeticCombinator,
+                Position = new Position
+                {
+                    X = 0.5 + shifterX,
+                    Y = -14
+                },
+                Direction = Direction.Right,
+                Control_behavior = new ControlBehavior
+                {
+                    Arithmetic_conditions = new ArithmeticConditions
+                    {
+                        First_signal = SignalID.Create(VirtualSignalNames.Each),
+                        Second_constant = shifterIndex,
+                        Operation = ArithmeticOperations.RightShift,
+                        Output_signal = SignalID.Create(VirtualSignalNames.Each)
+                    }
+                }
+            };
+
+            var bitIsolator = new Entity
+            {
+                Name = ItemNames.ArithmeticCombinator,
+                Position = new Position
+                {
+                    X = 0.5 + shifterX,
+                    Y = -13
+                },
+                Direction = Direction.Right,
+                Control_behavior = new ControlBehavior
+                {
+                    Arithmetic_conditions = new ArithmeticConditions
+                    {
+                        First_signal = SignalID.Create(VirtualSignalNames.Each),
+                        Second_constant = 1,
+                        Operation = ArithmeticOperations.And,
+                        Output_signal = SignalID.Create(VirtualSignalNames.Each)
+                    }
+                }
+            };
+
+            var valueSpreader = new Entity
+            {
+                Name = ItemNames.ArithmeticCombinator,
+                Position = new Position
+                {
+                    X = 0.5 + shifterX,
+                    Y = -12
+                },
+                Direction = Direction.Right,
+                Control_behavior = new ControlBehavior
+                {
+                    Arithmetic_conditions = new ArithmeticConditions
+                    {
+                        First_signal = SignalID.Create(VirtualSignalNames.Each),
+                        Second_constant = 2,
+                        Operation = ArithmeticOperations.Multiplication,
+                        Output_signal = SignalID.Create(VirtualSignalNames.Each)
+                    }
+                }
+            };
+
+            var referenceSignalSubtractor = new Entity
+            {
+                Name = ItemNames.ArithmeticCombinator,
+                Position = new Position
+                {
+                    X = 0.5 + shifterX,
+                    Y = -11
+                },
+                Direction = Direction.Right,
+                Control_behavior = new ControlBehavior
+                {
+                    Arithmetic_conditions = new ArithmeticConditions
+                    {
+                        First_signal = SignalID.Create(VirtualSignalNames.Each),
+                        Second_constant = -3,
+                        Operation = ArithmeticOperations.Multiplication,
+                        Output_signal = SignalID.Create(VirtualSignalNames.Each)
+                    }
+                }
+            };
+
+            var maskChecker = new Entity
+            {
+                Name = ItemNames.DeciderCombinator,
+                Position = new Position
+                {
+                    X = 0.5 + shifterX,
+                    Y = -10
+                },
+                Direction = Direction.Right,
+                Control_behavior = new ControlBehavior
+                {
+                    Decider_conditions = new DeciderConditions
+                    {
+                        First_signal = SignalID.Create(maskSignal),
+                        Constant = 0,
+                        Comparator = Comparators.IsEqual,
+                        Output_signal = SignalID.Create(VirtualSignalNames.Check),
+                        Copy_count_from_input = false
+                    }
+                }
+            };
+
+            var mask = new Entity
+            {
+                Name = ItemNames.DeciderCombinator,
+                Position = new Position
+                {
+                    X = 0.5 + shifterX,
+                    Y = -9
+                },
+                Direction = Direction.Right,
+                Control_behavior = new ControlBehavior
+                {
+                    Decider_conditions = new DeciderConditions
+                    {
+                        First_signal = SignalID.Create(VirtualSignalNames.Check),
+                        Constant = 0,
+                        Comparator = Comparators.IsEqual,
+                        Output_signal = SignalID.Create(VirtualSignalNames.Everything),
+                        Copy_count_from_input = true
+                    }
+                }
+            };
+
+            return new HorizontalShifter
+            {
+                BitShifter = bitShifter,
+                BitIsolator = bitIsolator,
+                ValueSpreader = valueSpreader,
+                ReferenceSignalSubtractor = referenceSignalSubtractor,
+                MaskChecker = maskChecker,
+                Mask = mask
+            };
+        }
+
+        private static void AddHorizontalShifterConnections(HorizontalShifter horizontalShifter, HorizontalShifter adjacentHorizontalShifter)
+        {
+            AddConnection(CircuitColor.Green, horizontalShifter.BitShifter, CircuitId.Output, horizontalShifter.BitIsolator, CircuitId.Input);
+            AddConnection(CircuitColor.Green, horizontalShifter.BitIsolator, CircuitId.Output, horizontalShifter.ValueSpreader, CircuitId.Input);
+            AddConnection(CircuitColor.Green, horizontalShifter.ValueSpreader, CircuitId.Output, horizontalShifter.ReferenceSignalSubtractor, CircuitId.Output);
+            AddConnection(CircuitColor.Green, horizontalShifter.ReferenceSignalSubtractor, CircuitId.Output, horizontalShifter.Mask, CircuitId.Input);
+            AddConnection(CircuitColor.Green, horizontalShifter.ValueSpreader, CircuitId.Input, horizontalShifter.MaskChecker, CircuitId.Input);
+            AddConnection(CircuitColor.Red, horizontalShifter.MaskChecker, CircuitId.Output, horizontalShifter.Mask, CircuitId.Input);
+
+            if (adjacentHorizontalShifter != null)
+            {
+                AddConnection(CircuitColor.Green, horizontalShifter.BitShifter, CircuitId.Input, adjacentHorizontalShifter.BitShifter, CircuitId.Input);
+                AddConnection(CircuitColor.Red, horizontalShifter.ValueSpreader, CircuitId.Input, adjacentHorizontalShifter.ValueSpreader, CircuitId.Input);
+                AddConnection(CircuitColor.Red, horizontalShifter.ReferenceSignalSubtractor, CircuitId.Input, adjacentHorizontalShifter.ReferenceSignalSubtractor, CircuitId.Input);
+            }
+        }
+
         private class Shifter
         {
+            public HorizontalShifter HorizontalShifter { get; set; }
             public Entity OutputLink { get; set; }
             public Entity InputSquared { get; set; }
             public Entity BufferedInput { get; set; }
             public Entity NegativeInputSquared { get; set; }
             public SignalProcessor[] SignalProcessors { get; set; }
             public Entity[] OutputMaps { get; set; }
+            public Entity OffsetBuffer { get; set; }
+        }
+
+        private class HorizontalShifter
+        {
+            public Entity BitShifter { get; set; }
+            public Entity BitIsolator { get; set; }
+            public Entity ValueSpreader { get; set; }
+            public Entity ReferenceSignalSubtractor { get; set; }
+            public Entity MaskChecker { get; set; }
+            public Entity Mask { get; set; }
         }
 
         private class SignalProcessor
