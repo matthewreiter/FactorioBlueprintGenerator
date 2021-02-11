@@ -78,12 +78,12 @@ namespace CompilerCommon
 
         private static List<Filter> ConvertDataToFilters(Dictionary<int, int> dataCell)
         {
-            return dataCell.Select(entry => new Filter { Signal = SignalUtils.GetSignalByNumber(entry.Key), Count = entry.Value }).ToList();
+            return dataCell.Select(entry => Filter.Create(SignalUtils.GetSignalByNumber(entry.Key), entry.Value)).ToList();
         }
 
         private static Filter CreateFilter(char signal, int count)
         {
-            return new Filter { Signal = new SignalID { Name = VirtualSignalNames.LetterOrDigit(signal), Type = SignalTypes.Virtual }, Count = count };
+            return Filter.Create(VirtualSignalNames.LetterOrDigit(signal), count);
         }
     }
 }
