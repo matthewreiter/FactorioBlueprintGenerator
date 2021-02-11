@@ -9,9 +9,9 @@ using static MemoryInitializer.PowerUtil;
 
 namespace MemoryInitializer
 {
-    public static class RomGenerator
+    public class RomGenerator : IBlueprintGenerator
     {
-        public static Blueprint Generate(IConfigurationRoot configuration)
+        public Blueprint Generate(IConfigurationRoot configuration)
         {
             return Generate(configuration.Get<RomConfiguration>());
         }

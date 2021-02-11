@@ -8,9 +8,9 @@ using static MemoryInitializer.PowerUtil;
 
 namespace MemoryInitializer
 {
-    public static class RamGenerator
+    public class RamGenerator : IBlueprintGenerator
     {
-        public static Blueprint Generate(IConfigurationRoot configuration)
+        public Blueprint Generate(IConfigurationRoot configuration)
         {
             return Generate(configuration.Get<RamConfiguration>());
         }

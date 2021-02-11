@@ -8,9 +8,9 @@ using static MemoryInitializer.PowerUtil;
 
 namespace MemoryInitializer.Screen
 {
-    public static class ScreenGenerator
+    public class ScreenGenerator : IBlueprintGenerator
     {
-        public static Blueprint Generate(IConfigurationRoot configuration)
+        public Blueprint Generate(IConfigurationRoot configuration)
         {
             return Generate(configuration.Get<ScreenConfiguration>());
         }

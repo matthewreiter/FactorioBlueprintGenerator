@@ -7,9 +7,9 @@ using static MemoryInitializer.ConnectionUtil;
 
 namespace MemoryInitializer
 {
-    public static class RegisterGenerator
+    public class RegistersGenerator : IBlueprintGenerator
     {
-        public static Blueprint Generate(IConfigurationRoot configuration)
+        public Blueprint Generate(IConfigurationRoot configuration)
         {
             var registerCount = int.TryParse(configuration["RegisterCount"], out var registerCountValue) ? registerCountValue : 16;
 

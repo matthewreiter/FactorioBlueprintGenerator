@@ -9,9 +9,9 @@ using Icon = BlueprintCommon.Models.Icon;
 
 namespace MemoryInitializer
 {
-    public class FontGenerator
+    public class FontGenerator : IBlueprintGenerator
     {
-        public static Blueprint Generate(IConfigurationRoot configuration)
+        public Blueprint Generate(IConfigurationRoot configuration)
         {
             return Generate(configuration.Get<FontConfiguration>());
         }

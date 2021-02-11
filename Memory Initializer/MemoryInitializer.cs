@@ -1,8 +1,8 @@
 ﻿using BlueprintCommon;
 using BlueprintCommon.Models;
-using MemoryInitializer.Screen;
 using Microsoft.Extensions.Configuration;
 using System;
+using System.Linq;
 
 namespace MemoryInitializer
 {
@@ -14,19 +14,17 @@ namespace MemoryInitializer
             var outputJsonFile = configuration["OutputJson"];
             var memoryType = configuration["MemoryType"];
 
-            var blueprint = memoryType switch
+            var generatorType = typeof(MemoryInitializer).Assembly.GetTypes()
+                .FirstOrDefault(type => type.IsAssignableTo(typeof(IBlueprintGenerator)) &&
+                    type.Name.Equals($"{memoryType}Generator", StringComparison.CurrentCultureIgnoreCase));
+
+            if (generatorType == null)
             {
-                "ROM" => RomGenerator.Generate(configuration),
-                "RAM" => RamGenerator.Generate(configuration),
-                "Registers" => RegisterGenerator.Generate(configuration),
-                "Screen" => ScreenGenerator.Generate(configuration),
-                "PixelSignals" => PixelSignalsGenerator.Generate(configuration),
-                "SpriteShifter" => SpriteShifterGenerator.Generate(configuration),
-                "Speaker" => SpeakerGenerator.Generate(configuration),
-                "MusicBoxSpeaker" => MusicBoxSpeakerGenerator.Generate(configuration),
-                "Font" => FontGenerator.Generate(configuration),
-                _ => throw new Exception($"Unsupported memory type: {memoryType}")
-            };
+                throw new Exception($"Unsupported memory type: {memoryType}");
+            }
+
+            var generator = (IBlueprintGenerator)Activator.CreateInstance(generatorType);
+            var blueprint = generator.Generate(configuration);
 
             BlueprintUtil.PopulateIndices(blueprint);
 

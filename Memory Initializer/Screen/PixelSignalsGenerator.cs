@@ -9,9 +9,9 @@ using static MemoryInitializer.ConnectionUtil;
 
 namespace MemoryInitializer.Screen
 {
-    public static class PixelSignalsGenerator
+    public class PixelSignalsGenerator : IBlueprintGenerator
     {
-        public static Blueprint Generate(IConfigurationRoot configuration)
+        public Blueprint Generate(IConfigurationRoot configuration)
         {
             return Generate(configuration.Get<PixelSignalsConfiguration>());
         }
