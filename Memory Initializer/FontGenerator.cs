@@ -22,17 +22,32 @@ namespace MemoryInitializer
             var combinatorsPerRow = configuration.CombinatorsPerRow ?? 5;
             var useOneSignalPerRow = configuration.UseOneSignalPerRow ?? false;
             var inputSignal = configuration.InputSignal ?? VirtualSignalNames.Dot;
+            var widthSignal = configuration.WidthSignal;
+            var heightSignal = configuration.HeightSignal;
             var signals = configuration.Signals.Contains(',') ? configuration.Signals.Split(',').ToList() : configuration.Signals.Select(signal => VirtualSignalNames.LetterOrDigit(signal)).ToList();
 
             const int maxFilters = 20;
 
             var font = FontUtil.ReadFont(fontImageFile);
-            var width = font.Width;
-            var height = font.Height;
             var characters = font.Characters;
 
             var entities = new List<Entity>();
             var characterEntities = new List<(Entity Matcher, List<Entity> Glyph)>();
+
+            if (widthSignal != null || heightSignal != null)
+            {
+                characters.Add(new FontUtil.Character
+                {
+                    CharacterCode = ' ',
+                    GlyphPixels = new bool[font.Height, font.Width]
+                });
+
+                characters.Add(new FontUtil.Character
+                {
+                    CharacterCode = '\n',
+                    GlyphPixels = new bool[font.Height, 0]
+                });
+            }
 
             var combinatorX = 0;
 
@@ -40,6 +55,8 @@ namespace MemoryInitializer
             {
                 var character = characters[characterIndex];
                 var glyphPixels = character.GlyphPixels;
+                var height = glyphPixels.GetLength(0);
+                var width = glyphPixels.GetLength(1);
 
                 if (characterIndex % combinatorsPerRow == 0)
                 {
@@ -47,6 +64,16 @@ namespace MemoryInitializer
                 }
 
                 var glyphFilters = new List<Filter>();
+
+                if (widthSignal != null)
+                {
+                    glyphFilters.Add(Filter.Create(widthSignal, width));
+                }
+
+                if (heightSignal != null)
+                {
+                    glyphFilters.Add(Filter.Create(heightSignal, height));
+                }
 
                 for (int y = 0; y < height; y++)
                 {
@@ -152,7 +179,7 @@ namespace MemoryInitializer
 
             return new Blueprint
             {
-                Label = $"{width}x{height} Font",
+                Label = $"{font.Width}x{font.Height} Font",
                 Icons = new List<Icon>
                 {
                     Icon.Create(ItemNames.ConstantCombinator),
@@ -173,6 +200,8 @@ namespace MemoryInitializer
         public int? CombinatorsPerRow { get; init; }
         public bool? UseOneSignalPerRow { get; init; }
         public string InputSignal { get; init; }
+        public string WidthSignal { get; init; }
+        public string HeightSignal { get; init; }
         public string Signals { get; init; }
     }
 }
