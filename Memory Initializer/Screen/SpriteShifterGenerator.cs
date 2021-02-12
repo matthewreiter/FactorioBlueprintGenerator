@@ -414,7 +414,7 @@ namespace MemoryInitializer.Screen
 
         private static HorizontalShifter CreateHorizontalShifter(int shifterIndex, double shifterX)
         {
-            var maskSignal = VirtualSignalNames.LetterOrDigit('X');
+            var maskSignal = VirtualSignalNames.LetterOrDigit('W');
 
             var bitShifter = new Entity
             {
