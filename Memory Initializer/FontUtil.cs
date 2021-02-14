@@ -12,27 +12,12 @@ namespace MemoryInitializer
 
             static bool IsRed(Color color) => color.R > 192 && color.G < 64 && color.B < 64;
 
-            var width = 0;
-            for (int x = 1; x < fontImage.Width; x++)
-            {
-                if (IsRed(fontImage.GetPixel(x, 1)))
-                {
-                    width = x - 1;
-                    break;
-                }
-            }
-
-            if (width == 0)
-            {
-                throw new Exception("Unable to determine glyph width");
-            }
-
             var height = 0;
-            for (int y = 1; y < fontImage.Height; y++)
+            for (int y = 0; y + 1 < fontImage.Height; y++)
             {
-                if (IsRed(fontImage.GetPixel(1, y)))
+                if (IsRed(fontImage.GetPixel(1, y + 1)))
                 {
-                    height = y - 1;
+                    height = y;
                     break;
                 }
             }
@@ -42,23 +27,43 @@ namespace MemoryInitializer
                 throw new Exception("Unable to determine glyph height");
             }
 
-            var fullWidth = width + 1;
             var fullHeight = height + 2;
-
-            var horizontalGlyphs = (fontImage.Width - 1) / fullWidth;
-            var verticalGlyphs = fontImage.Height / fullHeight;
+            var fullWidth = 0;
 
             var characters = new List<Character>();
             var currentCharacterCode = 0;
+            var maxWidth = 0;
 
-            for (int row = 0; row < verticalGlyphs; row++)
+            for (var glyphY = 0; glyphY < fontImage.Height - 1; glyphY += fullHeight)
             {
-                for (int column = 0; column < horizontalGlyphs; column++)
+                for (var glyphX = 0; glyphX < fontImage.Width - 1; glyphX += fullWidth)
                 {
+                    var width = 0;
+                    for (var x = 0; glyphX + x + 1 < fontImage.Width; x++)
+                    {
+                        if (IsRed(fontImage.GetPixel(glyphX + x + 1, glyphY + 1)))
+                        {
+                            width = x;
+                            break;
+                        }
+                    }
+
+                    if (width == 0)
+                    {
+                        break;
+                    }
+
+                    fullWidth = width + 1;
+
+                    if (width > maxWidth)
+                    {
+                        maxWidth = width;
+                    }
+
                     var glyphPixels = new bool[height, width];
                     var hasPixels = false;
 
-                    var baseCharacterIndicator = fontImage.GetPixel(column * fullWidth, row * fullHeight);
+                    var baseCharacterIndicator = fontImage.GetPixel(glyphX, glyphY);
                     if (baseCharacterIndicator.R == 0)
                     {
                         currentCharacterCode = baseCharacterIndicator.G;
@@ -68,11 +73,11 @@ namespace MemoryInitializer
                         currentCharacterCode++;
                     }
 
-                    for (int y = 0; y < height; y++)
+                    for (var y = 0; y < height; y++)
                     {
                         for (int x = 0; x < width; x++)
                         {
-                            var pixel = fontImage.GetPixel(column * fullWidth + x + 1, row * fullHeight + y + 1);
+                            var pixel = fontImage.GetPixel(glyphX + x + 1, glyphY + y + 1);
 
                             if (pixel.ToArgb() == Color.Black.ToArgb())
                             {
@@ -82,20 +87,17 @@ namespace MemoryInitializer
                         }
                     }
 
-                    if (hasPixels)
+                    characters.Add(new Character
                     {
-                        characters.Add(new Character
-                        {
-                            CharacterCode = currentCharacterCode,
-                            GlyphPixels = glyphPixels
-                        });
-                    }
+                        CharacterCode = currentCharacterCode,
+                        GlyphPixels = glyphPixels
+                    });
                 }
             }
 
             return new Font
             {
-                Width = width,
+                Width = maxWidth,
                 Height = height,
                 Characters = characters
             };

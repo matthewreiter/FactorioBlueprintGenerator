@@ -34,14 +34,8 @@ namespace MemoryInitializer
             var entities = new List<Entity>();
             var characterEntities = new List<(Entity Matcher, List<Entity> Glyph)>();
 
-            if (widthSignal != null || heightSignal != null)
+            if (heightSignal != null)
             {
-                characters.Add(new FontUtil.Character
-                {
-                    CharacterCode = ' ',
-                    GlyphPixels = new bool[font.Height, font.Width]
-                });
-
                 characters.Add(new FontUtil.Character
                 {
                     CharacterCode = '\n',
