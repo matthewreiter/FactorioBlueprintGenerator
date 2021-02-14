@@ -60,9 +60,6 @@ namespace MemoryInitializer
                         maxWidth = width;
                     }
 
-                    var glyphPixels = new bool[height, width];
-                    var hasPixels = false;
-
                     var baseCharacterIndicator = fontImage.GetPixel(glyphX, glyphY);
                     if (baseCharacterIndicator.R == 0)
                     {
@@ -73,17 +70,13 @@ namespace MemoryInitializer
                         currentCharacterCode++;
                     }
 
+                    var glyphPixels = new bool[height, width];
                     for (var y = 0; y < height; y++)
                     {
                         for (int x = 0; x < width; x++)
                         {
                             var pixel = fontImage.GetPixel(glyphX + x + 1, glyphY + y + 1);
-
-                            if (pixel.ToArgb() == Color.Black.ToArgb())
-                            {
-                                glyphPixels[y, x] = true;
-                                hasPixels = true;
-                            }
+                            glyphPixels[y, x] = pixel.ToArgb() == Color.Black.ToArgb();
                         }
                     }
 
