@@ -322,13 +322,27 @@ namespace Assembler
                     var calledMethodAnalysis = methodAnalyses[(MethodBase)callInstruction.Operand];
                     var inlinedParameters = methodContext.Analysis.SourceSinkMap
                         .Where(entry => entry.Value.Instruction == callInstruction && !calledMethodAnalysis.NonInlineableParameters.Contains(entry.Value.Parameter))
-                        .Select(entry => new { entry.Value.Parameter, Source = entry.Key, Value = GetConstantValueForInlinedMethod(entry.Key) })
-                        .Where(entry => entry.Value.HasValue);
+                        .GroupBy(entry => entry.Value.Parameter)
+                        .Select(group =>
+                        {
+                            var values = group.Select(entry => GetConstantValueForInlinedMethod(entry.Key)).ToHashSet();
+                            var value = values.First();
+
+                            return values.Count == 1 && value.HasValue
+                                ? new
+                                {
+                                    Index = group.Key,
+                                    Value = value.Value,
+                                    Sources = group.Select(entry => entry.Key)
+                                } : null;
+                        })
+                        .Where(parameter => parameter != null)
+                        .ToList();
 
                     return new
                     {
-                        InlinedParameterValues = inlinedParameters.ToDictionary(entry => entry.Parameter, entry => entry.Value.Value),
-                        Sources = inlinedParameters.Select(entry => entry.Source)
+                        InlinedParameterValues = inlinedParameters.ToDictionary(parameter => parameter.Index, parameter => parameter.Value),
+                        Sources = inlinedParameters.SelectMany(parameter => parameter.Sources)
                     };
                 });
 
