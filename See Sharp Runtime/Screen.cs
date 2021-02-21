@@ -5,12 +5,15 @@ namespace SeeSharp.Runtime
     public static class Screen
     {
         private const int BaseAddress = 37889;
+
         private const int ClearScreenAddress = BaseAddress;
         private const int ScreenColorAddress = BaseAddress + 1;
-        private const int CharacterXAddress = BaseAddress + 2;
-        private const int CharacterYAddress = BaseAddress + 3;
-        private const int FontAddress = BaseAddress + 4;
-        private const int CharacterAddress = BaseAddress + 5;
+
+        private const int AutoAdvanceCharacterAddress = BaseAddress + 16;
+        private const int CharacterXAddress = BaseAddress + 17;
+        private const int CharacterYAddress = BaseAddress + 18;
+        private const int FontAddress = BaseAddress + 19;
+        private const int CharacterAddress = BaseAddress + 20;
 
         [Inline]
         public static void ClearScreen(PixelValue value = PixelValue.Clear)
@@ -24,10 +27,19 @@ namespace SeeSharp.Runtime
             Memory.Write(ScreenColorAddress, (int)color);
         }
 
+        public static bool AutoAdvanceCharacter
+        {
+            [Inline]
+            get => Memory.Read(AutoAdvanceCharacterAddress) != 0;
+            [Inline]
+            set => Memory.Write(AutoAdvanceCharacterAddress, value ? 1 : 0);
+        }
+
         public static int CharacterX
         {
             [Inline]
             get => Memory.Read(CharacterXAddress);
+            [Inline]
             set => Memory.Write(CharacterXAddress, value);
         }
 
@@ -35,6 +47,7 @@ namespace SeeSharp.Runtime
         {
             [Inline]
             get => Memory.Read(CharacterYAddress);
+            [Inline]
             set => Memory.Write(CharacterYAddress, value);
         }
 
@@ -42,6 +55,7 @@ namespace SeeSharp.Runtime
         {
             [Inline]
             get => Memory.Read(FontAddress);
+            [Inline]
             set => Memory.Write(FontAddress, value);
         }
 
