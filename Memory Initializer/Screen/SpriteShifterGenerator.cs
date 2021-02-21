@@ -1,6 +1,7 @@
 ﻿using BlueprintCommon;
 using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
+using MemoryInitializer.Constants;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -23,11 +24,9 @@ namespace MemoryInitializer.Screen
 
             const int maxFilters = 20;
             const int shifterCount = 32;
+            const int inputSignalCount = 32;
 
-            var inputSignals = Enumerable.Range('0', 10).Concat(Enumerable.Range('A', 22))
-                .Select(letterOrDigit => VirtualSignalNames.LetterOrDigit((char)letterOrDigit))
-                .ToList();
-            var inputSignalCount = inputSignals.Count;
+            var inputSignals = ComputerSignals.OrderedSignals.Take(inputSignalCount).ToList();
             var offsetSignal = VirtualSignalNames.Dot;
 
             var entities = new List<Entity>();
