@@ -159,10 +159,30 @@ namespace MemoryInitializer
                 }
             }
 
+            // Timestamp
+            entities.Add(new Entity
+            {
+                Entity_number = entities.Count + 1,
+                Name = ItemNames.ConstantCombinator,
+                Position = new Position
+                {
+                    X = 1 + xOffset,
+                    Y = gridHeight - 2 + yOffset
+                },
+                Direction = Direction.Down,
+                Control_behavior = new ControlBehavior
+                {
+                    Filters = new List<Filter>
+                    {
+                        Filter.Create(VirtualSignalNames.LetterOrDigit('0'), (int)(DateTime.Now.Ticks / 10000))
+                    }
+                }
+            });
+
             var substationWidth = (width + 7) / 16 + 1;
             var substationHeight = (gridHeight + 2) / 18 + 1;
 
-            entities.AddRange(CreateSubstations(substationWidth, substationHeight, xOffset, gridHeight % 18 - 4 + yOffset, width * height * entitiesPerCell + 1));
+            entities.AddRange(CreateSubstations(substationWidth, substationHeight, xOffset, gridHeight % 18 - 4 + yOffset, entities.Count + 1));
 
             return new Blueprint
             {
