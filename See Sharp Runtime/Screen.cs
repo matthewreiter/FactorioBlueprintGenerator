@@ -15,6 +15,13 @@ namespace SeeSharp.Runtime
         private const int FontAddress = BaseAddress + 19;
         private const int CharacterAddress = BaseAddress + 20;
 
+        private const int SpriteXAddress = BaseAddress + 32;
+        private const int SpriteYAddress = BaseAddress + 33;
+        private const int CurrentSpriteAddress = BaseAddress + 34;
+        private const int DrawSpriteAddress = BaseAddress + 35;
+        private const int ReadSpriteAddress = BaseAddress + 36;
+        private const int WriteSpriteBaseAddress = BaseAddress + 37;
+
         [Inline]
         public static void ClearScreen(PixelValue value = PixelValue.Clear)
         {
@@ -72,6 +79,62 @@ namespace SeeSharp.Runtime
             {
                 PrintCharacter(text[index]);
             }
+        }
+
+        public static int SpriteX
+        {
+            [Inline]
+            get => Memory.Read(SpriteXAddress);
+            [Inline]
+            set => Memory.Write(SpriteXAddress, value);
+        }
+
+        public static int SpriteY
+        {
+            [Inline]
+            get => Memory.Read(SpriteYAddress);
+            [Inline]
+            set => Memory.Write(SpriteYAddress, value);
+        }
+
+        public static int CurrentSprite
+        {
+            [Inline]
+            get => Memory.Read(CurrentSpriteAddress);
+            [Inline]
+            set => Memory.Write(CurrentSpriteAddress, value);
+        }
+
+        [Inline]
+        public static void DrawSprite(int sprite)
+        {
+            Memory.Write(DrawSpriteAddress, sprite);
+        }
+
+        [Inline]
+        public static void DrawSprite(int sprite, int x, int y)
+        {
+            Memory.Write(SpriteXAddress, x);
+            Memory.Write(SpriteYAddress, y);
+            Memory.Write(DrawSpriteAddress, sprite);
+        }
+
+        [Inline]
+        public static int GetSpriteData(Signal signal)
+        {
+            return Memory.ReadSignal(ReadSpriteAddress, signal);
+        }
+
+        [Inline]
+        public static void SetSpriteData(Signal signal, int value)
+        {
+            Memory.Write(WriteSpriteBaseAddress + (int)signal, value);
+        }
+
+        [Inline]
+        public static void ClearSprite()
+        {
+            Memory.Write(WriteSpriteBaseAddress, 1);
         }
 
         public enum PixelValue
