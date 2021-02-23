@@ -1,4 +1,5 @@
 ﻿using FactoVision.Runtime;
+using System.Threading;
 
 namespace SeeSharpCompilerTest
 {
@@ -13,7 +14,7 @@ namespace SeeSharpCompilerTest
         private static readonly string anActualString = "Hello";
         private static readonly int[] blank = new int[4];
         private static readonly Wrapper<int> wrapper = new Wrapper<int> { Value = 5 };
-        private static readonly Wrapper<Things> thingWrapper = new Wrapper<Things> { Value = new Things {  Count = 8, Type = 16 } };
+        private static readonly Wrapper<Things> thingWrapper = new Wrapper<Things> { Value = new Things { Count = 8, Type = 16 } };
 
         public static void Main()
         {
@@ -55,11 +56,43 @@ namespace SeeSharpCompilerTest
             var isChar = maybeString is char;
 
             //var helloGoodbye = anActualString + "Goodbye";
+            var strLen = anActualString.Length;
+            Thread.Sleep(1000);
 
             for (int index = 0; index < 4; index++)
             {
                 sum *= 2;
                 counter++;
+            }
+
+            int? nullable = null;
+            nullable = 7;
+            if (nullable.HasValue)
+            {
+                var value = nullable.Value;
+            }
+
+            while (true)
+            {
+                for (int index = 0; index < 10; index++)
+                {
+                    Speaker.SetDrum(0, Speaker.Drum.Triangle, Speaker.Volume.Medium);
+                    Speaker.PlayAndClear();
+
+                    Speaker.SetChannel(Speaker.Instrument.Piano, 0, 10 + index);
+                    Speaker.SetChannel(Speaker.Instrument.Piano, 1, 12 + index);
+                    Speaker.Play();
+                    Speaker.PlayAndClear();
+
+                    Speaker.SetChannel(Speaker.Instrument.Piano, 0, 20 + index, Speaker.Volume.Low);
+                    Speaker.PlayAndClear();
+                    Speaker.SetChannel(Speaker.Instrument.Piano, 0, 20 + index, Speaker.Volume.Medium);
+                    Speaker.PlayAndClear();
+                    Speaker.SetChannel(Speaker.Instrument.Piano, 0, 20 + index, Speaker.Volume.High);
+                    Speaker.PlayAndClear();
+                    Speaker.SetChannel(Speaker.Instrument.Piano, 0, 20 + index, Speaker.Volume.Max);
+                    Speaker.PlayAndClear();
+                }
             }
         }
 
