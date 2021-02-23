@@ -13,13 +13,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Blueprint Reader", "Bluepri
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Find And Replace", "Find And Replace\Find And Replace.csproj", "{4E44F236-0187-4D47-9E42-BBBD4F348821}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "See Sharp Compiler Test", "See Sharp Compiler Test\See Sharp Compiler Test.csproj", "{D63D8041-7700-4382-A529-979FC687CF74}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Compiler Common", "Compiler Common\Compiler Common.csproj", "{453BE191-29F2-4B19-8A24-C0B35B7DC723}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IL Assembler", "IL Assembler\IL Assembler.csproj", "{6AFA96A4-D76B-4359-BBF2-9A0A5A74F767}"
 	ProjectSection(ProjectDependencies) = postProject
-		{D63D8041-7700-4382-A529-979FC687CF74} = {D63D8041-7700-4382-A529-979FC687CF74}
+		{7D79D6B4-A4D9-4CCD-ACD1-F57EBBB1A315} = {7D79D6B4-A4D9-4CCD-ACD1-F57EBBB1A315}
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IL Reader", "IL Reader\IL Reader.csproj", "{26BBFD17-0A43-4F9A-953B-C72617F7F6EC}"
@@ -30,6 +28,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Music Manager", "Music Mana
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FactoVision Runtime", "FactoVision Runtime\FactoVision Runtime.csproj", "{6CB6C62F-6783-4B48-9822-ADAD3AACB136}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FactoVision Compiler Test", "FactoVision Compiler Test\FactoVision Compiler Test.csproj", "{7D79D6B4-A4D9-4CCD-ACD1-F57EBBB1A315}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -57,10 +57,6 @@ Global
 		{4E44F236-0187-4D47-9E42-BBBD4F348821}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4E44F236-0187-4D47-9E42-BBBD4F348821}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4E44F236-0187-4D47-9E42-BBBD4F348821}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D63D8041-7700-4382-A529-979FC687CF74}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D63D8041-7700-4382-A529-979FC687CF74}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D63D8041-7700-4382-A529-979FC687CF74}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D63D8041-7700-4382-A529-979FC687CF74}.Release|Any CPU.Build.0 = Release|Any CPU
 		{453BE191-29F2-4B19-8A24-C0B35B7DC723}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{453BE191-29F2-4B19-8A24-C0B35B7DC723}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{453BE191-29F2-4B19-8A24-C0B35B7DC723}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -81,6 +77,10 @@ Global
 		{6CB6C62F-6783-4B48-9822-ADAD3AACB136}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6CB6C62F-6783-4B48-9822-ADAD3AACB136}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6CB6C62F-6783-4B48-9822-ADAD3AACB136}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D79D6B4-A4D9-4CCD-ACD1-F57EBBB1A315}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D79D6B4-A4D9-4CCD-ACD1-F57EBBB1A315}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D79D6B4-A4D9-4CCD-ACD1-F57EBBB1A315}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D79D6B4-A4D9-4CCD-ACD1-F57EBBB1A315}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,7 +1,7 @@
 ﻿using FactoVision.Runtime;
 using System.Threading;
 
-namespace SeeSharpCompilerTest
+namespace FactoVisionCompilerTest
 {
     public static class Program
     {
