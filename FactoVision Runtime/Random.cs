@@ -1,4 +1,4 @@
-﻿namespace SeeSharp.Runtime
+﻿namespace FactoVision.Runtime
 {
     public class Random
     {

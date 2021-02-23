@@ -1,7 +1,7 @@
-﻿using SeeSharp.Runtime.CompilerServices;
+﻿using FactoVision.Runtime.CompilerServices;
 using System;
 
-namespace SeeSharp.Runtime
+namespace FactoVision.Runtime
 {
     public static class Speaker
     {

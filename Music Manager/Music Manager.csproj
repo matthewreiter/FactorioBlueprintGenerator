@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\See Sharp Runtime\See Sharp Runtime.csproj" />
+    <ProjectReference Include="..\FactoVision Runtime\FactoVision Runtime.csproj" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">

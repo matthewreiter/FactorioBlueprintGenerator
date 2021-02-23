@@ -1,4 +1,4 @@
-﻿using SeeSharp.Runtime;
+﻿using FactoVision.Runtime;
 
 namespace SeeSharpCompilerTest
 {

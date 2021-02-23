@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
-    <RootNamespace>SeeSharp.Runtime</RootNamespace>
-    <AssemblyName>SeeSharpRuntime</AssemblyName>
-  </PropertyGroup>
-
-</Project>

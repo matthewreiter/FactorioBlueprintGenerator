@@ -15,8 +15,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Find And Replace", "Find An
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "See Sharp Compiler Test", "See Sharp Compiler Test\See Sharp Compiler Test.csproj", "{D63D8041-7700-4382-A529-979FC687CF74}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "See Sharp Runtime", "See Sharp Runtime\See Sharp Runtime.csproj", "{9E552215-AA7C-4FCA-B51D-75E2C8809CA2}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Compiler Common", "Compiler Common\Compiler Common.csproj", "{453BE191-29F2-4B19-8A24-C0B35B7DC723}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IL Assembler", "IL Assembler\IL Assembler.csproj", "{6AFA96A4-D76B-4359-BBF2-9A0A5A74F767}"
@@ -30,6 +28,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Music Manager", "Music Mana
 	ProjectSection(ProjectDependencies) = postProject
 		{6AFA96A4-D76B-4359-BBF2-9A0A5A74F767} = {6AFA96A4-D76B-4359-BBF2-9A0A5A74F767}
 	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FactoVision Runtime", "FactoVision Runtime\FactoVision Runtime.csproj", "{6CB6C62F-6783-4B48-9822-ADAD3AACB136}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -61,10 +61,6 @@ Global
 		{D63D8041-7700-4382-A529-979FC687CF74}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D63D8041-7700-4382-A529-979FC687CF74}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D63D8041-7700-4382-A529-979FC687CF74}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9E552215-AA7C-4FCA-B51D-75E2C8809CA2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9E552215-AA7C-4FCA-B51D-75E2C8809CA2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9E552215-AA7C-4FCA-B51D-75E2C8809CA2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9E552215-AA7C-4FCA-B51D-75E2C8809CA2}.Release|Any CPU.Build.0 = Release|Any CPU
 		{453BE191-29F2-4B19-8A24-C0B35B7DC723}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{453BE191-29F2-4B19-8A24-C0B35B7DC723}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{453BE191-29F2-4B19-8A24-C0B35B7DC723}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -81,6 +77,10 @@ Global
 		{4B98F4AB-0A4F-4DFF-9796-D2EFCC4A5796}.Debug|Any CPU.Build.0 = Release|Any CPU
 		{4B98F4AB-0A4F-4DFF-9796-D2EFCC4A5796}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4B98F4AB-0A4F-4DFF-9796-D2EFCC4A5796}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6CB6C62F-6783-4B48-9822-ADAD3AACB136}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6CB6C62F-6783-4B48-9822-ADAD3AACB136}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6CB6C62F-6783-4B48-9822-ADAD3AACB136}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6CB6C62F-6783-4B48-9822-ADAD3AACB136}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

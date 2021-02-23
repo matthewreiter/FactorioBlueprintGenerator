@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SeeSharp.Runtime.CompilerServices
+namespace FactoVision.Runtime.CompilerServices
 {
     [AttributeUsage(AttributeTargets.Constructor | AttributeTargets.Method, Inherited = false)]
     public class InlineAttribute : Attribute { }

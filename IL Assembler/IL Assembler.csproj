@@ -9,8 +9,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Compiler Common\Compiler Common.csproj" />
+    <ProjectReference Include="..\FactoVision Runtime\FactoVision Runtime.csproj" />
     <ProjectReference Include="..\IL Reader\IL Reader.csproj" />
-    <ProjectReference Include="..\See Sharp Runtime\See Sharp Runtime.csproj" />
   </ItemGroup>
 
   <ItemGroup>
