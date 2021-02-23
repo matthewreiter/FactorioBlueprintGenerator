@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Linq;
 
-namespace MemoryInitializer
+namespace BlueprintGenerator
 {
     public static class MemoryInitializer
     {

@@ -4,10 +4,10 @@ using BlueprintCommon.Models;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 using System.Linq;
-using static MemoryInitializer.ConnectionUtil;
+using static BlueprintGenerator.ConnectionUtil;
 using Icon = BlueprintCommon.Models.Icon;
 
-namespace MemoryInitializer
+namespace BlueprintGenerator
 {
     public class FontGenerator : IBlueprintGenerator
     {

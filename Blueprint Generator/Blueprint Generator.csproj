@@ -3,8 +3,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
-    <RootNamespace>MemoryInitializer</RootNamespace>
-    <AssemblyName>MemoryInitializer</AssemblyName>
+    <RootNamespace>BlueprintGenerator</RootNamespace>
+    <AssemblyName>BlueprintGenerator</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +16,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Blueprint Common\Blueprint Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Test\" />
   </ItemGroup>
 
 </Project>

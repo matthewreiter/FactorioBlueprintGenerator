@@ -32,7 +32,7 @@ namespace Assembler
 
             if (compiledProgram != null)
             {
-                var blueprint = BlueprintGenerator.CreateBlueprintFromCompiledProgram(compiledProgram, snapToGrid, x, y, width, height, instructionsWriter);
+                var blueprint = ProgramRomGenerator.CreateBlueprintFromCompiledProgram(compiledProgram, snapToGrid, x, y, width, height, instructionsWriter);
                 BlueprintUtil.PopulateIndices(blueprint);
 
                 var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };

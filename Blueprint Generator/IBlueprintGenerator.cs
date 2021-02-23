@@ -1,7 +1,7 @@
 ﻿using BlueprintCommon.Models;
 using Microsoft.Extensions.Configuration;
 
-namespace MemoryInitializer
+namespace BlueprintGenerator
 {
     public interface IBlueprintGenerator
     {

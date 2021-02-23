@@ -3,7 +3,7 @@ using BlueprintCommon.Models;
 using System;
 using System.Collections.Generic;
 
-namespace MemoryInitializer
+namespace BlueprintGenerator
 {
     public class PowerUtil
     {

@@ -1,7 +1,7 @@
 ﻿using BlueprintCommon;
 using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
-using MemoryInitializer;
+using BlueprintGenerator;
 using Microsoft.Extensions.Configuration;
 using MusicBoxCompiler.Models;
 using System;

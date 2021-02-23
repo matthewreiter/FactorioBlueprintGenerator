@@ -1,4 +1,4 @@
-﻿using MemoryInitializer.Constants;
+﻿using BlueprintGenerator.Constants;
 
 namespace CompilerCommon
 {

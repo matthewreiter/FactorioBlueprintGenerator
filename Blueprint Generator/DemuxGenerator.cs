@@ -1,12 +1,12 @@
 ﻿using BlueprintCommon;
 using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
-using MemoryInitializer.Constants;
+using BlueprintGenerator.Constants;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
-using static MemoryInitializer.ConnectionUtil;
+using static BlueprintGenerator.ConnectionUtil;
 
-namespace MemoryInitializer
+namespace BlueprintGenerator
 {
     public class DemuxGenerator : IBlueprintGenerator
     {

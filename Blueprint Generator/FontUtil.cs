@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 
-namespace MemoryInitializer
+namespace BlueprintGenerator
 {
     public static class FontUtil
     {

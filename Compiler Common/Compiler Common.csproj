@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Blueprint Common\Blueprint Common.csproj" />
-    <ProjectReference Include="..\Memory Initializer\Memory Initializer.csproj" />
+    <ProjectReference Include="..\Blueprint Generator\Blueprint Generator.csproj" />
   </ItemGroup>
 
 </Project>

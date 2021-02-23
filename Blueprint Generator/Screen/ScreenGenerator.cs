@@ -3,10 +3,10 @@ using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
-using static MemoryInitializer.ConnectionUtil;
-using static MemoryInitializer.PowerUtil;
+using static BlueprintGenerator.ConnectionUtil;
+using static BlueprintGenerator.PowerUtil;
 
-namespace MemoryInitializer.Screen
+namespace BlueprintGenerator.Screen
 {
     public class ScreenGenerator : IBlueprintGenerator
     {

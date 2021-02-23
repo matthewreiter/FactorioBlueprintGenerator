@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MemoryInitializer.Constants
+namespace BlueprintGenerator.Constants
 {
     public static class ComputerSignals
     {

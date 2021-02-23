@@ -1,13 +1,13 @@
 ﻿using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
-using MemoryInitializer;
+using BlueprintGenerator;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
 namespace CompilerCommon
 {
-    public static class BlueprintGenerator
+    public static class ProgramRomGenerator
     {
         public static Blueprint CreateBlueprintFromCompiledProgram(CompiledProgram compiledProgram, bool? snapToGrid, int? x, int? y, int? width, int? height, StreamWriter instructionsWriter)
         {

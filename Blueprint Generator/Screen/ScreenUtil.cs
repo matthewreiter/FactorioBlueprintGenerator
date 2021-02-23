@@ -1,7 +1,7 @@
 ﻿using BlueprintCommon.Constants;
 using System.Collections.Generic;
 
-namespace MemoryInitializer.Screen
+namespace BlueprintGenerator.Screen
 {
     public static class ScreenUtil
     {

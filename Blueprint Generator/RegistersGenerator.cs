@@ -3,9 +3,9 @@ using BlueprintCommon.Models;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 using System.Linq;
-using static MemoryInitializer.ConnectionUtil;
+using static BlueprintGenerator.ConnectionUtil;
 
-namespace MemoryInitializer
+namespace BlueprintGenerator
 {
     public class RegistersGenerator : IBlueprintGenerator
     {

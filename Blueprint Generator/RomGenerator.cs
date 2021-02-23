@@ -4,10 +4,10 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static MemoryInitializer.ConnectionUtil;
-using static MemoryInitializer.PowerUtil;
+using static BlueprintGenerator.ConnectionUtil;
+using static BlueprintGenerator.PowerUtil;
 
-namespace MemoryInitializer
+namespace BlueprintGenerator
 {
     public class RomGenerator : IBlueprintGenerator
     {

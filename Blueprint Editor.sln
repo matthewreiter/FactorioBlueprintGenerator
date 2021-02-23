@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Blueprint Common", "Bluepri
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Music Box Compiler", "Music Box Compiler\Music Box Compiler.csproj", "{ACDCB043-5156-4A24-B7DE-2FF1543C1BEF}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Memory Initializer", "Memory Initializer\Memory Initializer.csproj", "{BBDFB62E-C178-4058-89E7-A9AAEBEE7E2D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Blueprint Generator", "Blueprint Generator\Blueprint Generator.csproj", "{BBDFB62E-C178-4058-89E7-A9AAEBEE7E2D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Blueprint Reader", "Blueprint Reader\Blueprint Reader.csproj", "{E3929B2C-A62D-4BF9-9D97-A8EAC4CC75BA}"
 EndProject
