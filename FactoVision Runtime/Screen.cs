@@ -137,6 +137,20 @@ namespace FactoVision.Runtime
             Memory.Write(WriteSpriteBaseAddress, 1);
         }
 
+        public static void WriteSprite(int sprite, int width, int height, int[] data)
+        {
+            CurrentSprite = sprite;
+            ClearSprite();
+            SetSpriteData(Signal.X, width);
+            SetSpriteData(Signal.Y, height);
+
+            var length = data.Length;
+            for (var index = 0; index < length; index++)
+            {
+                SetSpriteData(Signal.Zero + index, data[index]);
+            }
+        }
+
         public enum PixelValue
         {
             Clear = -1,
