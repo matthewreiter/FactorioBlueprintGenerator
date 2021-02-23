@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "See Sharp Compiler": {
-      "commandName": "Project",
-      "commandLineArgs": "--InputProgram=\"$(SolutionDir)See Sharp Compiler Test/Program.cs\" --OutputBlueprint=\"$(ProjectDir)Test/rom.txt\" --OutputJson=\"$(ProjectDir)Test/rom.json\" --OutputInstructions=\"$(ProjectDir)Test/instructions.txt\" --Width=128 --Height=32"
-    }
-  }
-}
