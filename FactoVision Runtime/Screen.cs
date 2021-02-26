@@ -67,7 +67,7 @@ namespace FactoVision.Runtime
         }
 
         [Inline]
-        public static void PrintCharacter(char character)
+        public static void Print(char character)
         {
             Memory.Write(CharacterAddress, character);
         }
@@ -77,7 +77,30 @@ namespace FactoVision.Runtime
             var length = text.Length;
             for (int index = 0; index < length; index++)
             {
-                PrintCharacter(text[index]);
+                Print(text[index]);
+            }
+        }
+
+        public static void Print(int value)
+        {
+            void PrintNumber(int number)
+            {
+                if (number >= 10)
+                {
+                    PrintNumber(number / 10);
+                }
+
+                Print((char)('0' + number % 10));
+            }
+
+            if (value < 0)
+            {
+                Print('-');
+                PrintNumber(-value);
+            }
+            else
+            {
+                PrintNumber(value);
             }
         }
 
