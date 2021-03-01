@@ -246,6 +246,7 @@ namespace Assembler
                     // Since the previous instruction jumps away and there are no forward jumps to this instruction,
                     // the only way to get here is a backwards jump. We should be able to assume that the stack is empty in this scenario.
                     stack = ImmutableStack<ImmutableHashSet<ILInstruction>>.Empty;
+                    discontinuityMap[ilInstruction] = null;
                 }
 
                 // Thrown exceptions are pushed onto the stack before control is transferred to the exception handler

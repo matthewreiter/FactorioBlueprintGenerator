@@ -150,13 +150,70 @@ namespace Assembler
             {
                 foreach (var localVariable in localVariables)
                 {
+                    var localIndex = localVariable.LocalIndex;
                     var size = GetVariableSize(localVariable.LocalType);
-                    variables[localVariable.LocalIndex] = new VariableInfo { Offset = currentOffset, Size = size };
-                    currentOffset += size;
+
+                    if (!methodContext.Analysis.NonRegisterLocals.Contains(localIndex) && TryAllocateRegisters(size, false, out var registers))
+                    {
+                        variables[localIndex] = new VariableInfo { Registers = registers, Size = size };
+                    }
+                    else
+                    {
+                        variables[localIndex] = new VariableInfo { Offset = currentOffset, Size = size };
+                        currentOffset += size;
+                    }
                 }
             }
 
             return (variables, currentOffset);
+        }
+
+        private bool TryAllocateRegisters(int size, bool allowTransient, out List<int> registerAllocation)
+        {
+            const int transientRangeStart = 17;
+            const int transientCount = 8;
+            const int persistentRangeStart = transientRangeStart + transientCount;
+            const int persistentCount = 8;
+
+            static bool TryAllocate(HashSet<int> allocatedRegisters, int startIndex, int count, out int registerIndex)
+            {
+                for (var index = startIndex; index < startIndex + count; index++)
+                {
+                    if (!allocatedRegisters.Contains(index))
+                    {
+                        allocatedRegisters.Add(index);
+                        registerIndex = index;
+                        return true;
+                    }
+                }
+
+                registerIndex = 0;
+                return false;
+            }
+
+            registerAllocation = new List<int>();
+
+            // Ensure that we can allocate the full number of registers before we start so that we don't end up with a partial allocation if there aren't enough registers
+            var remainingRegisterCount = (allowTransient ? transientCount - methodContext.AllocatedTransientRegisters.Count : 0) + (persistentCount - methodContext.AllocatedPersistentRegisters.Count);
+            if (size > remainingRegisterCount)
+            {
+                return false;
+            }
+
+            for (var index = 0; index < size; index++)
+            {
+                if ((allowTransient && TryAllocate(methodContext.AllocatedTransientRegisters, transientRangeStart, transientCount, out var registerIndex)) ||
+                    TryAllocate(methodContext.AllocatedPersistentRegisters, persistentRangeStart, persistentCount, out registerIndex))
+                {
+                    registerAllocation.Add(registerIndex);
+                }
+                else
+                {
+                    throw new Exception("Failed to allocate register");
+                }
+            }
+
+            return true;
         }
 
         private MethodParameterInfo GetMethodParameterInfo(MethodBase method, ICollection<int> inlinedParameters = null)
@@ -290,13 +347,13 @@ namespace Assembler
             // Parameters
             // Return address (if inlined)
             // Local variables (stack pointer offset is relative to first local variable)
+            // Persisted registers
             // Evaluation stack
 
             var previousMethodContext = methodContext;
             var analysis = methodAnalyses[method];
             var ilInstructions = analysis.ILInstructions;
             var methodParameterInfo = GetMethodParameterInfo(method, inlinedParameterValues?.Keys);
-            var (localVariables, localVariablesSize) = AllocateLocalVariables(!analysis.IsCompilerGenerated ? method.GetMethodBody()?.LocalVariables : null);
             var stackPointerOffsetMap = new Dictionary<ILInstruction, int>();
             var instructionOffsetToIndexMap = new Dictionary<int, int>();
             var jumps = new List<(Instruction, int)>();
@@ -309,11 +366,15 @@ namespace Assembler
                 IsVoid = method.IsVoid(),
                 Parameters = methodParameterInfo.Parameters,
                 ParametersSize = methodParameterInfo.Size,
-                LocalVariables = localVariables,
-                LocalVariablesSize = localVariablesSize,
                 Analysis = analysis,
-                InlinedParameterValues = inlinedParameterValues ?? new Dictionary<int, int>()
+                InlinedParameterValues = inlinedParameterValues ?? new Dictionary<int, int>(),
+                AllocatedTransientRegisters = new HashSet<int>(),
+                AllocatedPersistentRegisters = new HashSet<int>()
             };
+
+            var (localVariables, localVariablesSize) = AllocateLocalVariables(!analysis.IsCompilerGenerated ? method.GetMethodBody()?.LocalVariables : null);
+            methodContext.LocalVariables = localVariables;
+            methodContext.LocalVariablesSize = localVariablesSize;
 
             var inlinedMethodCalls = analysis.MethodCalls
                 .Where(callInstruction => !nonInlinedMethods.Contains((MethodBase)callInstruction.Operand))
@@ -351,6 +412,9 @@ namespace Assembler
             try
             {
                 AdjustStackPointer(localVariablesSize);
+                PushRegisters(methodContext.AllocatedPersistentRegisters);
+
+                var baseEvaluationStackOffset = methodContext.StackPointerOffset; // Record the beginning of the evaluation stack so we can go back to it
 
                 if (analysis.IsCompilerGenerated)
                 {
@@ -365,10 +429,16 @@ namespace Assembler
                     var opCodeValue = ilInstruction.Code.Value;
                     var isInlinedParameterSource = inlinedParameterSources.Contains(ilInstruction);
 
-                    if (analysis.DiscontinuityMap.TryGetValue(ilInstruction, out var jumpSource) &&
-                        stackPointerOffsetMap.TryGetValue(jumpSource, out var stackPointerOffset))
+                    if (analysis.DiscontinuityMap.TryGetValue(ilInstruction, out var jumpSource))
                     {
-                        methodContext.StackPointerOffset = stackPointerOffset;
+                        if (jumpSource == null)
+                        {
+                            methodContext.StackPointerOffset = baseEvaluationStackOffset;
+                        }
+                        else if (stackPointerOffsetMap.TryGetValue(jumpSource, out var stackPointerOffset))
+                        {
+                            methodContext.StackPointerOffset = stackPointerOffset;
+                        }
                     }
 
                     // Opcode reference: https://docs.microsoft.com/en-us/dotnet/api/system.reflection.emit.opcodes?view=netcore-3.1
@@ -1313,21 +1383,53 @@ namespace Assembler
 
         private void PopVariable(VariableInfo variable, int offsetRelativeToBase = 0)
         {
-            // Start at the end of the variable since popping happens from right to left
-            var baseOffset = variable.Offset + variable.Size - 1 + offsetRelativeToBase;
+            if (variable.Registers != null)
+            {
+                PopRegisters(variable.Registers);
+                AddInstructions(Instruction.NoOp(4));
+            }
+            else
+            {
+                // Start at the end of the variable since popping happens from right to left
+                var baseOffset = variable.Offset + variable.Size - 1 + offsetRelativeToBase;
 
-            CopyData(variable.Size,
-                (offset, index) => Instruction.Pop(3 + index),
-                (offset, index) => Instruction.WriteStackValue(baseOffset - methodContext.StackPointerOffset - offset, inputRegister: 3 + index));
+                CopyData(variable.Size,
+                    (offset, index) => Instruction.Pop(3 + index),
+                    (offset, index) => Instruction.WriteStackValue(baseOffset - methodContext.StackPointerOffset - offset, inputRegister: 3 + index));
+
+            }
         }
 
         private void PushVariable(VariableInfo variable, int offsetRelativeToBase = 0)
         {
-            var baseOffset = variable.Offset + offsetRelativeToBase;
+            if (variable.Registers != null)
+            {
+                PushRegisters(variable.Registers);
+            }
+            else
+            {
+                var baseOffset = variable.Offset + offsetRelativeToBase;
 
-            CopyData(variable.Size,
-                (offset, index) => Instruction.ReadStackValue(baseOffset - methodContext.StackPointerOffset + offset, outputRegister: 3 + index),
-                (offset, index) => Instruction.PushRegister(3 + index));
+                CopyData(variable.Size,
+                    (offset, index) => Instruction.ReadStackValue(baseOffset - methodContext.StackPointerOffset + offset, outputRegister: 3 + index),
+                    (offset, index) => Instruction.PushRegister(3 + index));
+            }
+        }
+
+        private void PopRegisters(IEnumerable<int> registers)
+        {
+            foreach (var register in registers.Reverse())
+            {
+                AddInstruction(Instruction.Pop(register));
+            }
+        }
+
+        private void PushRegisters(IEnumerable<int> registers)
+        {
+            foreach (var register in registers)
+            {
+                AddInstruction(Instruction.PushRegister(register));
+            }
         }
 
         private void CopyData(int size, Func<int, int, Instruction> read, Func<int, int, Instruction> write)
@@ -1418,7 +1520,20 @@ namespace Assembler
             {
                 if (methodContext.IsVoid)
                 {
+                    PopRegisters(methodContext.AllocatedPersistentRegisters);
                     AdjustStackPointer(-(methodContext.LocalVariablesSize + methodContext.ParametersSize));
+
+                    if (methodContext.AllocatedPersistentRegisters.Count > 0)
+                    {
+                        AddInstructions(Instruction.NoOp(3));
+                    }
+                }
+                else if (methodContext.AllocatedPersistentRegisters.Count > 0)
+                {
+                    AddInstruction(Instruction.Pop(ReturnRegister));
+                    PopRegisters(methodContext.AllocatedPersistentRegisters);
+                    AdjustStackPointer(-(methodContext.LocalVariablesSize + methodContext.ParametersSize));
+                    AddInstructions(Instruction.NoOp(3));
                 }
                 else
                 {
@@ -1430,11 +1545,21 @@ namespace Assembler
             {
                 if (methodContext.IsVoid)
                 {
-                    Instruction.AdjustStackPointer(-methodContext.LocalVariablesSize);
+                    PopRegisters(methodContext.AllocatedPersistentRegisters);
+                    AdjustStackPointer(-methodContext.LocalVariablesSize);
                 }
                 else
                 {
-                    AddInstruction(Instruction.Pop(ReturnRegister, additionalStackPointerAdjustment: -methodContext.LocalVariablesSize));
+                    if (methodContext.AllocatedPersistentRegisters.Count > 0)
+                    {
+                        AddInstruction(Instruction.Pop(ReturnRegister));
+                        PopRegisters(methodContext.AllocatedPersistentRegisters);
+                        AdjustStackPointer(-methodContext.LocalVariablesSize);
+                    }
+                    else
+                    {
+                        AddInstruction(Instruction.Pop(ReturnRegister, additionalStackPointerAdjustment: -methodContext.LocalVariablesSize));
+                    }
                 }
 
                 AddInstruction(Instruction.Pop(SpecialRegisters.InstructionPointer, additionalStackPointerAdjustment: -methodContext.ParametersSize));
@@ -1768,6 +1893,8 @@ namespace Assembler
             public MethodAnalysis Analysis { get; set; }
             public Dictionary<int, int> InlinedParameterValues { get; set; }
             public int StackPointerOffset { get; set; } = 0;
+            public HashSet<int> AllocatedTransientRegisters { get; set; }
+            public HashSet<int> AllocatedPersistentRegisters { get; set; }
         }
 
         private class TypeInfo
@@ -1789,6 +1916,7 @@ namespace Assembler
         {
             public int Offset { get; set; }
             public int Size { get; set; }
+            public List<int> Registers { get; set; }
         }
     }
 }
