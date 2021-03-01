@@ -3,8 +3,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
-    <RootNamespace>Assembler</RootNamespace>
-    <AssemblyName>Assembler</AssemblyName>
+    <RootNamespace>FactoVision.Compiler</RootNamespace>
+    <AssemblyName>FactoVisionCompiler</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

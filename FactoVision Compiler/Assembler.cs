@@ -5,7 +5,7 @@ using Microsoft.Extensions.Configuration;
 using System.IO;
 using System.Reflection;
 
-namespace Assembler
+namespace FactoVision.Compiler
 {
     public static class Assembler
     {

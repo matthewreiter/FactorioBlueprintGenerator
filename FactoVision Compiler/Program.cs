@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 
-namespace Assembler
+namespace FactoVision.Compiler
 {
     public class Program
     {

@@ -8,7 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 
-namespace Assembler
+namespace FactoVision.Compiler
 {
     public partial class ProgramBuilder
     {

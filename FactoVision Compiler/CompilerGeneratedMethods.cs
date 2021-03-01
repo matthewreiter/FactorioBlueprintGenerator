@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace Assembler
+namespace FactoVision.Compiler
 {
     public partial class ProgramBuilder
     {
