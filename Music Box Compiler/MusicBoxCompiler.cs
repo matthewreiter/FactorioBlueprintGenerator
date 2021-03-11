@@ -52,6 +52,30 @@ namespace MusicBoxCompiler
                     {
                         Name = playlistConfig.Name,
                         Songs = playlistConfig.Songs
+                            .SelectMany(song =>
+                            {
+                                if (song.Source.Contains("*"))
+                                {
+                                    var directoryName = Path.GetDirectoryName(song.Source);
+                                    var fileName = Path.GetFileName(song.Source);
+                                    var files = Directory.GetFiles(directoryName, fileName);
+
+                                    if (files.Length > 1)
+                                    {
+                                        return files.OrderBy(file => file)
+                                            .Select((source, index) => song with
+                                            {
+                                                Name = $"{song.Name}Part{index + 1}",
+                                                DisplayName = song.DisplayName != null ? $"{song.DisplayName} (Part {index + 1})" : null,
+                                                Source = source,
+                                                Gapless = index < files.Length - 1 || song.Gapless
+                                            });
+                                    }
+                                }
+
+                                return Enumerable.Repeat(song, 1);
+                            })
+                            .ToList() // Store the intermediate results as a list to preserve the order when parallelized
                             .AsParallel()
                             .Where(songConfig => !songConfig.Disabled)
                             .Select(songConfig =>

@@ -2,12 +2,12 @@
 
 namespace MusicBoxCompiler.Models
 {
-    public class MusicConfig
+    public record MusicConfig
     {
         public List<PlaylistConfig> Playlists { get; set; }
     }
 
-    public class PlaylistConfig
+    public record PlaylistConfig
     {
         public string Name { get; set; }
         public bool Loop { get; set; }
@@ -15,7 +15,7 @@ namespace MusicBoxCompiler.Models
         public List<SongConfig> Songs { get; set; }
     }
 
-    public class SongConfig
+    public record SongConfig
     {
         public string Name { get; set; }
         public string DisplayName { get; set; }
