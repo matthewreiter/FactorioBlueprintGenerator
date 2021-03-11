@@ -16,6 +16,9 @@ namespace MusicBoxCompiler
     public static class MusicBoxCompiler
     {
         private const int InstrumentCount = 12;
+        private const int NoteGroupAddressBits = 16;
+        private const int NoteGroupTimeOffsetBits = 11;
+        private const int MetadataAddressBits = 10;
 
         public static void Run(IConfigurationRoot configuration)
         {
@@ -30,6 +33,8 @@ namespace MusicBoxCompiler
             var outputConstantsFile = configuration.OutputConstants;
             var outputMidiEventsFile = configuration.OutputMidiEvents;
             var baseAddress = configuration.BaseAddress ?? 1;
+            var baseNoteAddress = configuration.BaseNoteAddress ?? 1 << NoteGroupAddressBits;
+            var baseMetadataAddress = configuration.BaseMetadataAddress ?? 1;
             var snapToGrid = configuration.SnapToGrid;
             var x = configuration.X;
             var y = configuration.Y;
@@ -39,7 +44,6 @@ namespace MusicBoxCompiler
             var volumeLevels = configuration.VolumeLevels ?? 10;
             var minVolume = configuration.MinVolume ?? 0.1;
             var maxVolume = configuration.MaxVolume ?? 1;
-            var baseMetadataAddress = configuration.BaseMetadataAddress ?? 1;
             var constantsNamespace = configuration.ConstantsNamespace ?? "Music";
 
             var config = LoadConfig(configFile);
@@ -92,24 +96,27 @@ namespace MusicBoxCompiler
                 )
                 .ToList();
 
-            playlists.Add(new Playlist
+            if (config.IncludeBlankSong)
             {
-                Songs = new List<Song>
+                playlists.Add(new Playlist
                 {
-                    new Song
+                    Songs = new List<Song>
                     {
-                        Name = "Blank",
-                        DisplayName = "",
-                        AddressIndex = 1000 - baseMetadataAddress,
-                        NoteGroups = new List<NoteGroup>
+                        new Song
                         {
-                            new NoteGroup { Length = TimeSpan.FromSeconds(10), Notes = new List<Note> { } }
-                        },
+                            Name = "Blank",
+                            DisplayName = "",
+                            AddressIndex = 1000 - baseMetadataAddress,
+                            NoteGroups = new List<NoteGroup>
+                            {
+                                new NoteGroup { Length = TimeSpan.FromSeconds(10), Notes = new List<Note> { } }
+                            },
+                        }
                     }
-                }
-            });
+                });
+            }
 
-            var blueprint = CreateBlueprintFromPlaylists(playlists, baseAddress, snapToGrid, x, y, width, height, cellSize, volumeLevels, minVolume, maxVolume, baseMetadataAddress, out var addresses);
+            var blueprint = CreateBlueprintFromPlaylists(playlists, baseAddress, baseNoteAddress, baseMetadataAddress, snapToGrid, x, y, width, height, cellSize, volumeLevels, minVolume, maxVolume, out var addresses);
             BlueprintUtil.PopulateIndices(blueprint);
 
             var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
@@ -138,19 +145,14 @@ namespace MusicBoxCompiler
         private static Dictionary<Instrument, double> ProcessInstrumentVolumes(Dictionary<Instrument, double> instrumentVolumes) =>
             instrumentVolumes?.Select(entry => (entry.Key, Value: entry.Value / 100))?.ToDictionary(entry => entry.Key, entry => entry.Value);
 
-        private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, bool? snapToGrid, int? x, int? y, int width, int height, int cellSize, int volumeLevels, double minVolume, double maxVolume, int baseMetadataAddress, out Addresses addresses)
+        private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, int baseNoteAddress, int baseMetadataAddress, bool? snapToGrid, int? x, int? y, int width, int height, int cellSize, int volumeLevels, double minVolume, double maxVolume, out Addresses addresses)
         {
-            const int noteGroupAddressBits = 16;
-            const int noteGroupTimeOffsetBits = 11;
-            const int metadataAddressBits = 10;
-
             var memoryCells = new List<MemoryCell>();
             var noteGroupCells = new List<MemoryCell>();
             var constantCells = new List<MemoryCell>();
             var allNoteTuples = new HashSet<NoteTuple>();
             var noteTuplesToAddresses = new Dictionary<NoteTuple, (int Address, int SubAddress)>();
             var currentAddress = baseAddress;
-            var initialNoteAddress = 1 << noteGroupAddressBits;
             var maxFilters = cellSize * 20;
             var totalPlayTime = 0;
 
@@ -214,9 +216,9 @@ namespace MusicBoxCompiler
                 return currentMetadataAddressIndex++;
             }
 
-            AddJump(initialNoteAddress);
+            AddJump(baseNoteAddress);
             var currentNoteGroupAddress = currentAddress;
-            currentAddress = initialNoteAddress;
+            currentAddress = baseNoteAddress;
 
             // Add note groups
             var noteTuples = allSongs
@@ -302,7 +304,7 @@ namespace MusicBoxCompiler
 
                         if (currentFilters.Count == 0)
                         {
-                            currentFilters.Add(CreateFilter('Y', metadataAddress + ((currentTimeOffset + 1) << metadataAddressBits)));
+                            currentFilters.Add(CreateFilter('Y', metadataAddress + ((currentTimeOffset + 1) << MetadataAddressBits)));
                         }
 
                         var length = (int)(noteGroup.Length.TotalSeconds * 60) - timeDeficit;
@@ -322,8 +324,8 @@ namespace MusicBoxCompiler
                         }
 
                         var signal = DecoderConstants.NoteGroupReferenceSignals[currentFilters.Count - 1];
-                        var noteGroupTimeOffset = Math.Min(currentTimeOffset - cellStartTime - currentFilters.Count + 2, (1 << noteGroupTimeOffsetBits) - 1);
-                        currentFilters.Add(CreateFilter(signal, noteGroupAddress + (noteGroupTimeOffset << noteGroupAddressBits) + (noteGroupSubAddress << (noteGroupAddressBits + noteGroupTimeOffsetBits))));
+                        var noteGroupTimeOffset = Math.Min(currentTimeOffset - cellStartTime - currentFilters.Count + 2, (1 << NoteGroupTimeOffsetBits) - 1);
+                        currentFilters.Add(CreateFilter(signal, noteGroupAddress + (noteGroupTimeOffset << NoteGroupAddressBits) + (noteGroupSubAddress << (NoteGroupAddressBits + NoteGroupTimeOffsetBits))));
 
                         currentTimeOffset += length;
 
@@ -533,6 +535,8 @@ namespace MusicBoxCompiler
         public string OutputConstants { get; set; }
         public string OutputMidiEvents { get; set; }
         public int? BaseAddress { get; set; }
+        public int? BaseNoteAddress { get; set; }
+        public int? BaseMetadataAddress { get; set; }
         public bool? SnapToGrid { get; set; }
         public int? X { get; set; }
         public int? Y { get; set; }
@@ -542,7 +546,6 @@ namespace MusicBoxCompiler
         public int? VolumeLevels { get; set; }
         public double? MinVolume { get; set; }
         public double? MaxVolume { get; set; }
-        public int? BaseMetadataAddress { get; set; }
         public string ConstantsNamespace { get; set; }
     }
 }

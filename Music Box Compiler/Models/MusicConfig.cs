@@ -4,6 +4,7 @@ namespace MusicBoxCompiler.Models
 {
     public record MusicConfig
     {
+        public bool IncludeBlankSong { get; set; }
         public List<PlaylistConfig> Playlists { get; set; }
     }
 
