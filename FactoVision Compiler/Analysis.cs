@@ -7,6 +7,8 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using QuikGraph;
+using QuikGraph.Algorithms;
 
 namespace FactoVision.Compiler
 {
@@ -66,14 +68,15 @@ namespace FactoVision.Compiler
 
                 AddType(method.DeclaringType);
 
-                if (method.GetCustomAttribute<InlineAttribute>() != null) // || ilInstructions.Count <= 10) // TODO: handle recursion
+                if (method.GetCustomAttribute<InlineAttribute>() != null)
                 {
                     inlinedMethods.Add(method);
                 }
 
                 foreach (var ilInstruction in ilInstructions)
                 {
-                    var opCodeValue = ilInstruction.Code.Value;
+                    var opCode = ilInstruction.Code;
+                    var opCodeValue = opCode.Value;
 
                     if (ilInstruction.Operand is Type typeOperand)
                     {
@@ -119,9 +122,9 @@ namespace FactoVision.Compiler
                         AddType(operand.MakeArrayType());
                     }
                     else if (opCodeValue == OpCodes.Starg.Value ||
-                      opCodeValue == OpCodes.Starg_S.Value ||
-                      opCodeValue == OpCodes.Ldarga.Value ||
-                      opCodeValue == OpCodes.Ldarga_S.Value)
+                        opCodeValue == OpCodes.Starg_S.Value ||
+                        opCodeValue == OpCodes.Ldarga.Value ||
+                        opCodeValue == OpCodes.Ldarga_S.Value)
                     {
                         var operand = Convert.ToInt32(ilInstruction.Operand);
                         nonInlineableParameters.Add(operand);
@@ -134,6 +137,9 @@ namespace FactoVision.Compiler
                     }
                 }
 
+                var ilInstructionsByOffset = ilInstructions.ToDictionary(ilInstruction => ilInstruction.Offset);
+                var flowGraph = AnalyzeFlow(ilInstructions, ilInstructionsByOffset);
+                var localVariables = AnalyzeLocalVariables(ilInstructions, methodBody, flowGraph, methodCalls);
                 var (sourceSinkMap, discontinuityMap) = AnalyzeStack(ilInstructions, methodBody);
 
                 methodAnalyses[method] = new MethodAnalysis
@@ -144,7 +150,9 @@ namespace FactoVision.Compiler
                     DiscontinuityMap = discontinuityMap,
                     NonInlineableParameters = nonInlineableParameters,
                     NonRegisterLocals = nonRegisterLocals,
-                    MethodCalls = methodCalls
+                    MethodCalls = methodCalls,
+                    LocalVariables = localVariables,
+                    FlowGraph = flowGraph
                 };
             }
 
@@ -152,6 +160,131 @@ namespace FactoVision.Compiler
                 .Where(entry => entry.Value > 1 && !inlinedMethods.Contains(entry.Key))
                 .Select(entry => entry.Key)
                 .ToHashSet();
+        }
+
+        private static BidirectionalGraph<ILInstruction, Edge<ILInstruction>> AnalyzeFlow(List<ILInstruction> ilInstructions, Dictionary<int, ILInstruction> ilInstructionsByOffset)
+        {
+            var flowGraph = new BidirectionalGraph<ILInstruction, Edge<ILInstruction>>();
+            ILInstruction previousInstruction = null;
+
+            foreach (var ilInstruction in ilInstructions)
+            {
+                var opCode = ilInstruction.Code;
+
+                if (previousInstruction != null)
+                {
+                    flowGraph.AddVerticesAndEdge(new Edge<ILInstruction>(previousInstruction, ilInstruction));
+                }
+
+                previousInstruction = ilInstruction;
+
+                if (opCode.FlowControl == FlowControl.Branch ||
+                    opCode.FlowControl == FlowControl.Cond_Branch)
+                {
+                    var operand = Convert.ToInt32(ilInstruction.Operand);
+
+                    flowGraph.AddVerticesAndEdge(new Edge<ILInstruction>(ilInstruction, ilInstructionsByOffset[operand]));
+
+                    if (opCode.FlowControl == FlowControl.Branch)
+                    {
+                        previousInstruction = null;
+                    }
+                }
+                else if (opCode.FlowControl == FlowControl.Return ||
+                    opCode.FlowControl == FlowControl.Throw)
+                {
+                    previousInstruction = null;
+                }
+            }
+
+            return flowGraph;
+        }
+
+        private static List<LocalVariableAnalysis> AnalyzeLocalVariables(List<ILInstruction> ilInstructions, MethodBody methodBody, BidirectionalGraph<ILInstruction, Edge<ILInstruction>> flowGraph, HashSet<ILInstruction> methodCalls)
+        {
+            if ((methodBody?.LocalVariables?.Count ?? 0) == 0)
+            {
+                return new List<LocalVariableAnalysis>();
+            }
+
+            var localVariableAnalyses = methodBody.LocalVariables.Select(localVariable => new LocalVariableAnalysis()).ToList();
+
+            foreach (var ilInstruction in ilInstructions)
+            {
+                var opCode = ilInstruction.Code;
+                var opCodeValue = opCode.Value;
+
+                if (IsLoadLocal(opCodeValue))
+                {
+                    localVariableAnalyses[GetLoadLocalIndex(ilInstruction)].Sinks.Add(ilInstruction);
+                }
+                else if (IsStoreLocal(opCodeValue))
+                {
+                    localVariableAnalyses[GetStoreLocalIndex(ilInstruction)].Sources.Add(ilInstruction);
+                }
+                else if (opCodeValue == OpCodes.Ldloca.Value ||
+                    opCodeValue == OpCodes.Ldloca_S.Value)
+                {
+                    var operand = Convert.ToInt32(ilInstruction.Operand);
+                    localVariableAnalyses[operand].AddressSources.Add(ilInstruction);
+                }
+            }
+
+            foreach (var localVariableAnalysis in localVariableAnalyses)
+            {
+                var sinkScope = localVariableAnalysis.Sinks.SelectMany(sink => ComputeSinkScope(sink, localVariableAnalysis.Sources, flowGraph)).Distinct();
+                var addressSourceScope = localVariableAnalysis.AddressSources.SelectMany(source => ComputeSourceScope(source, flowGraph)).Distinct();
+                localVariableAnalysis.Scope = sinkScope.Union(addressSourceScope).ToHashSet();
+                localVariableAnalysis.SpannedMethodCalls = localVariableAnalysis.Scope.Intersect(methodCalls).ToHashSet();
+            }
+
+            return localVariableAnalyses;
+        }
+
+        private static HashSet<ILInstruction> ComputeSourceScope(ILInstruction source, BidirectionalGraph<ILInstruction, Edge<ILInstruction>> flowGraph)
+        {
+            var scope = new HashSet<ILInstruction>();
+            var vertexStack = new Stack<ILInstruction>();
+
+            vertexStack.Push(source);
+
+            while (vertexStack.TryPop(out var vertex))
+            {
+                if (!scope.Contains(vertex))
+                {
+                    scope.Add(vertex);
+
+                    foreach (var edge in flowGraph.OutEdges(vertex))
+                    {
+                        vertexStack.Push(edge.Target);
+                    }
+                }
+            }
+
+            return scope;
+        }
+
+        private static HashSet<ILInstruction> ComputeSinkScope(ILInstruction sink, HashSet<ILInstruction> sources, BidirectionalGraph<ILInstruction, Edge<ILInstruction>> flowGraph)
+        {
+            var scope = new HashSet<ILInstruction>();
+            var vertexStack = new Stack<ILInstruction>();
+
+            vertexStack.Push(sink);
+
+            while (vertexStack.TryPop(out var vertex))
+            {
+                if (!scope.Contains(vertex) && !sources.Contains(vertex))
+                {
+                    scope.Add(vertex);
+
+                    foreach (var edge in flowGraph.InEdges(vertex))
+                    {
+                        vertexStack.Push(edge.Source);
+                    }
+                }
+            }
+
+            return scope;
         }
 
         /// <summary>
@@ -163,8 +296,8 @@ namespace FactoVision.Compiler
             var stackSnapshots = new Dictionary<ILInstruction, ImmutableStack<ImmutableHashSet<ILInstruction>>>(); // Maps an instruction to all possible stacks at that point
             var sourceSinkMap = new Dictionary<ILInstruction, Sink>(); // Maps an instruction that pushes a value onto the stack with the instruction that pops it off
             var jumpSourceMap = new Dictionary<int, List<ILInstruction>>(); // Maps an instruction offset to a list of instructions that make forward jumps to it
-            var discontinuityMap = new Dictionary<ILInstruction, ILInstruction>(); // Maps an instruction immediately after an unconditional forward jump to an instruction that makes a forward jump to it
-            var isDiscontinuity = false; // Whether the previous instruction was an unconditional forward jump
+            var discontinuityMap = new Dictionary<ILInstruction, ILInstruction>(); // Maps an instruction immediately after an unconditional jump to an instruction that makes a forward jump to it
+            var isDiscontinuity = false; // Whether the previous instruction was an unconditional jump
 
             var exceptionHandlingClauses = methodBody?.ExceptionHandlingClauses;
             var exceptionHandlerOffsets = exceptionHandlingClauses != null
@@ -314,7 +447,7 @@ namespace FactoVision.Compiler
                     var operand = Convert.ToInt32(ilInstruction.Operand);
 
                     // Record forward jumps so that we can determine the previous instruction even if the program flow jumps around
-                    if (operand > 0)
+                    if (operand > offset)
                     {
                         if (!jumpSourceMap.TryGetValue(operand, out var jumpSources))
                         {
@@ -323,11 +456,11 @@ namespace FactoVision.Compiler
                         }
 
                         jumpSources.Add(ilInstruction);
+                    }
 
-                        if (opCode.FlowControl == FlowControl.Branch)
-                        {
-                            isDiscontinuity = true;
-                        }
+                    if (opCode.FlowControl == FlowControl.Branch)
+                    {
+                        isDiscontinuity = true;
                     }
                 }
                 else if (opCode.FlowControl == FlowControl.Return ||
@@ -380,6 +513,17 @@ namespace FactoVision.Compiler
             public HashSet<int> NonInlineableParameters { get; set; }
             public HashSet<int> NonRegisterLocals { get; set; }
             public HashSet<ILInstruction> MethodCalls { get; set; }
+            public List<LocalVariableAnalysis> LocalVariables { get; set; }
+            public BidirectionalGraph<ILInstruction, Edge<ILInstruction>> FlowGraph { get; set; }
+        }
+
+        private class LocalVariableAnalysis
+        {
+            public HashSet<ILInstruction> Sources { get; } = new HashSet<ILInstruction>();
+            public HashSet<ILInstruction> Sinks { get; } = new HashSet<ILInstruction>();
+            public HashSet<ILInstruction> AddressSources { get; } = new HashSet<ILInstruction>();
+            public HashSet<ILInstruction> Scope { get; set; }
+            public HashSet<ILInstruction> SpannedMethodCalls { get; set; }
         }
 
         private class Sink

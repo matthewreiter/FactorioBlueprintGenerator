@@ -115,6 +115,53 @@ namespace FactoVision.Compiler
                 }
                 instructionsWriter.WriteLine();
             }
+
+            //foreach (var entry in methodAnalyses)
+            //{
+            //    var method = entry.Key;
+            //    var methodAnalysis = entry.Value;
+
+            //    instructionsWriter.WriteLine($"{method.Name} analysis:");
+
+            //    instructionsWriter.WriteLine($"Flow: {string.Join(", ", methodAnalysis.FlowGraph.Edges.OrderBy(edge => edge.Source.Offset).Select(edge => $"{edge.Source.Offset}:{edge.Source.Code}=>{edge.Target.Offset}:{edge.Target.Code}"))}");
+
+            //    var localVariableIndex = 0;
+            //    foreach (var localVariable in methodAnalysis.LocalVariables)
+            //    {
+            //        instructionsWriter.WriteLine($"Local variable {localVariableIndex}:");
+
+            //        if (localVariable.Sources.Count > 0)
+            //        {
+            //            instructionsWriter.WriteLine($"Sources: {string.Join(", ", localVariable.Sources.OrderBy(ilInstruction => ilInstruction.Offset).Select(ilInstruction => $"{ilInstruction.Offset}"))}");
+            //        }
+
+            //        if (localVariable.Sinks.Count > 0)
+            //        {
+            //            instructionsWriter.WriteLine($"Sinks: {string.Join(", ", localVariable.Sinks.OrderBy(ilInstruction => ilInstruction.Offset).Select(ilInstruction => $"{ilInstruction.Offset}"))}");
+            //        }
+
+            //        if (localVariable.AddressSources.Count > 0)
+            //        {
+            //            instructionsWriter.WriteLine($"Address sources: {string.Join(", ", localVariable.AddressSources.OrderBy(ilInstruction => ilInstruction.Offset).Select(ilInstruction => $"{ilInstruction.Offset}"))}");
+            //        }
+
+            //        if (localVariable.Scope.Count > 0)
+            //        {
+            //            instructionsWriter.WriteLine($"Scope: {string.Join(", ", localVariable.Scope.OrderBy(ilInstruction => ilInstruction.Offset).Select(ilInstruction => $"{ilInstruction.Offset}"))}");
+            //        }
+
+            //        if (localVariable.SpannedMethodCalls.Count > 0)
+            //        {
+            //            instructionsWriter.WriteLine($"Spanned method calls: {string.Join(", ", localVariable.SpannedMethodCalls.OrderBy(ilInstruction => ilInstruction.Offset).Select(ilInstruction => $"{ilInstruction.Offset}: {((MethodBase)ilInstruction.Operand).Name}"))}");
+            //        }
+
+            //        instructionsWriter.WriteLine();
+
+            //        localVariableIndex++;
+            //    }
+
+            //    instructionsWriter.WriteLine();
+            //}
         }
 
         private void AllocateStaticFields()
@@ -152,8 +199,10 @@ namespace FactoVision.Compiler
                 {
                     var localIndex = localVariable.LocalIndex;
                     var size = GetVariableSize(localVariable.LocalType);
+                    var analysis = methodContext.Analysis.LocalVariables[localIndex];
+                    var allowTransient = analysis.SpannedMethodCalls.Count == 0;
 
-                    if (!methodContext.Analysis.NonRegisterLocals.Contains(localIndex) && TryAllocateRegisters(size, false, out var registers))
+                    if (!methodContext.Analysis.NonRegisterLocals.Contains(localIndex) && TryAllocateRegisters(size, allowTransient, out var registers))
                     {
                         variables[localIndex] = new VariableInfo { Registers = registers, Size = size };
                     }
@@ -441,7 +490,7 @@ namespace FactoVision.Compiler
                         }
                     }
 
-                    // Opcode reference: https://docs.microsoft.com/en-us/dotnet/api/system.reflection.emit.opcodes?view=netcore-3.1
+                    // Opcode reference: https://docs.microsoft.com/en-us/dotnet/api/system.reflection.emit.opcodes?view=net-5.0
 
                     if (opCodeValue == OpCodes.Pop.Value)
                     {
