@@ -1,0 +1,14 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: libavformat
+Description: FFmpeg container format library
+Version: 55.19.104
+Requires: 
+Requires.private: libavcodec = 55.39.100
+Conflicts:
+Libs: -L${libdir} -lavformat 
+Libs.private: vfw32.lib user32.lib psapi.lib ole32.lib strmiids.lib uuid.lib psapi.lib advapi32.lib shell32.lib
+Cflags: -I${includedir}

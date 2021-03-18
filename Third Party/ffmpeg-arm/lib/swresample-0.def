@@ -1,0 +1,18 @@
+EXPORTS
+    ff_log2_tab @1
+    swr_alloc @2
+    swr_alloc_set_opts @3
+    swr_convert @4
+    swr_drop_output @5
+    swr_free @6
+    swr_get_class @7
+    swr_get_delay @8
+    swr_init @9
+    swr_inject_silence @10
+    swr_next_pts @11
+    swr_set_channel_mapping @12
+    swr_set_compensation @13
+    swr_set_matrix @14
+    swresample_configuration @15
+    swresample_license @16
+    swresample_version @17
