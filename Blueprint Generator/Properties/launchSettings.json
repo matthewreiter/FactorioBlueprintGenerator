@@ -32,6 +32,10 @@
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/spriteMemory.txt\" --OutputJson=\"$(ProjectDir)/Test/spriteMemory.json\" --MemoryType=SpriteMemory --SpriteCount=32 --BaseAddress=37926"
     },
+    "VideoRom": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/videoRom.txt\" --OutputJson=\"$(ProjectDir)/Test/videoRom.json\" --MemoryType=VideoRom --Width=178 --Height=8"
+    },
     "Speakers": {
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/speakers.txt\" --OutputJson=\"$(ProjectDir)/Test/speakers.json\" --MemoryType=Speaker --Height=6 --SpeakersPerConfiguration=6 --VolumeLevels=4 --MinVolume=0.5 --BaseAddress=33793 --ReverseAddressY=true --IncludePower=true"

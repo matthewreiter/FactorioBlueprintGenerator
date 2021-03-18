@@ -69,14 +69,16 @@ namespace BlueprintGenerator.Screen
             // Column controllers
             for (var column = 0; column < width; column++)
             {
-                // Memory
+                var controllerX = column + 2;
+                var controllerY = height + 4;
+
                 var memory = new Entity
                 {
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
-                        X = column + 2,
-                        Y = height + 4.5
+                        X = controllerX,
+                        Y = controllerY + 0.5
                     },
                     Direction = Direction.Up,
                     Control_behavior = new ControlBehavior
@@ -93,14 +95,13 @@ namespace BlueprintGenerator.Screen
                 };
                 entities.Add(memory);
 
-                // Writer
                 var writer = new Entity
                 {
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
-                        X = column + 2,
-                        Y = height + 6.5
+                        X = controllerX,
+                        Y = controllerY + 2.5
                     },
                     Direction = Direction.Up,
                     Control_behavior = new ControlBehavior
@@ -117,14 +118,13 @@ namespace BlueprintGenerator.Screen
                 };
                 entities.Add(writer);
 
-                // Address matcher
                 var addressMatcher = new Entity
                 {
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
-                        X = column + 2,
-                        Y = height + 8.5
+                        X = controllerX,
+                        Y = controllerY + 4.5
                     },
                     Direction = Direction.Up,
                     Control_behavior = new ControlBehavior
@@ -141,14 +141,13 @@ namespace BlueprintGenerator.Screen
                 };
                 entities.Add(addressMatcher);
 
-                // Cyclic writer
                 var cyclicWriter = new Entity
                 {
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
-                        X = column + 2,
-                        Y = height + 10.5
+                        X = controllerX,
+                        Y = controllerY + 6.5
                     },
                     Direction = Direction.Up,
                     Control_behavior = new ControlBehavior
@@ -165,14 +164,13 @@ namespace BlueprintGenerator.Screen
                 };
                 entities.Add(cyclicWriter);
 
-                // Cyclic address matcher
                 var cyclicMatcher = new Entity
                 {
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
-                        X = column + 2,
-                        Y = height + 12.5
+                        X = controllerX,
+                        Y = controllerY + 8.5
                     },
                     Direction = Direction.Up,
                     Control_behavior = new ControlBehavior
@@ -189,14 +187,13 @@ namespace BlueprintGenerator.Screen
                 };
                 entities.Add(cyclicMatcher);
 
-                // Parallel writer
                 var parallelWriter = new Entity
                 {
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
-                        X = column + 2,
-                        Y = height + 18.5
+                        X = controllerX,
+                        Y = controllerY + 14.5
                     },
                     Direction = Direction.Up,
                     Control_behavior = new ControlBehavior
@@ -213,14 +210,13 @@ namespace BlueprintGenerator.Screen
                 };
                 entities.Add(parallelWriter);
 
-                // Parallel address range low
                 var parallelAddressRangeLow = new Entity
                 {
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
-                        X = column + 2,
-                        Y = height + 14.5
+                        X = controllerX,
+                        Y = controllerY + 10.5
                     },
                     Direction = Direction.Up,
                     Control_behavior = new ControlBehavior
@@ -237,14 +233,13 @@ namespace BlueprintGenerator.Screen
                 };
                 entities.Add(parallelAddressRangeLow);
 
-                // Parallel address range high
                 var parallelAddressRangeHigh = new Entity
                 {
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
-                        X = column + 2,
-                        Y = height + 16.5
+                        X = controllerX,
+                        Y = controllerY + 12.5
                     },
                     Direction = Direction.Up,
                     Control_behavior = new ControlBehavior
@@ -263,56 +258,180 @@ namespace BlueprintGenerator.Screen
 
                 var isOdd = column % 2 == 1;
 
-                // Horizontal link 1
-                var horizontalLink1 = new Entity
+                var parallelHorizontalLink1 = new Entity
                 {
                     Name = column % 18 == 16 ? ItemNames.Substation : ItemNames.BigElectricPole,
                     Position = new Position
                     {
-                        X = column + 2.5,
-                        Y = height + 20.5 + (isOdd ? 2 : 0)
+                        X = controllerX + 0.5,
+                        Y = controllerY + 16.5 + (isOdd ? 2 : 0)
                     }
                 };
-                entities.Add(horizontalLink1);
+                entities.Add(parallelHorizontalLink1);
 
-                // Horizontal link 2
-                var horizontalLink2 = new Entity
+                var parallelHorizontalLink2 = new Entity
                 {
                     Name = ItemNames.BigElectricPole,
                     Position = new Position
                     {
-                        X = column + 2.5,
-                        Y = height + 24.5 + (isOdd ? 2 : 0)
+                        X = controllerX + 0.5,
+                        Y = controllerY + 20.5 + (isOdd ? 2 : 0)
                     }
                 };
-                entities.Add(horizontalLink2);
+                entities.Add(parallelHorizontalLink2);
+
+                var videoEnabler = new Entity
+                {
+                    Name = ItemNames.DeciderCombinator,
+                    Position = new Position
+                    {
+                        X = controllerX,
+                        Y = controllerY + 24.5
+                    },
+                    Direction = Direction.Up,
+                    Control_behavior = new ControlBehavior
+                    {
+                        Decider_conditions = new DeciderConditions
+                        {
+                            First_signal = SignalID.Create(VirtualSignalNames.Check),
+                            Constant = 0,
+                            Comparator = Comparators.IsEqual,
+                            Output_signal = SignalID.Create(VirtualSignalNames.Everything),
+                            Copy_count_from_input = true
+                        }
+                    }
+                };
+                entities.Add(videoEnabler);
+
+                var videoReferenceSignalSubtractor = new Entity
+                {
+                    Name = ItemNames.ArithmeticCombinator,
+                    Position = new Position
+                    {
+                        X = controllerX,
+                        Y = controllerY + 26.5
+                    },
+                    Direction = Direction.Up,
+                    Control_behavior = new ControlBehavior
+                    {
+                        Arithmetic_conditions = new ArithmeticConditions
+                        {
+                            First_signal = SignalID.Create(VirtualSignalNames.Each),
+                            Second_constant = -3,
+                            Operation = ArithmeticOperations.Multiplication,
+                            Output_signal = SignalID.Create(VirtualSignalNames.Each)
+                        }
+                    }
+                };
+                entities.Add(videoReferenceSignalSubtractor);
+
+                var videoValueSpreader = new Entity
+                {
+                    Name = ItemNames.ArithmeticCombinator,
+                    Position = new Position
+                    {
+                        X = controllerX,
+                        Y = controllerY + 28.5
+                    },
+                    Direction = Direction.Up,
+                    Control_behavior = new ControlBehavior
+                    {
+                        Arithmetic_conditions = new ArithmeticConditions
+                        {
+                            First_signal = SignalID.Create(VirtualSignalNames.Each),
+                            Second_constant = 2,
+                            Operation = ArithmeticOperations.Multiplication,
+                            Output_signal = SignalID.Create(VirtualSignalNames.Each)
+                        }
+                    }
+                };
+                entities.Add(videoValueSpreader);
+
+                var videoBitIsolator = new Entity
+                {
+                    Name = ItemNames.ArithmeticCombinator,
+                    Position = new Position
+                    {
+                        X = controllerX,
+                        Y = controllerY + 30.5
+                    },
+                    Direction = Direction.Up,
+                    Control_behavior = new ControlBehavior
+                    {
+                        Arithmetic_conditions = new ArithmeticConditions
+                        {
+                            First_signal = SignalID.Create(VirtualSignalNames.Each),
+                            Second_constant = 1,
+                            Operation = ArithmeticOperations.And,
+                            Output_signal = SignalID.Create(VirtualSignalNames.Each)
+                        }
+                    }
+                };
+                entities.Add(videoBitIsolator);
+
+                var videoBitShifter = new Entity
+                {
+                    Name = ItemNames.ArithmeticCombinator,
+                    Position = new Position
+                    {
+                        X = controllerX,
+                        Y = controllerY + 32.5
+                    },
+                    Direction = Direction.Up,
+                    Control_behavior = new ControlBehavior
+                    {
+                        Arithmetic_conditions = new ArithmeticConditions
+                        {
+                            First_signal = SignalID.Create(VirtualSignalNames.Each),
+                            Second_signal = SignalID.CreateLetterOrDigit('W'),
+                            Operation = ArithmeticOperations.RightShift,
+                            Output_signal = SignalID.Create(VirtualSignalNames.Each)
+                        }
+                    }
+                };
+                entities.Add(videoBitShifter);
 
                 columnControllers[column] = new Controller
                 {
                     Memory = memory,
                     Writer = writer,
                     AddressMatcher = addressMatcher,
-                    CyclicWriter = cyclicWriter,
-                    CyclicMatcher = cyclicMatcher,
-                    ParallelWriter = parallelWriter,
-                    ParallelAddressRangeLow = parallelAddressRangeLow,
-                    ParallelAddressRangeHigh = parallelAddressRangeHigh,
-                    HorizontalLink1 = horizontalLink1,
-                    HorizontalLink2 = horizontalLink2
+                    Cyclic = new CyclicInput
+                    {
+                        Writer = cyclicWriter,
+                        Matcher = cyclicMatcher
+                    },
+                    Parallel = new ParallelInput
+                    {
+                        Writer = parallelWriter,
+                        AddressRangeLow = parallelAddressRangeLow,
+                        AddressRangeHigh = parallelAddressRangeHigh,
+                        HorizontalLink1 = parallelHorizontalLink1,
+                        HorizontalLink2 = parallelHorizontalLink2
+                    },
+                    Video = new VideoInput
+                    {
+                        Enabler = videoEnabler,
+                        ReferenceSignalSubtractor = videoReferenceSignalSubtractor,
+                        ValueSpreader = videoValueSpreader,
+                        BitIsolator = videoBitIsolator,
+                        BitShifter = videoBitShifter
+                    }
                 };
             }
 
             // Row controllers
             for (var row = 0; row < height; row++)
             {
-                // Memory
+                var controllerY = row + 2;
+
                 var memory = new Entity
                 {
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
                         X = -1.5,
-                        Y = row + 2
+                        Y = controllerY
                     },
                     Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
@@ -323,20 +442,19 @@ namespace BlueprintGenerator.Screen
                             Constant = 0,
                             Comparator = Comparators.LessThan,
                             Output_signal = SignalID.Create(VirtualSignalNames.Each),
-                            Copy_count_from_input = false
+                            Copy_count_from_input = true
                         }
                     }
                 };
                 entities.Add(memory);
 
-                // Writer
                 var writer = new Entity
                 {
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
                         X = -3.5,
-                        Y = row + 2
+                        Y = controllerY
                     },
                     Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
@@ -353,14 +471,13 @@ namespace BlueprintGenerator.Screen
                 };
                 entities.Add(writer);
 
-                // Address matcher
                 var addressMatcher = new Entity
                 {
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
                         X = -5.5,
-                        Y = row + 2
+                        Y = controllerY
                     },
                     Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
@@ -377,14 +494,13 @@ namespace BlueprintGenerator.Screen
                 };
                 entities.Add(addressMatcher);
 
-                // Cyclic Writer
                 var cyclicWriter = new Entity
                 {
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
                         X = -7.5,
-                        Y = row + 2
+                        Y = controllerY
                     },
                     Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
@@ -401,14 +517,13 @@ namespace BlueprintGenerator.Screen
                 };
                 entities.Add(cyclicWriter);
 
-                // Cyclic matcher
                 var cyclicMatcher = new Entity
                 {
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
                         X = -9.5,
-                        Y = row + 2
+                        Y = controllerY
                     },
                     Direction = Direction.Right,
                     Control_behavior = new ControlBehavior
@@ -430,8 +545,11 @@ namespace BlueprintGenerator.Screen
                     Memory = memory,
                     Writer = writer,
                     AddressMatcher = addressMatcher,
-                    CyclicWriter = cyclicWriter,
-                    CyclicMatcher = cyclicMatcher
+                    Cyclic = new CyclicInput
+                    {
+                        Writer = cyclicWriter,
+                        Matcher = cyclicMatcher
+                    }
                 };
             }
 
@@ -441,6 +559,8 @@ namespace BlueprintGenerator.Screen
             var substationHeight = (height + 8) / 18 + 1;
             var substations = CreateSubstations(substationWidth, substationHeight, 0, 0, entities.Count + 1, GridConnectivity.Top | GridConnectivity.Vertical);
             entities.AddRange(substations);
+            var substations2 = CreateSubstations(substationWidth, 1, 0, height + 38, entities.Count + 1);
+            entities.AddRange(substations2);
 
             // Pixel connections
             for (var row = 0; row < height; row++)
@@ -484,13 +604,18 @@ namespace BlueprintGenerator.Screen
                 AddConnection(CircuitColor.Green, controller.Memory, CircuitId.Output, controller.Memory, CircuitId.Input); // Data feedback
                 AddConnection(CircuitColor.Green, controller.Writer, CircuitId.Output, controller.Memory, CircuitId.Input); // Data transfer
                 AddConnection(CircuitColor.Red, controller.AddressMatcher, CircuitId.Output, controller.Writer, CircuitId.Input); // Enable
-                AddConnection(CircuitColor.Green, controller.CyclicWriter, CircuitId.Output, controller.Writer, CircuitId.Output); // Cyclic data transfer
-                AddConnection(CircuitColor.Red, controller.CyclicMatcher, CircuitId.Output, controller.CyclicWriter, CircuitId.Input); // Cyclic enable
-                AddConnection(CircuitColor.Green, controller.ParallelWriter, CircuitId.Output, controller.CyclicWriter, CircuitId.Output); // Parallel data transfer
-                AddConnection(CircuitColor.Red, controller.ParallelAddressRangeLow, CircuitId.Output, controller.ParallelWriter, CircuitId.Input); // Parallel enable low
-                AddConnection(CircuitColor.Red, controller.ParallelAddressRangeHigh, CircuitId.Output, controller.ParallelAddressRangeLow, CircuitId.Output); // Parallel enable high
-                AddConnection(CircuitColor.Red, controller.ParallelAddressRangeHigh, CircuitId.Input, controller.ParallelAddressRangeLow, CircuitId.Input); // Parallel address in
-                AddConnection(CircuitColor.Green, isFirstHalfOfParallelCycle ? controller.HorizontalLink1 : controller.HorizontalLink2, null, controller.ParallelWriter, CircuitId.Input); // Parallel data in
+                AddConnection(CircuitColor.Green, controller.Cyclic.Writer, CircuitId.Output, controller.Writer, CircuitId.Output); // Cyclic data transfer
+                AddConnection(CircuitColor.Red, controller.Cyclic.Matcher, CircuitId.Output, controller.Cyclic.Writer, CircuitId.Input); // Cyclic enable
+                AddConnection(CircuitColor.Green, controller.Parallel.Writer, CircuitId.Output, controller.Cyclic.Writer, CircuitId.Output); // Parallel data transfer
+                AddConnection(CircuitColor.Red, controller.Parallel.AddressRangeLow, CircuitId.Output, controller.Parallel.Writer, CircuitId.Input); // Parallel enable low
+                AddConnection(CircuitColor.Red, controller.Parallel.AddressRangeHigh, CircuitId.Output, controller.Parallel.AddressRangeLow, CircuitId.Output); // Parallel enable high
+                AddConnection(CircuitColor.Red, controller.Parallel.AddressRangeHigh, CircuitId.Input, controller.Parallel.AddressRangeLow, CircuitId.Input); // Parallel address in
+                AddConnection(CircuitColor.Green, isFirstHalfOfParallelCycle ? controller.Parallel.HorizontalLink1 : controller.Parallel.HorizontalLink2, null, controller.Parallel.Writer, CircuitId.Input); // Parallel data in
+                AddConnection(CircuitColor.Green, controller.Video.Enabler, CircuitId.Output, controller.Parallel.Writer, CircuitId.Output); // Video data transfer
+                AddConnection(CircuitColor.Green, controller.Video.ReferenceSignalSubtractor, CircuitId.Output, controller.Video.Enabler, CircuitId.Input); // Video data transfer
+                AddConnection(CircuitColor.Green, controller.Video.ValueSpreader, CircuitId.Output, controller.Video.ReferenceSignalSubtractor, CircuitId.Output); // Video data transfer
+                AddConnection(CircuitColor.Green, controller.Video.BitIsolator, CircuitId.Output, controller.Video.ValueSpreader, CircuitId.Input); // Video data transfer
+                AddConnection(CircuitColor.Green, controller.Video.BitShifter, CircuitId.Output, controller.Video.BitIsolator, CircuitId.Input); // Video data transfer
 
                 var adjacentColumn = column - 1;
                 if (adjacentColumn >= 0)
@@ -500,9 +625,13 @@ namespace BlueprintGenerator.Screen
                     AddConnection(CircuitColor.Red, controller.Memory, CircuitId.Input, adjacentController.Memory, CircuitId.Input); // Full data in
                     AddConnection(CircuitColor.Green, controller.Writer, CircuitId.Input, adjacentController.Writer, CircuitId.Input); // Addressable data in
                     AddConnection(CircuitColor.Red, controller.AddressMatcher, CircuitId.Input, adjacentController.AddressMatcher, CircuitId.Input); // Address in
-                    AddConnection(CircuitColor.Green, controller.CyclicWriter, CircuitId.Input, adjacentController.CyclicWriter, CircuitId.Input); // Cyclic data in
-                    AddConnection(CircuitColor.Red, controller.CyclicMatcher, CircuitId.Input, adjacentController.CyclicMatcher, CircuitId.Input); // Cyclic address in
-                    AddConnection(CircuitColor.Red, controller.ParallelAddressRangeHigh, CircuitId.Input, adjacentController.ParallelAddressRangeHigh, CircuitId.Input); // Parallel address in
+                    AddConnection(CircuitColor.Green, controller.Cyclic.Writer, CircuitId.Input, adjacentController.Cyclic.Writer, CircuitId.Input); // Cyclic data in
+                    AddConnection(CircuitColor.Red, controller.Cyclic.Matcher, CircuitId.Input, adjacentController.Cyclic.Matcher, CircuitId.Input); // Cyclic address in
+                    AddConnection(CircuitColor.Red, controller.Parallel.AddressRangeHigh, CircuitId.Input, adjacentController.Parallel.AddressRangeHigh, CircuitId.Input); // Parallel address in
+                    AddConnection(CircuitColor.Red, controller.Video.Enabler, CircuitId.Input, adjacentController.Video.Enabler, CircuitId.Input); // Video enable
+                    AddConnection(CircuitColor.Red, controller.Video.ReferenceSignalSubtractor, CircuitId.Input, adjacentController.Video.ReferenceSignalSubtractor, CircuitId.Input); // Video reference signal
+                    AddConnection(CircuitColor.Red, controller.Video.ValueSpreader, CircuitId.Input, adjacentController.Video.ValueSpreader, CircuitId.Input); // Video reference signal
+                    AddConnection(CircuitColor.Red, controller.Video.BitShifter, CircuitId.Input, adjacentController.Video.BitShifter, CircuitId.Input); // Video frame selector
                 }
 
                 var adjancentLinkColumn = column - parallelCycle / 2;
@@ -510,13 +639,14 @@ namespace BlueprintGenerator.Screen
                 {
                     var previousCycleController = columnControllers[adjancentLinkColumn];
 
-                    AddConnection(CircuitColor.Green, controller.HorizontalLink1, null, previousCycleController.HorizontalLink1, null); // Parallel data in
-                    AddConnection(CircuitColor.Green, controller.HorizontalLink2, null, previousCycleController.HorizontalLink2, null); // Parallel data in
+                    AddConnection(CircuitColor.Green, controller.Parallel.HorizontalLink1, null, previousCycleController.Parallel.HorizontalLink1, null); // Parallel data in
+                    AddConnection(CircuitColor.Green, controller.Parallel.HorizontalLink2, null, previousCycleController.Parallel.HorizontalLink2, null); // Parallel data in
                 }
 
-                if (controller.HorizontalLink1.Name == ItemNames.Substation)
+                if (controller.Parallel.HorizontalLink1.Name == ItemNames.Substation)
                 {
-                    AddNeighbor(controller.HorizontalLink1, substations[(substationHeight - 1) * substationWidth + column / 18 + 1]);
+                    AddNeighbor(controller.Parallel.HorizontalLink1, substations[(substationHeight - 1) * substationWidth + column / 18 + 1]);
+                    AddNeighbor(controller.Parallel.HorizontalLink1, substations2[column / 18 + 1]);
                 }
             }
 
@@ -530,8 +660,8 @@ namespace BlueprintGenerator.Screen
                 AddConnection(CircuitColor.Red, controller.Memory, CircuitId.Output, controller.Memory, CircuitId.Input); // Data feedback
                 AddConnection(CircuitColor.Red, controller.Writer, CircuitId.Output, controller.Memory, CircuitId.Input); // Data transfer
                 AddConnection(CircuitColor.Red, controller.AddressMatcher, CircuitId.Output, controller.Writer, CircuitId.Input); // Enable
-                AddConnection(CircuitColor.Red, controller.CyclicWriter, CircuitId.Output, controller.Writer, CircuitId.Output); // Cyclic data transfer
-                AddConnection(CircuitColor.Red, controller.CyclicMatcher, CircuitId.Output, controller.CyclicWriter, CircuitId.Input); // Cyclic enable
+                AddConnection(CircuitColor.Red, controller.Cyclic.Writer, CircuitId.Output, controller.Writer, CircuitId.Output); // Cyclic data transfer
+                AddConnection(CircuitColor.Red, controller.Cyclic.Matcher, CircuitId.Output, controller.Cyclic.Writer, CircuitId.Input); // Cyclic enable
 
                 var adjacentRow = row - 1;
                 if (adjacentRow >= 0)
@@ -541,8 +671,8 @@ namespace BlueprintGenerator.Screen
                     AddConnection(CircuitColor.Green, controller.Memory, CircuitId.Input, adjacentController.Memory, CircuitId.Input); // Full data in
                     AddConnection(CircuitColor.Green, controller.Writer, CircuitId.Input, adjacentController.Writer, CircuitId.Input); // Addressable data in
                     AddConnection(CircuitColor.Red, controller.AddressMatcher, CircuitId.Input, adjacentController.AddressMatcher, CircuitId.Input); // Address in
-                    AddConnection(CircuitColor.Green, controller.CyclicWriter, CircuitId.Input, adjacentController.CyclicWriter, CircuitId.Input); // Cyclic data in
-                    AddConnection(CircuitColor.Red, controller.CyclicMatcher, CircuitId.Input, adjacentController.CyclicMatcher, CircuitId.Input); // Cyclic address in
+                    AddConnection(CircuitColor.Green, controller.Cyclic.Writer, CircuitId.Input, adjacentController.Cyclic.Writer, CircuitId.Input); // Cyclic data in
+                    AddConnection(CircuitColor.Red, controller.Cyclic.Matcher, CircuitId.Input, adjacentController.Cyclic.Matcher, CircuitId.Input); // Cyclic address in
                 }
             }
 
@@ -551,10 +681,7 @@ namespace BlueprintGenerator.Screen
                 Label = $"{width}x{height} Screen",
                 Icons = new List<Icon>
                 {
-                    new Icon
-                    {
-                        Signal = SignalID.Create(ItemNames.Lamp)
-                    }
+                    Icon.Create(ItemNames.Lamp)
                 },
                 Entities = entities,
                 Item = ItemNames.Blueprint,
@@ -567,13 +694,33 @@ namespace BlueprintGenerator.Screen
             public Entity Memory { get; set; }
             public Entity Writer { get; set; }
             public Entity AddressMatcher { get; set; }
-            public Entity CyclicWriter { get; set; }
-            public Entity CyclicMatcher { get; set; }
-            public Entity ParallelWriter { get; set; }
-            public Entity ParallelAddressRangeLow { get; set; }
-            public Entity ParallelAddressRangeHigh { get; set; }
+            public CyclicInput Cyclic { get; set; }
+            public ParallelInput Parallel { get; set; }
+            public VideoInput Video { get; set; }
+        }
+
+        private class CyclicInput
+        {
+            public Entity Writer { get; set; }
+            public Entity Matcher { get; set; }
+        }
+
+        private class ParallelInput
+        {
+            public Entity Writer { get; set; }
+            public Entity AddressRangeLow { get; set; }
+            public Entity AddressRangeHigh { get; set; }
             public Entity HorizontalLink1 { get; set; }
             public Entity HorizontalLink2 { get; set; }
+        }
+
+        private class VideoInput
+        {
+            public Entity Enabler { get; set; }
+            public Entity ReferenceSignalSubtractor { get; set; }
+            public Entity ValueSpreader { get; set; }
+            public Entity BitIsolator { get; set; }
+            public Entity BitShifter { get; set; }
         }
     }
 
