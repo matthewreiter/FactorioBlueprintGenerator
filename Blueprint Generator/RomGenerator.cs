@@ -187,13 +187,10 @@ namespace BlueprintGenerator
             return new Blueprint
             {
                 Label = $"{width}x{height} ROM{(programName != null ? $": {programName}": "")}",
-                Icons = iconNames.Select(name => new Icon
-                {
-                    Signal = SignalID.Create(name)
-                }).ToList(),
+                Icons = iconNames.Select(name => Icon.Create(name)).ToList(),
                 Entities = entities,
                 SnapToGrid = snapToGrid ? new SnapToGrid { X = (ulong)gridWidth, Y = (ulong)gridHeight } : null,
-                AbsoluteSnapping = snapToGrid ? true : (bool?)null,
+                AbsoluteSnapping = snapToGrid ? true : null,
                 Item = ItemNames.Blueprint,
                 Version = BlueprintVersions.CurrentVersion
             };
