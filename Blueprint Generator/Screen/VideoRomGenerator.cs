@@ -43,7 +43,7 @@ namespace BlueprintGenerator.Screen
                 {
                     Filters = new List<Filter>
                     {
-                        Filter.Create(VirtualSignalNames.LetterOrDigit('Z'), frames.Count)
+                        Filter.Create(VirtualSignalNames.LetterOrDigit('Z'), frames?.Count ?? 0)
                     }
                 }
             };

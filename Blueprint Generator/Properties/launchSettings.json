@@ -34,7 +34,7 @@
     },
     "VideoRom": {
       "commandName": "Project",
-      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/videoRom.txt\" --OutputJson=\"$(ProjectDir)/Test/videoRom.json\" --MemoryType=VideoRom --Width=178 --Height=8"
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/videoRom.txt\" --OutputJson=\"$(ProjectDir)/Test/videoRom.json\" --MemoryType=VideoRom --Width=178 --Height=12"
     },
     "Speakers": {
       "commandName": "Project",
