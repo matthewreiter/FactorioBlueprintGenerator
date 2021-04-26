@@ -2,7 +2,7 @@
   "profiles": {
     "Video Compiler": {
       "commandName": "Project",
-      "commandLineArgs": "--VideoFile=\"$(SolutionDir)/../Videos/Never Gonna Give You Up.mp4\" --OutputBlueprint=\"$(ProjectDir)/Test/videoRom.txt\" --OutputJson=\"$(ProjectDir)/Test/videoRom.json\" --FrameWidth=178 --FrameHeight=124 --RomHeight=120 --ColorMode=RedGreenBlueWhite --DitheringMode=SierraLite"
+      "commandLineArgs": "--VideoFile=\"$(SolutionDir)/../Videos/Never Gonna Give You Up.mp4\" --OutputBlueprint=\"$(ProjectDir)/Test/videoRom.txt\" --OutputJson=\"$(ProjectDir)/Test/videoRom.json\" --FrameWidth=178 --FrameHeight=124 --RomHeight=120 --ColorMode=RedGreenBlueWhite --DitheringMode=Temporal"
     }
   }
 }

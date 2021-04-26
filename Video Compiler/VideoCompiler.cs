@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace VideoCompiler
 {
@@ -72,22 +73,29 @@ namespace VideoCompiler
                 DitheringMode.None => Array.Empty<DitheringWeight>(),
                 DitheringMode.Sierra => new DitheringWeight[]
                 {
-                    new DitheringWeight(1, 0, 5 / 32d),
-                    new DitheringWeight(2, 0, 3 / 32d),
-                    new DitheringWeight(-2, 1, 2 / 32d),
-                    new DitheringWeight(-1, 1, 4 / 32d),
-                    new DitheringWeight(0, 1, 5 / 32d),
-                    new DitheringWeight(1, 1, 4 / 32d),
-                    new DitheringWeight(2, 1, 2 / 32d),
-                    new DitheringWeight(-1, 2, 2 / 32d),
-                    new DitheringWeight(0, 2, 3 / 32d),
-                    new DitheringWeight(1, 2, 2 / 32d),
+                    new DitheringWeight(5 / 32d, 1, 0),
+                    new DitheringWeight(3 / 32d, 2, 0),
+                    new DitheringWeight(2 / 32d, -2, 1),
+                    new DitheringWeight(4 / 32d, -1, 1),
+                    new DitheringWeight(5 / 32d, 0, 1),
+                    new DitheringWeight(4 / 32d, 1, 1),
+                    new DitheringWeight(2 / 32d, 2, 1),
+                    new DitheringWeight(2 / 32d, -1, 2),
+                    new DitheringWeight(3 / 32d, 0, 2),
+                    new DitheringWeight(2 / 32d, 1, 2),
                 },
                 DitheringMode.SierraLite => new DitheringWeight[]
                 {
-                    new DitheringWeight(1, 0, 2 / 4d),
-                    new DitheringWeight(-1, 1, 1 / 4d),
-                    new DitheringWeight(0, 1, 1 / 4d)
+                    new DitheringWeight(2 / 4d, 1, 0),
+                    new DitheringWeight(1 / 4d, -1, 1),
+                    new DitheringWeight(1 / 4d, 0, 1)
+                },
+                DitheringMode.Temporal => new DitheringWeight[]
+                {
+                    new DitheringWeight(2 / 6d, 1, 0, 0),
+                    new DitheringWeight(1 / 6d, -1, 1, 0),
+                    new DitheringWeight(1 / 6d, 0, 1, 0),
+                    new DitheringWeight(2 / 6d, 0, 0, 1)
                 },
                 _ => throw new Exception($"Unexpected dithering mode: {ditheringMode}")
             };
@@ -99,12 +107,18 @@ namespace VideoCompiler
             var rawFrame = new int[rawFrameWidth * rawFrameHeight];
             var frames = new List<bool[,]>();
 
+            var ditheringFrames = ditheringWeights.Max(ditheringWeight => ditheringWeight.Frame) + 1;
+            var colorErrors = new HdrColor[ditheringFrames][,];
+            
+            for (var index = 0; index < ditheringFrames; index++)
+            {
+                colorErrors[index] = new HdrColor[frameHeight, frameWidth];
+            }
+
             while (video.AdvanceFrame(rawFrame) && frames.Count < maxFrames)
             {
                 var frame = new bool[frameHeight, frameWidth];
                 frames.Add(frame);
-
-                var colorErrors = new HdrColor[frameHeight, frameWidth];
 
                 for (var rawY = 0; rawY < rawFrameHeight; rawY++)
                 {
@@ -112,7 +126,7 @@ namespace VideoCompiler
                     {
                         var x = rawX * pixelSize;
                         var y = rawY * pixelSize;
-                        var color = HdrColor.FromArgb(rawFrame[rawX + rawY * rawFrameWidth]) + colorErrors[rawY, rawX];
+                        var color = HdrColor.FromArgb(rawFrame[rawX + rawY * rawFrameWidth]) + colorErrors[0][rawY, rawX];
                         var closestPaletteEntry = GetClosestPaletteEntry(palette, color);
                         var newColorError = color - closestPaletteEntry.Color;
                         var outputColor = closestPaletteEntry.OutputColor;
@@ -138,11 +152,20 @@ namespace VideoCompiler
 
                             if (errorX >= 0 && errorX < frameWidth && errorY < frameHeight)
                             {
-                                colorErrors[errorY, errorX] += newColorError * ditheringWeight.Weight;
+                                colorErrors[ditheringWeight.Frame][errorY, errorX] += newColorError * ditheringWeight.Weight;
                             }
                         }
                     }
                 }
+
+                for (var index = 0; index < ditheringFrames - 1; index++)
+                {
+                    colorErrors[index] = colorErrors[index + 1];
+                }
+
+                colorErrors[ditheringFrames - 1] = new HdrColor[frameHeight, frameWidth];
+
+                Console.Write('.');
             }
 
             Console.WriteLine($"Frames: {frames.Count}");
@@ -210,7 +233,7 @@ namespace VideoCompiler
         }
 
         private record PaletteEntry(HdrColor Color, bool[] OutputColor);
-        private record DitheringWeight(int X, int Y, double Weight);
+        private record DitheringWeight(double Weight, int X, int Y, int Frame = 0);
     }
 
     public class VideoConfiguration
@@ -292,6 +315,7 @@ namespace VideoCompiler
     {
         None,
         Sierra,
-        SierraLite
+        SierraLite,
+        Temporal
     }
 }
