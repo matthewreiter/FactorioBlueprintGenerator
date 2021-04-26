@@ -6,7 +6,6 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using SysColor = System.Drawing.Color;
 
 namespace VideoCompiler
 {
@@ -25,8 +24,7 @@ namespace VideoCompiler
             var frameWidth = configuration.FrameWidth ?? 32;
             var frameHeight = configuration.FrameHeight ?? 32;
             var colorMode = configuration.ColorMode ?? ColorMode.Monochrome;
-            var ditherSize = configuration.DitherSize ?? 1;
-            var useEdgeDetection = configuration.UseEdgeDetection ?? false;
+            var ditheringMode = configuration.DitheringMode ?? DitheringMode.None;
             var romHeight = configuration.RomHeight ?? 2;
 
             var maxFrames = romHeight * 32;
@@ -38,14 +36,61 @@ namespace VideoCompiler
                 videoStream.CopyTo(videoBuffer);
             }
 
-            var basePixelSize = colorMode switch
+            var pixelSize = colorMode switch
             {
                 ColorMode.Monochrome => 1,
                 ColorMode.RedGreenBlue => 2,
                 ColorMode.RedGreenBlueWhite => 2,
                 _ => throw new Exception($"Unexpected color mode: {colorMode}")
             };
-            var pixelSize = basePixelSize * ditherSize;
+
+            var palette = colorMode switch
+            {
+                ColorMode.Monochrome => GeneratePalette(new HdrColor[]
+                {
+                    HdrColor.FromRgb(1, 1, 1)
+                }),
+                ColorMode.RedGreenBlue => GeneratePalette(new HdrColor[]
+                {
+                    HdrColor.FromRgb(1, 0, 0),
+                    HdrColor.FromRgb(0, 1, 0),
+                    HdrColor.FromRgb(0, 0, 1)
+                }),
+                ColorMode.RedGreenBlueWhite => GeneratePalette(new HdrColor[]
+                {
+                    HdrColor.FromRgb(0.8, 0, 0),
+                    HdrColor.FromRgb(0, 0.8, 0),
+                    HdrColor.FromRgb(0, 0, 0.8),
+                    HdrColor.FromRgb(0.8, 0.8, 0.8)
+                }),
+                _ => throw new Exception($"Unexpected color mode: {colorMode}")
+            };
+
+            // Information on dithering: https://cmitja.files.wordpress.com/2015/01/hellandtanner_imagedithering11algorithms.pdf
+            var ditheringWeights = ditheringMode switch
+            {
+                DitheringMode.None => Array.Empty<DitheringWeight>(),
+                DitheringMode.Sierra => new DitheringWeight[]
+                {
+                    new DitheringWeight(1, 0, 5 / 32d),
+                    new DitheringWeight(2, 0, 3 / 32d),
+                    new DitheringWeight(-2, 1, 2 / 32d),
+                    new DitheringWeight(-1, 1, 4 / 32d),
+                    new DitheringWeight(0, 1, 5 / 32d),
+                    new DitheringWeight(1, 1, 4 / 32d),
+                    new DitheringWeight(2, 1, 2 / 32d),
+                    new DitheringWeight(-1, 2, 2 / 32d),
+                    new DitheringWeight(0, 2, 3 / 32d),
+                    new DitheringWeight(1, 2, 2 / 32d),
+                },
+                DitheringMode.SierraLite => new DitheringWeight[]
+                {
+                    new DitheringWeight(1, 0, 2 / 4d),
+                    new DitheringWeight(-1, 1, 1 / 4d),
+                    new DitheringWeight(0, 1, 1 / 4d)
+                },
+                _ => throw new Exception($"Unexpected dithering mode: {ditheringMode}")
+            };
 
             var rawFrameWidth = frameWidth / pixelSize;
             var rawFrameHeight = frameHeight / pixelSize;
@@ -59,23 +104,7 @@ namespace VideoCompiler
                 var frame = new bool[frameHeight, frameWidth];
                 frames.Add(frame);
 
-                var brightnessCutoff = 0d;
-
-                if (ditherSize == 1)
-                {
-                    var totalBrightness = 0d;
-
-                    for (var rawY = 0; rawY < rawFrameHeight; rawY++)
-                    {
-                        for (var rawX = 0; rawX < rawFrameWidth; rawX++)
-                        {
-                            var color = System.Drawing.Color.FromArgb(rawFrame[rawX + rawY * rawFrameWidth]);
-                            totalBrightness += color.GetBrightness();
-                        }
-                    }
-
-                    brightnessCutoff = totalBrightness / (rawFrameWidth * rawFrameHeight);
-                }
+                var colorErrors = new HdrColor[frameHeight, frameWidth];
 
                 for (var rawY = 0; rawY < rawFrameHeight; rawY++)
                 {
@@ -83,74 +112,34 @@ namespace VideoCompiler
                     {
                         var x = rawX * pixelSize;
                         var y = rawY * pixelSize;
-                        var color = SysColor.FromArgb(rawFrame[rawX + rawY * rawFrameWidth]);
-                        var levels = ditherSize * ditherSize + 1;
+                        var color = HdrColor.FromArgb(rawFrame[rawX + rawY * rawFrameWidth]) + colorErrors[rawY, rawX];
+                        var closestPaletteEntry = GetClosestPaletteEntry(palette, color);
+                        var newColorError = color - closestPaletteEntry.Color;
+                        var outputColor = closestPaletteEntry.OutputColor;
 
-                        switch (colorMode)
+                        for (var subPixelY = 0; subPixelY < pixelSize; subPixelY++)
                         {
-                            case ColorMode.Monochrome:
+                            for (var subPixelX = 0; subPixelX < pixelSize; subPixelX++)
+                            {
+                                var subPixelIndex = subPixelX + subPixelY * pixelSize;
+
+                                if (subPixelIndex < outputColor.Length)
                                 {
-                                    var brightness = color.GetBrightness();
-
-                                    for (var ditherY = 0; ditherY < ditherSize; ditherY++)
-                                    {
-                                        for (var ditherX = 0; ditherX < ditherSize; ditherX++)
-                                        {
-                                            var currentBrightnessCutoff = ditherSize == 1 ? brightnessCutoff : (double)(ditherX + ditherY * ditherSize + 1) / levels;
-                                            frame[y + ditherY, x + ditherX] = brightness > currentBrightnessCutoff;
-                                        }
-                                    }
+                                    frame[y + subPixelY, x + subPixelX] = outputColor[subPixelIndex];
                                 }
+                            }
+                        }
 
-                                break;
-                            case ColorMode.RedGreenBlue:
-                                for (var ditherY = 0; ditherY < ditherSize; ditherY++)
-                                {
-                                    for (var ditherX = 0; ditherX < ditherSize; ditherX++)
-                                    {
-                                        var currentBrightnessCutoff = ditherSize == 1 ? brightnessCutoff : (double)(ditherX + ditherY * ditherSize + 1) / levels;
-                                        var cutoff = (byte)(currentBrightnessCutoff * 255);
-                                        var red = color.R >= cutoff;
-                                        var green = color.G >= cutoff;
-                                        var blue = color.B >= cutoff;
-                                        var baseX = x + ditherX * 2;
-                                        var baseY = y + ditherY * 2;
+                        for (var index = 0; index < ditheringWeights.Length; index++)
+                        {
+                            var ditheringWeight = ditheringWeights[index];
+                            var errorX = rawX + ditheringWeight.X;
+                            var errorY = rawY + ditheringWeight.Y;
 
-                                        frame[baseY, baseX] = red;
-                                        frame[baseY, baseX + 1] = green;
-                                        frame[baseY + 1, baseX] = blue;
-                                    }
-                                }
-
-                                break;
-                            case ColorMode.RedGreenBlueWhite:
-                                for (var ditherY = 0; ditherY < ditherSize; ditherY++)
-                                {
-                                    for (var ditherX = 0; ditherX < ditherSize; ditherX++)
-                                    {
-                                        var currentBrightnessCutoff = ditherSize == 1 ? brightnessCutoff : (double)(ditherX + ditherY * ditherSize + 1) / levels;
-                                        var cutoff = (byte)(currentBrightnessCutoff * 255);
-                                        var red = color.R >= cutoff;
-                                        var green = color.G >= cutoff;
-                                        var blue = color.B >= cutoff;
-
-                                        bool white = useEdgeDetection
-                                            ? DetectEdge(color, rawFrame, rawX, rawY, rawFrameWidth, -1, 0) ||
-                                                DetectEdge(color, rawFrame, rawX, rawY, rawFrameWidth, 0, -1) ||
-                                                DetectEdge(color, rawFrame, rawX, rawY, rawFrameWidth, -1, -1)
-                                            : red && green && blue && color.GetBrightness() >= (currentBrightnessCutoff + 1) / 2;
-
-                                        var baseX = x + ditherX * 2;
-                                        var baseY = y + ditherY * 2;
-
-                                        frame[baseY, baseX] = red;
-                                        frame[baseY, baseX + 1] = green;
-                                        frame[baseY + 1, baseX] = blue;
-                                        frame[baseY + 1, baseX + 1] = white;
-                                    }
-                                }
-
-                                break;
+                            if (errorX >= 0 && errorX < frameWidth && errorY < frameHeight)
+                            {
+                                colorErrors[errorY, errorX] += newColorError * ditheringWeight.Weight;
+                            }
                         }
                     }
                 }
@@ -176,27 +165,52 @@ namespace VideoCompiler
             BlueprintUtil.WriteOutJson(outputJsonFile, blueprintWrapper);
         }
 
-        private static bool DetectEdge(SysColor color, int[] rawFrame, int rawX, int rawY, int rawFrameWidth, int deltaX, int deltaY)
+        private static PaletteEntry GetClosestPaletteEntry(PaletteEntry[] palette, HdrColor color)
         {
-            const int edgeCutoff1 = 35;
-            const int edgeCutoff2 = 55;
+            PaletteEntry closestEntry = null;
+            var closestDistance = double.PositiveInfinity;
 
-            if (rawX + deltaX * 2 < 0 || rawY + deltaY * 2 < 0)
+            for (var palleteIndex = 0; palleteIndex < palette.Length; palleteIndex++)
             {
-                return false;
+                var currentEntry = palette[palleteIndex];
+                var currentDistance = (currentEntry.Color - color).Length;
+
+                if (currentDistance < closestDistance)
+                {
+                    closestEntry = currentEntry;
+                    closestDistance = currentDistance;
+                }
             }
 
-            var adjacentColor1 = SysColor.FromArgb(rawFrame[rawX + deltaX + (rawY + deltaY) * rawFrameWidth]);
-            var adjacentColor2 = SysColor.FromArgb(rawFrame[rawX + deltaX * 2 + (rawY + deltaY * 2) * rawFrameWidth]);
-
-            return GetColorDistance(color, adjacentColor1) > edgeCutoff1 &&
-                 GetColorDistance(color, adjacentColor2) > edgeCutoff2;
+            return closestEntry;
         }
 
-        private static double GetColorDistance(SysColor color1, SysColor color2)
+        private static PaletteEntry[] GeneratePalette(HdrColor[] subPixelColors)
         {
-            return Math.Sqrt(Math.Pow(color1.R - color2.R, 2) + Math.Pow(color1.G - color2.G, 2) + Math.Pow(color1.B - color2.B, 2));
+            var palette = new PaletteEntry[1 << subPixelColors.Length];
+
+            for (var paletteIndex = 0; paletteIndex < palette.Length; paletteIndex++)
+            {
+                var currentColor = new HdrColor();
+                var outputColor = new bool[subPixelColors.Length];
+
+                for (var subPixelIndex = 0; subPixelIndex < subPixelColors.Length; subPixelIndex++)
+                {
+                    if (((paletteIndex >> subPixelIndex) & 1) == 1)
+                    {
+                        currentColor += subPixelColors[subPixelIndex];
+                        outputColor[subPixelIndex] = true;
+                    }
+                }
+
+                palette[paletteIndex] = new PaletteEntry(currentColor, outputColor);
+            }
+
+            return palette;
         }
+
+        private record PaletteEntry(HdrColor Color, bool[] OutputColor);
+        private record DitheringWeight(int X, int Y, double Weight);
     }
 
     public class VideoConfiguration
@@ -247,14 +261,14 @@ namespace VideoCompiler
         public ColorMode? ColorMode { get; set; }
 
         /// <summary>
+        /// Which dithering algorithm to use.
+        /// </summary>
+        public DitheringMode? DitheringMode { get; set; }
+
+        /// <summary>
         /// If the color mode is monochrome, indicates the height/width of each dither element.
         /// </summary>
         public int? DitherSize { get; set; }
-
-        /// <summary>
-        /// Whether the white color channel should be set based on edge detection.
-        /// </summary>
-        public bool? UseEdgeDetection { get; set; }
 
         /// <summary>
         /// The height of the ROM, in cells.
@@ -272,5 +286,12 @@ namespace VideoCompiler
         Monochrome,
         RedGreenBlue,
         RedGreenBlueWhite
+    }
+
+    public enum DitheringMode
+    {
+        None,
+        Sierra,
+        SierraLite
     }
 }
