@@ -120,13 +120,30 @@ namespace VideoCompiler
                 var frame = new bool[frameHeight, frameWidth];
                 frames.Add(frame);
 
+                var totalBrightness = 0d;
+
+                for (var rawY = 0; rawY < rawFrameHeight; rawY++)
+                {
+                    for (var rawX = 0; rawX < rawFrameWidth; rawX++)
+                    {
+                        var color = System.Drawing.Color.FromArgb(rawFrame[rawX + rawY * rawFrameWidth]);
+                        totalBrightness += color.GetBrightness();
+                    }
+                }
+
+                var averageBrightness = totalBrightness / (rawFrameWidth * rawFrameHeight);
+
+                const double gammaMultiplier = 2;
+                var gamma = gammaMultiplier * (averageBrightness is > 0.1 and < 0.9 ? Math.Log(0.5, averageBrightness) : 1);
+
                 for (var rawY = 0; rawY < rawFrameHeight; rawY++)
                 {
                     for (var rawX = 0; rawX < rawFrameWidth; rawX++)
                     {
                         var x = rawX * pixelSize;
                         var y = rawY * pixelSize;
-                        var color = HdrColor.FromArgb(rawFrame[rawX + rawY * rawFrameWidth]) + colorErrors[0][rawY, rawX];
+                        var rawColor = HdrColor.FromArgb(rawFrame[rawX + rawY * rawFrameWidth]);
+                        var color = rawColor.Pow(gamma) + colorErrors[0][rawY, rawX];
                         var closestPaletteEntry = GetClosestPaletteEntry(palette, color);
                         var newColorError = color - closestPaletteEntry.Color;
                         var outputColor = closestPaletteEntry.OutputColor;

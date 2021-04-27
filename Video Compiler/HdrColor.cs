@@ -83,6 +83,16 @@ namespace VideoCompiler
             };
         }
 
+        public HdrColor Pow(double exponent)
+        {
+            return new HdrColor
+            {
+                R = Math.Pow(R, exponent),
+                G = Math.Pow(G, exponent),
+                B = Math.Pow(B, exponent)
+            };
+        }
+
         public double Length
         {
             get => Math.Sqrt(R * R + G * G + B * B);
