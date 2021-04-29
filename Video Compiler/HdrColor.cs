@@ -33,6 +33,16 @@ namespace VideoCompiler
             };
         }
 
+        public static HdrColor operator +(HdrColor left, double right)
+        {
+            return new HdrColor
+            {
+                R = left.R + right,
+                G = left.G + right,
+                B = left.B + right
+            };
+        }
+
         public static HdrColor operator -(HdrColor left, HdrColor right)
         {
             return new HdrColor
@@ -40,6 +50,16 @@ namespace VideoCompiler
                 R = left.R - right.R,
                 G = left.G - right.G,
                 B = left.B - right.B
+            };
+        }
+
+        public static HdrColor operator -(HdrColor left, double right)
+        {
+            return new HdrColor
+            {
+                R = left.R - right,
+                G = left.G - right,
+                B = left.B - right
             };
         }
 
@@ -80,6 +100,36 @@ namespace VideoCompiler
                 R = left.R / right,
                 G = left.G / right,
                 B = left.B / right
+            };
+        }
+
+        public static HdrColor operator %(HdrColor left, HdrColor right)
+        {
+            return new HdrColor
+            {
+                R = left.R % right.R,
+                G = left.G % right.G,
+                B = left.B % right.B
+            };
+        }
+
+        public static HdrColor operator %(HdrColor left, double right)
+        {
+            return new HdrColor
+            {
+                R = left.R % right,
+                G = left.G % right,
+                B = left.B % right
+            };
+        }
+
+        public HdrColor Pow(HdrColor exponent)
+        {
+            return new HdrColor
+            {
+                R = Math.Pow(R, exponent.R),
+                G = Math.Pow(G, exponent.G),
+                B = Math.Pow(B, exponent.B)
             };
         }
 
