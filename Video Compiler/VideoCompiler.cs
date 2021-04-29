@@ -143,9 +143,10 @@ namespace VideoCompiler
                         var x = rawX * pixelSize;
                         var y = rawY * pixelSize;
                         var rawColor = HdrColor.FromArgb(rawFrame[rawX + rawY * rawFrameWidth]);
-                        var color = rawColor.Pow(gamma) + colorErrors[0][rawY, rawX];
-                        var closestPaletteEntry = GetClosestPaletteEntry(palette, color);
-                        var newColorError = color - closestPaletteEntry.Color;
+                        var gammaCorrectedColor = rawColor.Pow(gamma);
+                        var ditheredColor = gammaCorrectedColor + colorErrors[0][rawY, rawX];
+                        var closestPaletteEntry = GetClosestPaletteEntry(palette, ditheredColor);
+                        var newColorError = ditheredColor - closestPaletteEntry.Color;
                         var outputColor = closestPaletteEntry.OutputColor;
 
                         for (var subPixelY = 0; subPixelY < pixelSize; subPixelY++)
