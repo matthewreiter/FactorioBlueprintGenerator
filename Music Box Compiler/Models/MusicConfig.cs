@@ -26,6 +26,7 @@ namespace MusicBoxCompiler.Models
         /// </summary>
         public int? AddressIndex { get; set; }
         public string Source { get; set; }
+        public string SourcePlaylist { get; set; }
         public string SpreadsheetTab { get; set; }
         public Dictionary<Instrument, int> InstrumentOffsets { get; set; }
         public Dictionary<Instrument, double> InstrumentVolumes { get; set; }

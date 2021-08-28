@@ -32,18 +32,7 @@ namespace MusicBoxCompiler
             var outputJsonFile = configuration.OutputJson;
             var outputConstantsFile = configuration.OutputConstants;
             var outputMidiEventsFile = configuration.OutputMidiEvents;
-            var baseAddress = configuration.BaseAddress ?? 1;
-            var baseNoteAddress = configuration.BaseNoteAddress ?? 1 << NoteGroupAddressBits;
             var baseMetadataAddress = configuration.BaseMetadataAddress ?? 1;
-            var snapToGrid = configuration.SnapToGrid;
-            var x = configuration.X;
-            var y = configuration.Y;
-            var width = configuration.Width ?? 16;
-            var height = configuration.Height ?? 16;
-            var cellSize = configuration.CellSize ?? 1;
-            var volumeLevels = configuration.VolumeLevels ?? 10;
-            var minVolume = configuration.MinVolume ?? 0.1;
-            var maxVolume = configuration.MaxVolume ?? 1;
             var constantsNamespace = configuration.ConstantsNamespace ?? "Music";
 
             var config = LoadConfig(configFile);
@@ -56,28 +45,33 @@ namespace MusicBoxCompiler
                     {
                         Name = playlistConfig.Name,
                         Songs = playlistConfig.Songs
-                            .SelectMany(song =>
+                            .SelectMany(songConfig => Path.GetExtension(songConfig.Source).ToLower() switch
                             {
-                                if (song.Source.Contains("*"))
+                                ".yaml" => LoadConfig(songConfig.Source).Playlists.Find(playlist => playlist.Name == songConfig.SourcePlaylist)?.Songs ?? Enumerable.Empty<SongConfig>(),
+                                _ => Enumerable.Repeat(songConfig, 1)
+                            })
+                            .SelectMany(songConfig =>
+                            {
+                                if (songConfig.Source.Contains("*"))
                                 {
-                                    var directoryName = Path.GetDirectoryName(song.Source);
-                                    var fileName = Path.GetFileName(song.Source);
+                                    var directoryName = Path.GetDirectoryName(songConfig.Source);
+                                    var fileName = Path.GetFileName(songConfig.Source);
                                     var files = Directory.GetFiles(directoryName, fileName);
 
                                     if (files.Length > 1)
                                     {
                                         return files.OrderBy(file => file)
-                                            .Select((source, index) => song with
+                                            .Select((source, index) => songConfig with
                                             {
-                                                Name = $"{song.Name}Part{index + 1}",
-                                                DisplayName = song.DisplayName != null ? $"{song.DisplayName} (Part {index + 1})" : null,
+                                                Name = $"{songConfig.Name}Part{index + 1}",
+                                                DisplayName = songConfig.DisplayName != null ? $"{songConfig.DisplayName} (Part {index + 1})" : null,
                                                 Source = source,
-                                                Gapless = index < files.Length - 1 || song.Gapless
+                                                Gapless = index < files.Length - 1 || songConfig.Gapless
                                             });
                                     }
                                 }
 
-                                return Enumerable.Repeat(song, 1);
+                                return Enumerable.Repeat(songConfig, 1);
                             })
                             .ToList() // Store the intermediate results as a list to preserve the order when parallelized
                             .AsParallel()
@@ -116,7 +110,7 @@ namespace MusicBoxCompiler
                 });
             }
 
-            var blueprint = CreateBlueprintFromPlaylists(playlists, baseAddress, baseNoteAddress, baseMetadataAddress, snapToGrid, x, y, width, height, cellSize, volumeLevels, minVolume, maxVolume, out var addresses);
+            var blueprint = CreateBlueprintFromPlaylists(playlists, configuration, out var addresses);
             BlueprintUtil.PopulateIndices(blueprint);
 
             var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
@@ -145,8 +139,21 @@ namespace MusicBoxCompiler
         private static Dictionary<Instrument, double> ProcessInstrumentVolumes(Dictionary<Instrument, double> instrumentVolumes) =>
             instrumentVolumes?.Select(entry => (entry.Key, Value: entry.Value / 100))?.ToDictionary(entry => entry.Key, entry => entry.Value);
 
-        private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, int baseAddress, int baseNoteAddress, int baseMetadataAddress, bool? snapToGrid, int? x, int? y, int width, int height, int cellSize, int volumeLevels, double minVolume, double maxVolume, out Addresses addresses)
+        private static Blueprint CreateBlueprintFromPlaylists(List<Playlist> playlists, MusicBoxConfiguration configuration, out Addresses addresses)
         {
+            var baseAddress = configuration.BaseAddress ?? 1;
+            var baseNoteAddress = configuration.BaseNoteAddress ?? 1 << NoteGroupAddressBits;
+            var baseMetadataAddress = configuration.BaseMetadataAddress ?? 1;
+            var snapToGrid = configuration.SnapToGrid;
+            var x = configuration.X;
+            var y = configuration.Y;
+            var width = configuration.Width ?? 16;
+            var height = configuration.Height ?? 16;
+            var cellSize = configuration.CellSize ?? 1;
+            var volumeLevels = configuration.VolumeLevels ?? 10;
+            var minVolume = configuration.MinVolume ?? 0.1;
+            var maxVolume = configuration.MaxVolume ?? 1;
+
             var memoryCells = new List<MemoryCell>();
             var noteGroupCells = new List<MemoryCell>();
             var constantCells = new List<MemoryCell>();
