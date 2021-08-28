@@ -144,6 +144,7 @@ namespace MusicBoxCompiler
             var baseAddress = configuration.BaseAddress ?? 1;
             var baseNoteAddress = configuration.BaseNoteAddress ?? 1 << NoteGroupAddressBits;
             var baseMetadataAddress = configuration.BaseMetadataAddress ?? 1;
+            var nextAddress = configuration.NextAddress ?? baseAddress;
             var snapToGrid = configuration.SnapToGrid;
             var x = configuration.X;
             var y = configuration.Y;
@@ -404,8 +405,7 @@ namespace MusicBoxCompiler
                 AddJump(playlistAddress, isEnabled: playlist.Loop);
             }
 
-            // Jump back to the beginning
-            AddJump(baseAddress);
+            AddJump(nextAddress);
 
             memoryCells.AddRange(noteGroupCells);
 
@@ -544,6 +544,7 @@ namespace MusicBoxCompiler
         public int? BaseAddress { get; set; }
         public int? BaseNoteAddress { get; set; }
         public int? BaseMetadataAddress { get; set; }
+        public int? NextAddress { get; set; }
         public bool? SnapToGrid { get; set; }
         public int? X { get; set; }
         public int? Y { get; set; }
