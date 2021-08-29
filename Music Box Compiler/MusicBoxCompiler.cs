@@ -308,6 +308,12 @@ namespace MusicBoxCompiler
                     // Add the notes for the song
                     foreach (var noteGroup in song.NoteGroups)
                     {
+                        // Strip leading silence
+                        if (song.Gapless && noteGroup.Notes.Count == 0)
+                        {
+                            continue;
+                        }
+
                         var (noteGroupAddress, noteGroupSubAddress) = noteTuplesToAddresses[CreateNoteTuple(noteGroup)];
 
                         if (currentFilters.Count == 0)
@@ -315,7 +321,18 @@ namespace MusicBoxCompiler
                             currentFilters.Add(CreateFilter('Y', metadataAddress + ((currentTimeOffset + 1) << MetadataAddressBits)));
                         }
 
-                        var length = (int)(noteGroup.Length.TotalSeconds * 60) - timeDeficit;
+                        // Strip trailing silence
+                        var noteGroupLength = noteGroup.Length;
+                        if (song.Gapless && noteGroup == song.NoteGroups[^1] && song.NoteGroups.Count > 1)
+                        {
+                            var previousNoteGroupLength = song.NoteGroups[^2].Length;
+                            if (noteGroupLength > previousNoteGroupLength)
+                            {
+                                noteGroupLength = previousNoteGroupLength;
+                            }
+                        }
+
+                        var length = (int)(noteGroupLength.TotalSeconds * 60) - timeDeficit;
 
                         // We can't have multiple note groups play too close too each other.
                         // However, to avoid delaying future notes we capture the amount that the length is adjusted
