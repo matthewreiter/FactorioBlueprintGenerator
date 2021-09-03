@@ -1,14 +1,15 @@
 ﻿using CompilerCommon;
-using ILReader;
 using FactoVision.Runtime.CompilerServices;
+using ILReader;
+using QuikGraph;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using QuikGraph;
-using QuikGraph.Algorithms;
+
+// Optimizer: https://github.com/dotnet/runtime/blob/main/src/coreclr/jit/optimizer.cpp
 
 namespace FactoVision.Compiler
 {
