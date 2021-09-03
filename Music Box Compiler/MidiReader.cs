@@ -359,73 +359,79 @@ namespace MusicBoxCompiler
 
                 currentTimeMillis += tempo / 1000d * midiMessage.DeltaTime / music.DeltaTimeSpec;
 
-                if (midiEvent.EventType == MidiEvent.Meta && midiEvent.Msb == MidiMetaType.Tempo)
-                {
-                    tempo = MidiMetaType.GetTempo(midiEvent.ExtraData, midiEvent.ExtraDataOffset);
-                }
-
                 machine.ProcessEvent(midiEvent);
 
-                if (midiEvent.EventType == MidiEvent.Meta)
+                switch (midiEvent.EventType)
                 {
-                    switch (midiEvent.MetaType)
-                    {
-                        case MidiMetaType.TrackName:
-                            trackName.Add(Encoding.ASCII.GetString(midiEvent.ExtraData));
-                            break;
-                        case MidiMetaType.Text:
-                            text.Add(Encoding.ASCII.GetString(midiEvent.ExtraData));
-                            break;
-                        case MidiMetaType.Copyright:
-                            copyright.Add(Encoding.ASCII.GetString(midiEvent.ExtraData));
-                            break;
-                    }
-                }
-
-                if (midiEvent.EventType == MidiEvent.NoteOn)
-                {
-                    var velocity = midiEvent.Lsb;
-
-                    if (velocity > 0)
-                    {
-                        var noteNumber = midiEvent.Msb;
-                        var isPercussion = midiEvent.Channel == PercussionMidiChannel;
-                        var channelVolume = channel.Controls[MidiCC.Volume];
-                        var expression = channel.Controls[MidiCC.Expression];
-                        var instrument = isPercussion
-                            ? Instrument.Drumkit
-                            : InstrumentMap.TryGetValue(channel.Program, out var instrumentValue) ? instrumentValue : Instrument.Unknown;
-                        var instrumentName = (isPercussion ? GeneralMidi.DrumKitsGM2.ElementAtOrDefault(channel.Program) : GeneralMidi.InstrumentNames.ElementAtOrDefault(channel.Program)) ?? channel.Program.ToString();
-                        var noteName = isPercussion
-                            ? DrumNames.TryGetValue(noteNumber, out var drumName) ? drumName : noteNumber.ToString()
-                            : $"{Notes[noteNumber % Notes.Count]}{noteNumber / Notes.Count - 1}";
-
-                        var note = new MidiNote
+                    case MidiEvent.Meta:
+                        switch (midiEvent.MetaType)
                         {
-                            OriginalInstrumentName = instrumentName,
-                            OriginalNoteName = noteName,
-                            OriginalNoteNumber = noteNumber,
-                            Instrument = instrument,
-                            Velocity = velocity / 127d,
-                            Expression = expression > 0 ? expression / 127d : 1,
-                            ChannelVolume = channelVolume > 0 ? channelVolume / 127d : 1,
-                            CurrentTime = TimeSpan.FromMilliseconds(currentTimeMillis)
-                        };
-
-                        if (instrument != Instrument.Unknown)
-                        {
-                            var relativeNoteNumber = isPercussion
-                                ? DrumMap.TryGetValue(noteNumber, out var drum) ? (int)drum : 0
-                                : instrument == Instrument.Drumkit
-                                    ? (int)Drum.ReverseCymbal
-                                    : noteNumber + GetBaseInstrumentOffset(instrument);
-
-                            note = note with { RelativeNoteNumber = relativeNoteNumber };
+                            case MidiMetaType.TrackName:
+                                trackName.Add(Encoding.ASCII.GetString(midiEvent.ExtraData));
+                                break;
+                            case MidiMetaType.Text:
+                                text.Add(Encoding.ASCII.GetString(midiEvent.ExtraData));
+                                break;
+                            case MidiMetaType.Copyright:
+                                copyright.Add(Encoding.ASCII.GetString(midiEvent.ExtraData));
+                                break;
+                            case MidiMetaType.Tempo:
+                                tempo = MidiMetaType.GetTempo(midiEvent.ExtraData, midiEvent.ExtraDataOffset);
+                                break;
                         }
 
-                        notes.Add(note);
-                        lastNoteTimeMillis = currentTimeMillis;
-                    }
+                        break;
+                    case MidiEvent.NoteOn:
+                        var velocity = midiEvent.Lsb;
+
+                        if (velocity > 0)
+                        {
+                            var noteNumber = midiEvent.Msb;
+                            var isPercussion = midiEvent.Channel == PercussionMidiChannel;
+                            var channelVolume = channel.Controls[MidiCC.Volume];
+                            var expression = channel.Controls[MidiCC.Expression];
+                            var instrument = isPercussion
+                                ? Instrument.Drumkit
+                                : InstrumentMap.TryGetValue(channel.Program, out var instrumentValue) ? instrumentValue : Instrument.Unknown;
+                            var instrumentName = (isPercussion ? GeneralMidi.DrumKitsGM2.ElementAtOrDefault(channel.Program) : GeneralMidi.InstrumentNames.ElementAtOrDefault(channel.Program)) ?? channel.Program.ToString();
+                            var noteName = isPercussion
+                                ? DrumNames.TryGetValue(noteNumber, out var drumName) ? drumName : noteNumber.ToString()
+                                : $"{Notes[noteNumber % Notes.Count]}{noteNumber / Notes.Count - 1}";
+
+                            var note = new MidiNote
+                            {
+                                OriginalInstrumentName = instrumentName,
+                                OriginalNoteName = noteName,
+                                OriginalNoteNumber = noteNumber,
+                                Instrument = instrument,
+                                Velocity = velocity / 127d,
+                                Expression = expression > 0 ? expression / 127d : 1,
+                                ChannelVolume = channelVolume > 0 ? channelVolume / 127d : 1,
+                                CurrentTime = TimeSpan.FromMilliseconds(currentTimeMillis)
+                            };
+
+                            if (instrument != Instrument.Unknown)
+                            {
+                                var relativeNoteNumber = isPercussion
+                                    ? DrumMap.TryGetValue(noteNumber, out var drum) ? (int)drum : 0
+                                    : instrument == Instrument.Drumkit
+                                        ? (int)Drum.ReverseCymbal
+                                        : noteNumber + GetBaseInstrumentOffset(instrument);
+
+                                note = note with { RelativeNoteNumber = relativeNoteNumber };
+                            }
+
+                            notes.Add(note);
+                            lastNoteTimeMillis = currentTimeMillis;
+                        }
+
+                        break;
+                    case MidiEvent.NoteOff:
+                        {
+                            var noteNumber = midiEvent.Msb;
+                        }
+
+                        break;
                 }
             }
 
