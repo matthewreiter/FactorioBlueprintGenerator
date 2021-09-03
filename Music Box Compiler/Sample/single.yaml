@@ -1,0 +1,16 @@
+﻿playlists:
+  - name: Default
+    loop: true
+    songs:
+      - name: Test
+        source: Music\BitMidi\Never-Gonna-Give-You-Up-2.mid
+        volume: 100
+  - songs:
+      - name: Cynthia
+        displayName: Approaching Champion Cynthia
+        artist: Go Ichinose
+        addressIndex: 998
+        source: Music\BitMidi\Pokemon DiamondPearlPlatinum - Approaching Champion Cynthia.mid
+        instrumentOffsets:
+          piano: 12
+        loop: true

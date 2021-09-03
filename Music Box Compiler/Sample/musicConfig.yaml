@@ -1,0 +1,402 @@
+﻿includeBlankSong: true
+playlists:
+  - name: Default
+    loop: true
+    disabled: false
+    songs:
+      - name: OdeToJoy
+        displayName: Ode to Joy
+        artist: Beethoven
+        source: Music\Sheet Music.xlsx
+        spreadsheetTab: Ode to Joy
+      - name: Imagine
+        artist: John Lennon
+        source: Music\Sheet Music.xlsx
+        spreadsheetTab: Imagine
+      - name: MoonlightSonata
+        displayName: Moonlight Sonata
+        artist: Beethoven
+        source: Music\BitMidi\Beethoven-Moonlight-Sonata.mid
+        instrumentOffsets:
+          piano: 12
+        suppressInstrumentFallback: true
+        volume: 200
+      - name: Yesterday
+        artist: The Beatles
+        source: Music\BitMidi\beatles-yesterday.mid
+        instrumentOffsets:
+          piano: 12
+          bassGuitar: 12
+          pluckedStrings: 12
+          celesta: 12
+      - name: WithALittleHelpFromMyFriends
+        displayName: W/ a Little Help From My Friends
+        artist: The Beatles
+        source: Music\BitMidi\beatles-little_help_from_you_friends.mid
+        instrumentOffsets:
+          piano: 24
+          bassGuitar: 12
+          celesta: 24
+        volume: 80
+      - name: Africa
+        artist: Toto
+        source: Music\BitMidi\toto-africa.mid
+        instrumentOffsets:
+          bassGuitar: 12
+          celesta: 24
+          vibraphone: 24
+        instrumentVolumes:
+          celesta: 80
+      - name: SoundOfSilence
+        displayName: Sound of Silence
+        artist: Simon & Garfunkle
+        source: Music\BitMidi\P.SIMON-GARFUNKEL.Sound of silence K.mid
+        instrumentOffsets:
+          bassGuitar: 0
+          celesta: 0
+        volume: 120
+      - name: BoulevardOfBrokenDreams
+        displayName: Boulevard of Broken Dreams
+        artist: Green Day
+        source: Music\BitMidi\GREENDAY.Boulevard of broken K.MID
+        instrumentOffsets:
+          piano: 12
+          bassGuitar: 12
+          celesta: 12
+        volume: 90
+      - name: StillAlive
+        displayName: Still Alive
+        artist: Jonathan Coulton
+        source: Music\BitMidi\Portal - Still Alive.mid
+        instrumentOffsets:
+          piano: 12
+        volume: 150
+      - name: EverybodyWantsToRuleTheWorld
+        displayName: Everybody Wants to Rule the Wrld
+        artist: Tears For Fears
+        source: Music\BitMidi\Everybody-Wants-To-Rule-The-World-2.mid
+        instrumentOffsets:
+          bassGuitar: 12
+          celesta: 12
+      - name: BalladOfJohnAndYoko
+        displayName: Ballad of John and Yoko
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.Ballad of John and Yoko k.mid
+        instrumentOffsets:
+          bassGuitar: 12
+          celesta: 24
+        volume: 70
+      - name: CryBabyCry
+        displayName: Cry Baby Cry
+        artist: The Beatles
+        source: Music\BitMidi\Beatles_Cry_Baby_Cry.mid
+        volume: 80
+      - name: PennyLane
+        displayName: Penny Lane
+        artist: The Beatles
+        source: Music\BitMidi\BEATLES.Penny lane  2 k.mid
+      - name: SugarPlumFairy
+        displayName: Dance of the Sugar Plum Fairy
+        artist: Tchaikovsky
+        source: Music\BitMidi\Dance-Of-'The-Sugar-Plum-Fairy'.mid
+      - name: FurElise
+        displayName: Für Elise
+        artist: Beethoven
+        source: Music\BitMidi\Fur-Elise-1.mid
+      - name: SiegeOfMadrigal
+        displayName: Siege of Madrigal
+        artist: Martin O'Donnell
+        source: Music\BitMidi\Halo - Siege of Madrigal.mid
+        volume: 150
+      - name: HereComesTheSun
+        displayName: Here Comes the Sun
+        artist: The Beatles
+        source: Music\BitMidi\Here-Comes-The-Sun-2.mid
+      - name: PaintItBlack
+        displayName: Paint it Black
+        artist: The Rolling Stones
+        source: Music\BitMidi\THE ROLLING STONES.Paint it black K.mid
+        volume: 80
+      - name: Edelweiss
+        artist: Richard Rogers
+        source: Music\BitMidi\Edelweiss.mid
+        volume: 130
+      - name: WalkOfLife
+        displayName: Walk of Life
+        artist: Dire Straits
+        source: Music\BitMidi\Dire Straits - Walk of Life.mid
+        instrumentVolumes:
+          square: 90
+        volume: 90
+      - name: SmokeOnTheWater
+        displayName: Smoke on the Water
+        artist: Deep Purple
+        source: Music\BitMidi\Smoke-On-The-Water-2.mid
+        volume: 120
+      - name: Toumei
+        artist: n-buna
+        source: Music\BitMidi\toumei1.mid
+        volume: 115
+        suppressInstrumentFallback: true
+      - name: LetItBe
+        displayName: Let It Be
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.Let it be K.mid
+        instrumentVolumes:
+          steelDrum: 110
+      - name: WantYouGone
+        displayName: Want You Gone
+        artist: Jonathan Coulton
+        source: Music\BitMidi\Portal 2 - Want You Gone.mid
+        volume: 140
+      - name: BohemianRhapsody
+        displayName: Bohemian Rhapsody
+        artist: Queen
+        source: Music\BitMidi\Queen - Bohemian Rhapsody.mid
+      - name: Canyon
+        displayName: Trip Through the Grand Canyon
+        artist: George Stone
+        source: Music\BitMidi\canyon.mid
+      - name: HeyJude
+        displayName: Hey Jude
+        artist: The Beatles
+        source: Music\BitMidi\Hey-Jude-1.mid
+        volume: 130
+      - name: DontStopBelievin
+        displayName: Don't Stop Believin'
+        artist: Journey
+        source: Music\BitMidi\Journey - Don't Stop Believin.mid
+        volume: 80
+      - name: IWantToHoldYourHand
+        displayName: I Want to Hold Your Hand
+        artist: The Beatles
+        source: Music\BitMidi\i_want_to_hold_your_hand-beatles.mid
+        instrumentVolumes:
+          drumkit: 80
+      - name: IveJustSeenAFace
+        displayName: I've Just Seen a Face
+        artist: The Beatles
+        source: Music\BitMidi\The Beatles - I've Just Seen a Face.mid
+        instrumentVolumes:
+          drumkit: 80
+      - name: EleonorRigby
+        displayName: Eleonor Rigby
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.Eleonor Rigby K.mid
+        instrumentVolumes:
+          vibraphone: 120
+      - name: Revolution
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.Revolution K.mid
+      - name: YellowSubmarine
+        displayName: Yellow Submarine
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.Yellow submarine K.mid
+      - name: TheNightBefore
+        displayName: The Night Before
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.The night before K.mid
+      - name: IFeelFine
+        displayName: I Feel Fine
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.I Feel fine   K.mid
+      - name: HelloGoodbye
+        displayName: Hello Goodbye
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.Hello Goodbye K.mid
+        instrumentVolumes:
+          piano: 130
+          pluckedStrings: 90
+      - name: IWantYou
+        displayName: I Want You (She's So Heavy)
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.I want you shes so heavy.mid
+      - name: LucyInTheSkyWithDiamonds
+        displayName: Lucy in the Sky With Diamonds
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.Lucy in the sky K.mid
+        instrumentVolumes:
+          sawtooth: 200
+        volume: 130
+      - name: NowhereMan
+        displayName: Nowhere Man
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.Nowhere man K.mid
+      - name: OctopusGarden
+        displayName: Octopus's Garden
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.Octopus's garden K.mid
+      - name: ObLaDiObLaDa
+        displayName: Ob-La-Di, Ob-La-Da
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.OblaDi OblaDa K.mid
+        instrumentVolumes:
+          drumkit: 90
+          celesta: 90
+      - name: Julia
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.Julia K.mid
+        instrumentVolumes:
+          leadGuitar: 110
+          celesta: 90
+      - name: TheLongAndWindingRoad
+        displayName: The Long and Winding Road
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.The long and winding road  K.mid
+        volume: 120
+      - name: Something
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.Something K.mid
+        volume: 120
+      - name: InMyLife
+        displayName: In My Life
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.In my life K.mid
+      - name: WhileMyGuitarGentlyWeeps
+        displayName: While My Guitar Gently Weeps
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\while.mid
+        instrumentVolumes:
+          piano: 130
+          vibraphone: 160
+        volume: 120
+      - name: LookingThroughAGlassOnion
+        displayName: Looking Through a Glass Onion
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\glass.mid
+        instrumentVolumes:
+          bassGuitar: 120
+          piano: 120
+          steelDrum: 120
+      - name: ADayInTheLife
+        displayName: A Day in the Life
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\adaylife.mid
+      - name: Everlong
+        artist: Foo Fighters
+        source: Music\BitMidi\Foo Fighters - Everlong.mid
+        instrumentOffsets:
+          leadGuitar: 0
+      - name: CarryOnMyWaywardSon
+        displayName: Carry On My Wayward Son
+        artist: Kansas
+        source: Music\BitMidi\Kansas - Carry On My Wayward Son.mid
+      - name: StrawberryFieldsForever
+        displayName: Strawberry Fields Forever
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\strawberry.mid
+        instrumentVolumes:
+          steelDrum: 80
+          drumkit: 80
+      - name: DearPrudence
+        displayName: Dear Prudence
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\dear.mid
+        instrumentOffsets:
+          leadGuitar: 0
+          bassGuitar: 0
+          celesta: 12
+      - name: LookingThroughYou
+        displayName: I'm Looking Through You
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\imlooking.mid
+        volume: 110
+      - name: EverybodysGotSomethingToHide
+        displayName: Everbody's Got Something to Hide
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\everybodyhide.mid
+      - name: BackInTheUssr
+        displayName: Back in the USSR
+        artist: The Beatles
+        source: Music\BitMidi\THE BEATLES.Back in USSR.mid
+      - name: DoYouWantToKnowASecret
+        displayName: Do You Want to Know a Secret
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\dosecret.mid
+        volume: 130
+      - name: LovelyRita
+        displayName: Lovely Rita
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\lovely.mid
+        instrumentOffsets:
+          piano: 12
+          bassGuitar: 12
+          celesta: 12
+      - name: InTheHallOfTheMountainKing
+        displayName: In the Hall of the Mountain King
+        artist: Edvard Grieg
+        source: Music\BitMidi\In the hall of the Mountain King.mid
+        instrumentOffsets:
+          piano: 12
+        volume: 130
+      - name: NeverGonnaGiveYouUp
+        displayName: Never Gonna Give You Up
+        artist: Rick Astley
+        source: Music\BitMidi\Never-Gonna-Give-You-Up-2.mid
+
+      # End with Closing Time
+      - name: ClosingTime
+        displayName: Closing Time
+        artist: Semisonic
+        source: Music\Midis101.com\Semisonic_Closing_Time.mid
+        instrumentVolumes:
+          piano: 120
+        volume: 70
+  - name: AbbyRoadMedley
+    loop: true
+    disabled: false
+    songs:
+      - name: YouNeverGiveMeYourMoney
+        displayName: You Never Give Me Your Money
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\younever.mid
+        gapless: true
+      - name: SunKing
+        displayName: Sun King
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\sunking.mid
+        gapless: true
+      - name: MeanMrMustard
+        displayName: Mean Mr. Mustard
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\mean.mid
+        gapless: true
+      - name: PolythenePam
+        displayName: Polythene Pam
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\poly.mid
+        gapless: true
+      - name: SheCameInThroughTheBathroomWindow
+        displayName: Came in Through Bathroom Window
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\shecame.mid
+        gapless: true
+      - name: GoldenSlumbers
+        displayName: Golden Slumbers
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\golden.mid
+        gapless: true
+      - name: CarryThatWeight
+        displayName: Carry That Weight
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\carry.mid
+        gapless: true
+      - name: TheEnd
+        displayName: The End
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\theend.mid
+        gapless: true
+      - name: HerMajesty
+        displayName: Her Majesty
+        artist: The Beatles
+        source: Music\BeatlesNumber9.com\hermajesty.mid
+        gapless: true
+  - songs:
+      - name: Cynthia
+        displayName: Approaching Champion Cynthia
+        artist: Go Ichinose
+        addressIndex: 998
+        source: Music\BitMidi\Pokemon DiamondPearlPlatinum - Approaching Champion Cynthia.mid
+        instrumentOffsets:
+          piano: 12
+        loop: true

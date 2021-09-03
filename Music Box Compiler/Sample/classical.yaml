@@ -1,0 +1,50 @@
+﻿playlists:
+  - name: Classical
+    loop: true
+    disabled: false
+    songs:
+      - name: BeethovenOpus57
+        displayName: "Opus #57"
+        artist: Beethoven
+        source: Music\BitMidi\Beethoven-Opus-57.mid
+        volume: 140
+      - name: Beethoven1stSymphony
+        displayName: 1st Symphony
+        artist: Beethoven
+        source: Music\Kunstderfuge.com\Beethoven\symphony_1_*_(c)lucarelli.mid
+      - name: Beethoven2ndSymphony
+        displayName: 2nd Symphony
+        artist: Beethoven
+        source: Music\Kunstderfuge.com\Beethoven\symphony_2_*_(c)lucarelli.mid
+      - name: Beethoven4thSymphony
+        displayName: 4th Symphony
+        artist: Beethoven
+        source: Music\Kunstderfuge.com\Beethoven\symphony_4_*_(c)cvikl.mid
+      - name: Beethoven5thSymphony
+        displayName: 5th Symphony
+        artist: Beethoven
+        source: Music\Kunstderfuge.com\Beethoven\symphony_5_*_(c)cvikl.mid
+      - name: Beethoven6thSymphony
+        displayName: 6th Symphony
+        artist: Beethoven
+        source: Music\Kunstderfuge.com\Beethoven\symphony_6_*_(c)cvikl.mid
+      - name: Beethoven7thSymphony
+        displayName: 7th Symphony
+        artist: Beethoven
+        source: Music\Kunstderfuge.com\Beethoven\symphony_7_*_(c)cvikl.mid
+      - name: Beethoven8thSymphony
+        displayName: 8th Symphony
+        artist: Beethoven
+        source: Music\Kunstderfuge.com\Beethoven\symphony_8_*_(c)lucarelli.mid
+      - name: Beethoven9thSymphony
+        displayName: 9th Symphony
+        artist: Beethoven
+        source: Music\Kunstderfuge.com\Beethoven\symphony_9_*_(c)cvikl.mid
+      - name: Mozart41stSymphony
+        displayName: "Symphony #41"
+        artist: Mozart
+        source: Music\Kunstderfuge.com\Mozart\symphony_41_551_*_(c)cvikl.mid
+      - name: MozartClarinetConcerto
+        displayName: "Clarinet Concerto"
+        artist: Mozart
+        source: Music\Kunstderfuge.com\Mozart\clarinet_concerto_622_*_(c)bakels.mid

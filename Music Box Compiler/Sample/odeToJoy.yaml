@@ -1,0 +1,16 @@
+﻿playlists:
+  - name: Default
+    songs:
+      - name: OdeToJoy
+        source: Music\Sheet Music.xlsx
+        spreadsheetTab: Ode to Joy
+    loop: true
+  - songs:
+      - name: Cynthia
+        displayName: Approaching Champion Cynthia
+        artist: Go Ichinose
+        addressIndex: 998
+        source: Music\BitMidi\Pokemon DiamondPearlPlatinum - Approaching Champion Cynthia.mid
+        instrumentOffsets:
+          piano: 12
+        loop: true

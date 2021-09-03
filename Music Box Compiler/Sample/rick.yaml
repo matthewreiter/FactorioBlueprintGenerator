@@ -1,0 +1,8 @@
+﻿playlists:
+  - name: Rick
+    loop: true
+    songs:
+      - name: NeverGonnaGiveYouUp
+        displayName: Never Gonna Give You Up
+        artist: Rick Astley
+        source: Music\BitMidi\Never-Gonna-Give-You-Up-2.mid

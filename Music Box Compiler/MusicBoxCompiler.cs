@@ -127,11 +127,23 @@ namespace MusicBoxCompiler
 
         private static MusicConfig LoadConfig(string configFile)
         {
+            var basePath = Path.GetDirectoryName(configFile);
             using var reader = new StreamReader(configFile);
             var deserializer = new DeserializerBuilder()
                 .WithNamingConvention(CamelCaseNamingConvention.Instance)
                 .Build();
-            return deserializer.Deserialize<MusicConfig>(reader);
+            var config = deserializer.Deserialize<MusicConfig>(reader);
+
+            return config with
+            {
+                Playlists = config.Playlists.Select(playlistConfig => playlistConfig with
+                {
+                    Songs = playlistConfig.Songs.Select(songConfig => songConfig with
+                    {
+                        Source = Path.Combine(basePath, songConfig.Source)
+                    }).ToList()
+                }).ToList()
+            };
         }
 
         private static double ProcessMasterVolume(double? masterVolume) => (masterVolume ?? 100) / 100;

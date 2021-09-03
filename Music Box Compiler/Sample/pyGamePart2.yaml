@@ -1,0 +1,5 @@
+﻿playlists:
+  - name: Classical
+    songs:
+      - source: classical.yaml
+        sourcePlaylist: Classical

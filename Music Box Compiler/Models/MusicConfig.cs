@@ -25,6 +25,9 @@ namespace MusicBoxCompiler.Models
         /// Indicates where the constant field holding the song's address should be located in memory relative to the base constant address.
         /// </summary>
         public int? AddressIndex { get; set; }
+        /// <summary>
+        /// May be an absolute path or a path relative to the music config.
+        /// </summary>
         public string Source { get; set; }
         public string SourcePlaylist { get; set; }
         public string SpreadsheetTab { get; set; }

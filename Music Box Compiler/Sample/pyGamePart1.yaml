@@ -1,0 +1,7 @@
+﻿playlists:
+  - name: Default
+    songs:
+      - source: musicConfig.yaml
+        sourcePlaylist: Default
+      - source: musicConfig.yaml
+        sourcePlaylist: AbbyRoadMedley

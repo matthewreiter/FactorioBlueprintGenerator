@@ -8,11 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Test\MusicConstants.cs" />
+    <Compile Remove="Test\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Test\MusicConstants.cs" />
+    <None Include="Test\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
