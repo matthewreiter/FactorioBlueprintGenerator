@@ -32,13 +32,14 @@ namespace MusicBoxCompiler
                     using var spreadsheetInputStream = File.OpenRead(tempFile);
                     using var reader = ExcelReaderFactory.CreateReader(spreadsheetInputStream);
 
-                    while (reader.NextResult())
+                    do
                     {
                         if (reader.Name == spreadsheetTab)
                         {
                             return ReadSongFromSpreadsheetTab(reader);
                         }
                     }
+                    while (reader.NextResult());
                 }
                 finally
                 {
