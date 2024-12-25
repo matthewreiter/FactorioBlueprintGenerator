@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace MusicBoxCompiler.Models
+namespace MusicBoxCompiler.Models;
+
+public class NoteGroup
 {
-    public class NoteGroup
-    {
-        public List<Note> Notes { get; set; }
-        public TimeSpan Length { get; set; }
-    }
+    public List<Note> Notes { get; set; }
+    public TimeSpan Length { get; set; }
 }

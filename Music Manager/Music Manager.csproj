@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="&quot;$(SolutionDir)FactoVision Compiler\bin\Debug\net5.0\FactoVisionCompiler.exe&quot; --InputProgram=&quot;$(TargetPath)&quot; --OutputBlueprint=&quot;$(ProjectDir)Output/rom.txt&quot; --OutputJson=&quot;$(ProjectDir)Output/rom.json&quot; --OutputInstructions=&quot;$(ProjectDir)Output/instructions.txt&quot; --Width=128 --Height=64 --SnapToGrid=true --X=-15 --Y=47" />
+    <Exec Command="&quot;$(SolutionDir)FactoVision Compiler\bin\Debug\net9.0\FactoVisionCompiler.exe&quot; --InputProgram=&quot;$(TargetPath)&quot; --OutputBlueprint=&quot;$(ProjectDir)Output/rom.txt&quot; --OutputJson=&quot;$(ProjectDir)Output/rom.json&quot; --OutputInstructions=&quot;$(ProjectDir)Output/instructions.txt&quot; --Width=128 --Height=64 --SnapToGrid=true --X=-15 --Y=47" />
   </Target>
 
 </Project>
