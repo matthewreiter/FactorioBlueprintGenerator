@@ -115,7 +115,7 @@ namespace BlueprintCommon.Models
 
         public static SignalID Create(string name)
         {
-            return new SignalID { Type = name.StartsWith("signal-") ? SignalTypes.Virtual : SignalTypes.Item, Name = name };
+            return new SignalID { Type = GetSignalType(name), Name = name };
         }
 
         public static SignalID CreateVirtual(string name)
@@ -126,6 +126,11 @@ namespace BlueprintCommon.Models
         public static SignalID CreateLetterOrDigit(char letterOrDigit)
         {
             return CreateVirtual(VirtualSignalNames.LetterOrDigit(letterOrDigit));
+        }
+
+        public static string GetSignalType(string name)
+        {
+            return name.StartsWith("signal-") || name.StartsWith("shape-") || name.EndsWith("-arrow") ? SignalTypes.Virtual : SignalTypes.Item;
         }
     }
 
@@ -286,9 +291,9 @@ namespace BlueprintCommon.Models
     public enum Direction : uint
     {
         Up = 0,
-        Right = 2,
-        Down = 4,
-        Left = 6
+        Right = 4,
+        Down = 8,
+        Left = 12
     }
 
     public class Inventory
@@ -551,6 +556,8 @@ namespace BlueprintCommon.Models
 
     public class ControlBehavior
     {
+        public Sections Sections { get; set; }
+
         public List<Filter> Filters { get; set; }
 
         public ArithmeticConditions Arithmetic_conditions { get; set; }
@@ -565,9 +572,53 @@ namespace BlueprintCommon.Models
         public bool? Use_colors { get; set; }
     }
 
+    public class Sections
+    {
+        [JsonPropertyName("sections")]
+        public List<Section> SectionList { get; set; }
+
+        public static Sections Create(List<Filter> filters)
+        {
+            return new Sections
+            {
+                SectionList = new List<Section>
+                {
+                    new Section
+                    {
+                        Filters = filters
+                    }
+                }
+            };
+        }
+    }
+
+    public class Section
+    {
+        public List<Filter> Filters { get; set; }
+
+        /// <summary>
+        /// Index of the section, 1-based.
+        /// </summary>
+        public int Index { get; set; }
+    }
+
     public class Filter
     {
         public SignalID Signal { get; set; }
+
+        /// <summary>
+        /// Type of the signal. Either "item", "fluid" or "virtual".
+        /// </summary>
+        public string Type { get; set; }
+
+        /// <summary>
+        /// Name of the signal prototype this filter is set to.
+        /// </summary>
+        public string Name { get; set; }
+
+        public string Quality { get; set; }
+
+        public string Comparator { get; set; }
 
         public int Count { get; set; }
 
@@ -580,7 +631,10 @@ namespace BlueprintCommon.Models
         {
             return new Filter
             {
-                Signal = SignalID.Create(signalName),
+                Type = SignalID.GetSignalType(signalName),
+                Name = signalName,
+                Quality = "normal",
+                Comparator = "=",
                 Count = count
             };
         }

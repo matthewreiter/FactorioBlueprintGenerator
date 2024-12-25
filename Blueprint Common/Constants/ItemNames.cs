@@ -20,9 +20,7 @@
         public const string Inserter = "inserter";
         public const string LongHandedInserter = "long-handed-inserter";
         public const string FastInserter = "fast-inserter";
-        public const string FilterInserter = "filter-inserter";
-        public const string StackInserter = "stack-inserter";
-        public const string StackFilterInserter = "stack-filter-inserter";
+        public const string BulkInserter = "bulk-inserter";
         public const string SmallElectricPole = "small-electric-pole";
         public const string MediumElectricPole = "medium-electric-pole";
         public const string BigElectricPole = "big-electric-pole";
@@ -31,6 +29,8 @@
         public const string PipeToGround = "pipe-to-ground";
         public const string Pump = "pump";
         public const string Rail = "rail";
+        public const string RailRamp = "rail-ramp";
+        public const string RailSupport = "rail-support";
         public const string TrainStop = "train-stop";
         public const string RailSignal = "rail-signal";
         public const string RailChainSignal = "rail-chain-signal";
@@ -44,11 +44,11 @@
         public const string SpidertronRemote = "spidertron-remote";
         public const string LogisticRobot = "logistic-robot";
         public const string ConstructionRobot = "construction-robot";
-        public const string ActiveProviderChest = "logistic-chest-active-provider";
-        public const string PassiveProviderChest = "logistic-chest-passive-provider";
-        public const string StorageChest = "logistic-chest-storage";
-        public const string BufferChest = "logistic-chest-buffer";
-        public const string RequesterChest = "logistic-chest-requester";
+        public const string ActiveProviderChest = "active-provider-chest";
+        public const string PassiveProviderChest = "passive-provider-chest";
+        public const string StorageChest = "storage-chest";
+        public const string BufferChest = "buffer-chest";
+        public const string RequesterChest = "requester-chest";
         public const string Roboport = "roboport";
         public const string Lamp = "small-lamp";
         public const string RedWire = "red-wire";
@@ -87,6 +87,9 @@
         public const string AssemblingMachine1 = "assembling-machine-1";
         public const string AssemblingMachine2 = "assembling-machine-2";
         public const string AssemblingMachine3 = "assembling-machine-3";
+        public const string RocketSilo = "rocket-silo";
+        public const string CargoLandingPad = "cargo-landing-pad";
+        public const string Satellite = "satellite";
 
         // Intermediate products
         public const string Wood = "wood";
@@ -114,22 +117,20 @@
         public const string CopperCable = "copper-cable";
         public const string IronStick = "iron-stick";
         public const string IronGearWheel = "iron-gear-wheel";
-        public const string EmptyBarrel = "empty-barrel";
+        public const string Barrel = "barrel";
         public const string ElectronicCircuit = "electronic-circuit";
         public const string AdvancedCircuit = "advanced-circuit";
         public const string ProcessingUnit = "processing-unit";
         public const string EngineUnit = "engine-unit";
         public const string ElectricEngineUnit = "electric-engine-unit";
         public const string FlyingRobotFrame = "flying-robot-frame";
-        public const string Satellite = "satellite";
-        public const string RocketControlUnit = "rocket-control-unit";
         public const string LowDensityStructure = "low-density-structure";
         public const string RocketFuel = "rocket-fuel";
         public const string NuclearFuel = "nuclear-fuel";
         public const string Uranium235 = "uranium-235";
         public const string Uranium238 = "uranium-238";
         public const string UraniumFuelCell = "uranium-fuel-cell";
-        public const string UsedUpUraniumFuelCell = "used-up-uranium-fuel-cell";
+        public const string DepletedUraniumFuelCell = "depleted-uranium-fuel-cell";
         public const string AutomationSciencePack = "automation-science-pack";
         public const string LogisticSciencePack = "logistic-science-pack";
         public const string MilitarySciencePack = "military-science-pack";
@@ -173,7 +174,7 @@
         public const string PowerArmor = "power-armor";
         public const string PowerArmorMk2 = "power-armor-mk2";
         public const string PortableSolarPanel = "solar-panel-equipment";
-        public const string PortableFusionReactor = "fusion-reactor-equipment";
+        public const string PortableFissionReactor = "fission-reactor-equipment";
         public const string PersonalBattery = "battery-equipment";
         public const string PersonalBatteryMk2 = "battery-mk2-equipment";
         public const string BeltImmunityEquipment = "belt-immunity-equipment";
@@ -194,6 +195,5 @@
         public const string ArtilleryTurret = "artillery-turret";
         public const string ArtilleryTargetingRemote = "artillery-targeting-remote";
         public const string Radar = "radar";
-        public const string RocketSilo = "rocket-silo";
     }
 }

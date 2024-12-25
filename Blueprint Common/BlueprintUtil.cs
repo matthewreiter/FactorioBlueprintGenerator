@@ -112,7 +112,17 @@ namespace BlueprintCommon
             {
                 foreach (var entity in blueprint.Entities)
                 {
-                    entity.Control_behavior?.Filters?.ForEachWithIndex((filter, index) => filter.Index = index + 1);
+                    var controlBehavior = entity.Control_behavior;
+                    if (controlBehavior != null)
+                    {
+                        controlBehavior.Sections?.SectionList?.ForEachWithIndex((section, index) =>
+                        {
+                            section.Index = index + 1;
+                            section.Filters?.ForEachWithIndex((filter, filterIndex) => filter.Index = filterIndex + 1);
+                        });
+
+                        controlBehavior.Filters?.ForEachWithIndex((filter, index) => filter.Index = index + 1);
+                    }
                 }
             }
         }

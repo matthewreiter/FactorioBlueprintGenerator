@@ -2,35 +2,35 @@
   "profiles": {
     "Music Box Compiler": {
       "commandName": "Project",
-      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/musicConfig.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputConstants=\"$(ProjectDir)/Test/MusicConstants.cs\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=96 --CellSize=2 --SnapToGrid=true --X=-32 --Y=39 --BaseAddress=3 --BaseMetadataAddress=1"
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/musicConfig.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputConstants=\"$(ProjectDir)/Test/MusicConstants.cs\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=128 --SnapToGrid=true --X=-32 --Y=39 --BaseAddress=3 --BaseMetadataAddress=1"
     },
     "Classical": {
       "commandName": "Project",
-      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/classical.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputConstants=\"$(ProjectDir)/Test/ClassicalMusicConstants.cs\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=96 --CellSize=2 --SnapToGrid=true --X=55 --Y=113 --BaseAddress=8192 --BaseNoteAddress=4194304 --BaseMetadataAddress=129"
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/classical.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputConstants=\"$(ProjectDir)/Test/ClassicalMusicConstants.cs\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=128 --SnapToGrid=true --X=55 --Y=113 --BaseAddress=8192 --BaseNoteAddress=4194304 --BaseMetadataAddress=129"
     },
     "Classical 2": {
       "commandName": "Project",
-      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/classical.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=96 --CellSize=2 --BaseAddress=3 --BaseMetadataAddress=1"
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/classical.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=128 --BaseAddress=3 --BaseMetadataAddress=1"
     },
     "Single": {
       "commandName": "Project",
-      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/single.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputConstants=\"$(ProjectDir)/Test/MusicConstants.cs\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=96 --CellSize=2 --SnapToGrid=true --X=-32 --Y=39 --BaseAddress=3 --BaseMetadataAddress=1"
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/single.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=128 --SnapToGrid=true --X=-32 --Y=39 --BaseAddress=3 --BaseMetadataAddress=1"
     },
     "Ode to Joy": {
       "commandName": "Project",
-      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/odeToJoy.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputConstants=\"$(ProjectDir)/Test/MusicConstants.cs\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=64 --Height=5 --BaseAddress=3 --BaseMetadataAddress=1"
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/odeToJoy.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=64 --Height=5 --BaseAddress=3 --BaseMetadataAddress=1"
     },
     "Rick": {
       "commandName": "Project",
-      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/rick.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=64 --Height=3 --CellSize=2 --BaseAddress=3 --BaseMetadataAddress=1"
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/rick.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=64 --Height=3 --BaseAddress=3 --BaseMetadataAddress=1"
     },
     "PyGamePart1": {
       "commandName": "Project",
-      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/pyGamePart1.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=96 --CellSize=2 --SnapToGrid=true --X=35 --Y=115 --BaseAddress=3 --BaseMetadataAddress=1 --NextAddress=8192"
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/pyGamePart1.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=128 --SnapToGrid=true --X=35 --Y=115 --BaseAddress=3 --BaseMetadataAddress=1 --NextAddress=8192"
     },
     "PyGamePart2": {
       "commandName": "Project",
-      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/pyGamePart2.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=96 --CellSize=2 --SnapToGrid=true --X=-57 --Y=115 --BaseAddress=8192 --BaseNoteAddress=4194304 --BaseMetadataAddress=129 --NextAddress=3"
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/pyGamePart2.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=128 --SnapToGrid=true --X=-57 --Y=115 --BaseAddress=8192 --BaseNoteAddress=4194304 --BaseMetadataAddress=129 --NextAddress=3"
     }
   }
 }

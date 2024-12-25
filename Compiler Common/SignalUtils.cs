@@ -1,17 +1,16 @@
 ﻿using BlueprintGenerator.Constants;
 
-namespace CompilerCommon
-{
-    public static class SignalUtils
-    {
-        /// <summary>
-        /// The maximum number of signals in a single memory cell.
-        /// </summary>
-        public const int MaxSignals = 20;
+namespace CompilerCommon;
 
-        public static string GetSignalByNumber(int signalNumber)
-        {
-            return ComputerSignals.OrderedSignals[signalNumber - 1];
-        }
+public static class SignalUtils
+{
+    /// <summary>
+    /// The maximum number of signals the compiler supports in a single memory cell.
+    /// </summary>
+    public const int MaxSignals = 200;
+
+    public static string GetSignalByNumber(int signalNumber)
+    {
+        return ComputerSignals.OrderedSignals[signalNumber - 1];
     }
 }
