@@ -329,6 +329,10 @@ playlists:
         instrumentOffsets:
           piano: 12
         volume: 130
+      - name: BeastAndTheHarlot
+        displayName: Beast and the Harlot
+        artist: Avenged Sevenfold
+        source: Music\OnlineSequencer.net\Avenged Sevenfold - Beast And The Harlot v7.mid
       - name: NeverGonnaGiveYouUp
         displayName: Never Gonna Give You Up
         artist: Rick Astley
