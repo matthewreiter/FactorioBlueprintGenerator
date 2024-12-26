@@ -66,7 +66,7 @@ public static class MusicBoxCompiler
                                             Name = $"{songConfig.Name}Part{index + 1}",
                                             DisplayName = songConfig.DisplayName != null ? $"{songConfig.DisplayName} (Part {index + 1})" : null,
                                             Source = source,
-                                            Gapless = index < files.Length - 1 || songConfig.Gapless
+                                            Gapless = songConfig.Gapless
                                         });
                                 }
                             }
