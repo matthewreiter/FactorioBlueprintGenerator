@@ -126,6 +126,7 @@ public static class MidiReader
     };
     private const Instrument LowFallbackInstrument = Instrument.LeadGuitar;
     private const Instrument HighFallbackInstrument = Instrument.Celesta;
+    private static readonly TimeSpan TickDuration = TimeSpan.FromMilliseconds(17); // 17 is 1000ms / 60fps, rounded up
 
     private static Dictionary<int, Instrument> CreateInstrumentMap(params InstrumentMapping[] mappings)
     {
@@ -194,12 +195,14 @@ public static class MidiReader
                             ? Enumerable.Range(minOctaveShift, maxOctaveShift - minOctaveShift + 1)
                                 .Select(octavesOutOfRange =>
                                 {
-                                    var octavesThatAreOutOfRange = octaves.Where(octave => octave.OctaveNumber - octavesOutOfRange < 0 || octave.OctaveNumber - octavesOutOfRange > maxAllowedOctave);
+                                    bool IsOutOfRange(int octaveNumber) => octaveNumber < -1 || octaveNumber > maxAllowedOctave;
+
+                                    var octavesThatAreOutOfRange = octaves.Where(octave => IsOutOfRange(octave.OctaveNumber - octavesOutOfRange));
 
                                     return (
                                         OctaveShift: -octavesOutOfRange,
-                                        NotesStillOutOfRange: octavesThatAreOutOfRange.Where(octave => octave.OctaveNumber < 0 || octave.OctaveNumber > maxAllowedOctave).Sum(octave => octave.NoteCount),
-                                        NewNotesOutOfRange: octavesThatAreOutOfRange.Where(octave => !(octave.OctaveNumber < 0 || octave.OctaveNumber > maxAllowedOctave)).Sum(octave => octave.NoteCount)
+                                        NotesStillOutOfRange: octavesThatAreOutOfRange.Where(octave => IsOutOfRange(octave.OctaveNumber)).Sum(octave => octave.NoteCount),
+                                        NewNotesOutOfRange: octavesThatAreOutOfRange.Where(octave => !IsOutOfRange(octave.OctaveNumber)).Sum(octave => octave.NoteCount)
                                     );
                                 })
                                 // Order by the number of notes still out of range, imposing a penalty for each octave we shift to favor shifting less even if a few notes are left behind
@@ -254,7 +257,7 @@ public static class MidiReader
 
                 playedNote = midiNote.RelativeNoteNumber;
                 var effectiveNoteNumber = midiNote.RelativeNoteNumber + noteOffset;
-                isNoteInRange = effectiveNoteNumber > 0 && effectiveNoteNumber <= instrumentInfo.NoteCount;
+                isNoteInRange = effectiveNoteNumber > (instrument == Instrument.Drumkit ? 0 : -12) && effectiveNoteNumber <= instrumentInfo.NoteCount;
                 volume = Math.Min(midiNote.Velocity * midiNote.Expression * midiNote.ChannelVolume * instrumentInfo.BaseVolume * instrumentVolume * masterVolume, 1);
 
                 if (!isNoteInRange && instrument != Instrument.Drumkit && allowInstrumentFallback)
@@ -262,7 +265,7 @@ public static class MidiReader
                     var fallbackInstrument = effectiveNoteNumber <= 0 ? LowFallbackInstrument : HighFallbackInstrument;
                     var fallbackInstrumentInfo = Instruments[fallbackInstrument];
                     var fallbackEffectiveNoteNumber = effectiveNoteNumber + fallbackInstrumentInfo.BaseNoteOffset - instrumentInfo.BaseNoteOffset;
-                    var isFallbackNoteInRange = fallbackEffectiveNoteNumber > 0 && fallbackEffectiveNoteNumber <= fallbackInstrumentInfo.NoteCount;
+                    var isFallbackNoteInRange = fallbackEffectiveNoteNumber > -12 && fallbackEffectiveNoteNumber <= fallbackInstrumentInfo.NoteCount;
 
                     if (isFallbackNoteInRange)
                     {
@@ -274,28 +277,35 @@ public static class MidiReader
 
                 if (isNoteInRange)
                 {
-                    if (timeDelta >= TimeSpan.FromMilliseconds(17) || currentNotes.Count >= ChannelCount) // 17 is 1000ms / 60fps, rounded up
+                    // Replace a note that is up to an octave too low with its first three harmonics (excluding itself), which sound close enough to the original note
+                    List<int> effectiveNoteNumbers = effectiveNoteNumber > 0
+                        ? [effectiveNoteNumber]
+                        : [effectiveNoteNumber + 12, effectiveNoteNumber + 19, effectiveNoteNumber + 24];
+
+                    if (timeDelta >= TickDuration || currentNotes.Count + effectiveNoteNumbers.Count > ChannelCount)
                     {
                         noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = timeDelta });
                         currentNotes = [];
                         lastTime = midiNote.CurrentTime;
                     }
 
-                    var duplicateNote = currentNotes.Find(note => note.Instrument == instrument && note.Number == effectiveNoteNumber);
+                    foreach (var noteNumber in effectiveNoteNumbers)
+                    {
+                        var duplicateNote = currentNotes.Find(note => note.Instrument == instrument && note.Number == noteNumber);
 
-                    if (duplicateNote != null)
-                    {
-                        duplicateNote.Volume = Math.Max(volume, duplicateNote.Volume);
-                    }
-                    else
-                    {
-                        currentNotes.Add(new Note
+                        if (duplicateNote is not null)
                         {
-                            Instrument = instrument,
-                            Number = effectiveNoteNumber,
-                            Pitch = playedNote - (instrument != Instrument.Drumkit ? 40 : 0),
-                            Volume = volume
-                        });
+                            duplicateNote.Volume = Math.Max(volume, duplicateNote.Volume);
+                        }
+                        else
+                        {
+                            currentNotes.Add(new Note
+                            {
+                                Instrument = instrument,
+                                Number = noteNumber,
+                                Volume = volume
+                            });
+                        }
                     }
                 }
             }

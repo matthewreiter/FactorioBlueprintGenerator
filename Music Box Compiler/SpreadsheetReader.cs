@@ -106,7 +106,6 @@ public static class SpreadsheetReader
                                     {
                                         Instrument = instrument,
                                         Number = effectiveNoteNumber + noteOffset,
-                                        Pitch = isDrum ? effectiveNoteNumber * 5 : effectiveNoteNumber,
                                         Name = isDrum ? noteName : $"{noteName[0]}{sharpOrFlat}{noteName.Substring(1)}",
                                         Volume = instrumentVolume * masterVolume,
                                         Length = length
