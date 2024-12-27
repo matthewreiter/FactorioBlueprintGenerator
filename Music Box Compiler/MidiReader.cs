@@ -126,7 +126,7 @@ public static class MidiReader
     };
     private const Instrument LowFallbackInstrument = Instrument.LeadGuitar;
     private const Instrument HighFallbackInstrument = Instrument.Celesta;
-    private static readonly TimeSpan TickDuration = TimeSpan.FromMilliseconds(17); // 17 is 1000ms / 60fps, rounded up
+    private static readonly TimeSpan TickDuration = TimeSpan.FromMilliseconds(1000d / 60); // 1000ms / 60fps (approximately 17 ms per tick)
 
     private static Dictionary<int, Instrument> CreateInstrumentMap(params InstrumentMapping[] mappings)
     {
@@ -242,7 +242,7 @@ public static class MidiReader
         var currentNotes = new List<Note>();
         var noteGroups = new List<NoteGroup>();
 
-        foreach (var midiNote in midiNotes)
+        foreach (var midiNote in midiNotes.SelectMany(ExpandNote).OrderBy(midiNote => midiNote.StartTime))
         {
             var instrument = midiNote.Instrument;
             var isNoteInRange = true;
@@ -253,7 +253,7 @@ public static class MidiReader
             {
                 var noteOffset = instrumentOffsets != null && instrumentOffsets.TryGetValue(instrument, out var offsetValue) ? offsetValue : 0;
                 var instrumentVolume = instrumentVolumes != null && instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
-                var timeDelta = midiNote.CurrentTime - lastTime;
+                var timeDelta = midiNote.StartTime - lastTime;
 
                 playedNote = midiNote.RelativeNoteNumber;
                 var effectiveNoteNumber = midiNote.RelativeNoteNumber + noteOffset;
@@ -286,7 +286,7 @@ public static class MidiReader
                     {
                         noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = timeDelta });
                         currentNotes = [];
-                        lastTime = midiNote.CurrentTime;
+                        lastTime = midiNote.StartTime;
                     }
 
                     foreach (var noteNumber in effectiveNoteNumbers)
@@ -320,9 +320,11 @@ public static class MidiReader
 
                 var isInstrumentMapped = instrument != Instrument.Unknown;
                 midiEventWriter.WriteLine($"{lastTime:mm\\:ss\\.fff}: {midiNote.OriginalInstrumentName} {midiNote.OriginalNoteName} velocity {midiNote.Velocity:F2} expression {midiNote.Expression:F2} channel volume {midiNote.ChannelVolume:F2}" +
+                    (!midiNote.IsExpanded && midiNote.EndTime is not null ? $" duration {midiNote.EndTime - midiNote.StartTime}" : "") +
                     (isInstrumentMapped ? $" => {instrumentAndNote} volume {volume:F2}" : "") +
                     (!isNoteInRange ? " (note not in range)" : "") +
-                    (!isInstrumentMapped ? " (instrument not mapped)" : ""));
+                    (!isInstrumentMapped ? " (instrument not mapped)" : "" +
+                    (midiNote.IsExpanded ? " (expanded)" : "")));
             }
         }
 
@@ -344,6 +346,22 @@ public static class MidiReader
         };
     }
 
+    private static IEnumerable<MidiNote> ExpandNote(MidiNote note)
+    {
+        yield return note;
+
+        if (note.EndTime is null)
+        {
+            yield break;
+        }
+
+        var step = TickDuration * 4;
+        for (var time = note.StartTime + step; time < note.EndTime; time += step)
+        {
+            yield return note with { StartTime = time, Velocity = note.Velocity * 0.25, IsExpanded = true };
+        }
+    }
+
     private static MidiData ReadMidiFile(string midiFile)
     {
         using var fileReader = File.OpenRead(midiFile);
@@ -354,6 +372,7 @@ public static class MidiReader
         var currentTimeMillis = 0d;
         var lastNoteTimeMillis = 0d;
         var notes = new List<MidiNote>();
+        var activeNotes = new Dictionary<(byte Channel, byte Program, byte NoteNumber), MidiNote>();
         var trackName = new List<string>();
         var text = new List<string>();
         var copyright = new List<string>();
@@ -388,11 +407,12 @@ public static class MidiReader
 
                     break;
                 case MidiEvent.NoteOn:
+                case MidiEvent.NoteOff:
+                    var noteNumber = midiEvent.Msb;
                     var velocity = midiEvent.Lsb;
 
-                    if (velocity > 0)
+                    if (midiEvent.EventType == MidiEvent.NoteOn && velocity > 0)
                     {
-                        var noteNumber = midiEvent.Msb;
                         var isPercussion = midiEvent.Channel == PercussionMidiChannel;
                         var channelVolume = channel.Controls[MidiCC.Volume];
                         var expression = channel.Controls[MidiCC.Expression];
@@ -405,37 +425,34 @@ public static class MidiReader
                             ? DrumNames.TryGetValue(noteNumber, out var drumName) ? drumName : noteNumber.ToString()
                             : $"{Notes[noteNumber % Notes.Count]}{noteNumber / Notes.Count - 1}";
 
+                        var relativeNoteNumber = instrument == Instrument.Unknown
+                            ? 0
+                            : isPercussion
+                                ? DrumMap.TryGetValue(noteNumber, out var drum) ? (int)drum : 0
+                                : instrument == Instrument.Drumkit
+                                    ? (int)Drum.ReverseCymbal
+                                    : noteNumber + instrumentInfo.BaseNoteOffset;
+
                         var note = new MidiNote
                         {
                             OriginalInstrumentName = instrumentName,
                             OriginalNoteName = noteName,
                             OriginalNoteNumber = noteNumber,
                             Instrument = instrument,
+                            RelativeNoteNumber = relativeNoteNumber,
                             Velocity = velocity / 127d,
                             Expression = expression > 0 ? expression / 127d : 1,
                             ChannelVolume = channelVolume > 0 ? channelVolume / 127d : 1,
-                            CurrentTime = TimeSpan.FromMilliseconds(currentTimeMillis)
+                            StartTime = TimeSpan.FromMilliseconds(currentTimeMillis)
                         };
 
-                        if (instrument != Instrument.Unknown)
-                        {
-                            var relativeNoteNumber = isPercussion
-                                ? DrumMap.TryGetValue(noteNumber, out var drum) ? (int)drum : 0
-                                : instrument == Instrument.Drumkit
-                                    ? (int)Drum.ReverseCymbal
-                                    : noteNumber + instrumentInfo.BaseNoteOffset;
-
-                            note = note with { RelativeNoteNumber = relativeNoteNumber };
-                        }
-
                         notes.Add(note);
+                        activeNotes[(midiEvent.Channel, channel.Program, noteNumber)] = note;
                         lastNoteTimeMillis = currentTimeMillis;
                     }
-
-                    break;
-                case MidiEvent.NoteOff:
+                    else if (activeNotes.Remove((midiEvent.Channel, channel.Program, noteNumber), out var note))
                     {
-                        var noteNumber = midiEvent.Msb;
+                        note.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
                     }
 
                     break;
@@ -476,6 +493,8 @@ public static class MidiReader
         public double Velocity { get; init; }
         public double Expression { get; init; }
         public double ChannelVolume { get; init; }
-        public TimeSpan CurrentTime { get; init; }
+        public TimeSpan StartTime { get; init; }
+        public TimeSpan? EndTime { get; set; }
+        public bool IsExpanded { get; init; }
     }
 }
