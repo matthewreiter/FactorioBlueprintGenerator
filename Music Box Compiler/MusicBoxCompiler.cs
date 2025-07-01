@@ -80,7 +80,14 @@ public static class MusicBoxCompiler
                             Path.GetExtension(songConfig.Source).ToLower() switch
                             {
                                 ".xlsx" => SpreadsheetReader.ReadSongFromSpreadsheet(songConfig.Source, songConfig.SpreadsheetTab),
-                                ".mid" => MidiReader.ReadSong(songConfig.Source, outputMidiEventsFile != null, songConfig.InstrumentOffsets, ProcessMasterVolume(songConfig.Volume), ProcessInstrumentVolumes(songConfig.InstrumentVolumes), !songConfig.SuppressInstrumentFallback),
+                                ".mid" => MidiReader.ReadSong(
+                                    songConfig.Source,
+                                    outputMidiEventsFile != null,
+                                    songConfig.InstrumentOffsets,
+                                    ProcessMasterVolume(songConfig.Volume),
+                                    ProcessInstrumentVolumes(songConfig.InstrumentVolumes),
+                                    !songConfig.SuppressInstrumentFallback,
+                                    songConfig.ExpandNotes),
                                 _ => throw new Exception($"Unsupported source file extension for {songConfig.Source}")
                             } with { Name = songConfig.Name, DisplayName = songConfig.DisplayName, Artist = songConfig.Artist, Loop = songConfig.Loop, Gapless = songConfig.Gapless, AddressIndex = songConfig.AddressIndex }
                         )
@@ -133,13 +140,13 @@ public static class MusicBoxCompiler
 
         return config with
         {
-            Playlists = config.Playlists.Select(playlistConfig => playlistConfig with
+            Playlists = [.. config.Playlists.Select(playlistConfig => playlistConfig with
             {
-                Songs = playlistConfig.Songs.Select(songConfig => songConfig with
+                Songs = [.. playlistConfig.Songs.Select(songConfig => songConfig with
                 {
                     Source = Path.Combine(basePath, songConfig.Source)
-                }).ToList()
-            }).ToList()
+                })]
+            })]
         };
     }
 

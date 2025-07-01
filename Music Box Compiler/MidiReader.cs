@@ -135,7 +135,7 @@ public static class MidiReader
             .ToDictionary(entry => entry.channel, entry => entry.Instrument);
     }
 
-    public static Song ReadSong(string midiFile, bool debug, Dictionary<Instrument, int> instrumentOffsets, double masterVolume, Dictionary<Instrument, double> instrumentVolumes, bool allowInstrumentFallback)
+    public static Song ReadSong(string midiFile, bool debug, Dictionary<Instrument, int> instrumentOffsets, double masterVolume, Dictionary<Instrument, double> instrumentVolumes, bool allowInstrumentFallback, bool expandNotes)
     {
         const int unreasonablyHighOctave = 12; // This is to ensure that we don't have a negative number before calculating the octave, which would throw off the result
 
@@ -238,55 +238,72 @@ public static class MidiReader
             }
         }
 
+        IEnumerable<MidiNote> expandedMidiNotes = expandNotes
+            ? midiNotes.SelectMany(ExpandNote).OrderBy(midiNote => midiNote.StartTime)
+            : midiNotes;
+
         var lastTime = TimeSpan.Zero;
+        var currentTime = TimeSpan.Zero;
         var currentNotes = new List<Note>();
         var noteGroups = new List<NoteGroup>();
 
-        foreach (var midiNote in midiNotes.SelectMany(ExpandNote).OrderBy(midiNote => midiNote.StartTime))
+        foreach (var midiNote in expandedMidiNotes)
         {
             var instrument = midiNote.Instrument;
             var isNoteInRange = true;
-            var playedNote = 0;
+            var effectiveNoteNumber = 0;
             var volume = 0d;
 
             if (Instruments.TryGetValue(instrument, out var instrumentInfo))
             {
                 var noteOffset = instrumentOffsets != null && instrumentOffsets.TryGetValue(instrument, out var offsetValue) ? offsetValue : 0;
                 var instrumentVolume = instrumentVolumes != null && instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
-                var timeDelta = midiNote.StartTime - lastTime;
 
-                playedNote = midiNote.RelativeNoteNumber;
-                var effectiveNoteNumber = midiNote.RelativeNoteNumber + noteOffset;
+                effectiveNoteNumber = midiNote.RelativeNoteNumber + noteOffset;
                 isNoteInRange = effectiveNoteNumber > (instrument == Instrument.Drumkit ? 0 : -12) && effectiveNoteNumber <= instrumentInfo.NoteCount;
                 volume = Math.Min(midiNote.Velocity * midiNote.Expression * midiNote.ChannelVolume * instrumentInfo.BaseVolume * instrumentVolume * masterVolume, 1);
 
-                if (!isNoteInRange && instrument != Instrument.Drumkit && allowInstrumentFallback)
+                if (!isNoteInRange && instrument != Instrument.Drumkit)
                 {
-                    var fallbackInstrument = effectiveNoteNumber <= 0 ? LowFallbackInstrument : HighFallbackInstrument;
-                    var fallbackInstrumentInfo = Instruments[fallbackInstrument];
-                    var fallbackEffectiveNoteNumber = effectiveNoteNumber + fallbackInstrumentInfo.BaseNoteOffset - instrumentInfo.BaseNoteOffset;
-                    var isFallbackNoteInRange = fallbackEffectiveNoteNumber > -12 && fallbackEffectiveNoteNumber <= fallbackInstrumentInfo.NoteCount;
-
-                    if (isFallbackNoteInRange)
+                    if (allowInstrumentFallback)
                     {
-                        instrument = fallbackInstrument;
-                        effectiveNoteNumber = fallbackEffectiveNoteNumber;
+                        var originalBaseNoteOffset = instrumentInfo.BaseNoteOffset;
+
+                        instrument = effectiveNoteNumber <= 0 ? LowFallbackInstrument : HighFallbackInstrument;
+                        instrumentInfo = Instruments[instrument];
+                        effectiveNoteNumber += instrumentInfo.BaseNoteOffset - originalBaseNoteOffset;
+                        isNoteInRange = effectiveNoteNumber > -12 && effectiveNoteNumber <= instrumentInfo.NoteCount;
+                    }
+
+                    // As a last resort, force notes into range by adjusting their octave up or down
+                    if (!isNoteInRange)
+                    {
+                        if (effectiveNoteNumber < 0)
+                        {
+                            effectiveNoteNumber %= 12;
+                        }
+                        else
+                        {
+                            effectiveNoteNumber = instrumentInfo.NoteCount + effectiveNoteNumber % 12 - 12;
+                        }
+
                         isNoteInRange = true;
                     }
                 }
 
                 if (isNoteInRange)
                 {
-                    // Replace a note that is up to an octave too low with its first three harmonics (excluding itself), which sound close enough to the original note
+                    // Replace a note that is up to an octave too low with its second through fourth harmonic, which sound close enough to the original note
                     List<int> effectiveNoteNumbers = effectiveNoteNumber > 0
                         ? [effectiveNoteNumber]
                         : [effectiveNoteNumber + 12, effectiveNoteNumber + 19, effectiveNoteNumber + 24];
 
-                    if (timeDelta >= TickDuration || currentNotes.Count + effectiveNoteNumbers.Count > ChannelCount)
+                    if (midiNote.StartTime - currentTime >= TickDuration || currentNotes.Count + effectiveNoteNumbers.Count > ChannelCount)
                     {
-                        noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = timeDelta });
+                        noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = currentTime - lastTime });
                         currentNotes = [];
-                        lastTime = midiNote.StartTime;
+                        lastTime = currentTime;
+                        currentTime = midiNote.StartTime;
                     }
 
                     foreach (var noteNumber in effectiveNoteNumbers)
@@ -312,10 +329,11 @@ public static class MidiReader
 
             if (midiEventWriter != null)
             {
+                var notePlayed = effectiveNoteNumber - instrumentInfo.BaseNoteOffset;
                 var instrumentAndNote = instrument switch
                 {
-                    Instrument.Drumkit => isNoteInRange ? Drums[playedNote - 1] : "Unknown",
-                    _ => $"{instrument} {Notes[(playedNote + unreasonablyHighOctave * Notes.Count) % Notes.Count]}{playedNote / Notes.Count - 1}"
+                    Instrument.Drumkit => isNoteInRange ? Drums[effectiveNoteNumber - 1] : "Unknown",
+                    _ => $"{instrument} {Notes[(notePlayed + unreasonablyHighOctave * Notes.Count) % Notes.Count]}{notePlayed / Notes.Count - 1}"
                 };
 
                 var isInstrumentMapped = instrument != Instrument.Unknown;
@@ -330,8 +348,7 @@ public static class MidiReader
 
         if (currentNotes.Count > 0)
         {
-            var currentTime = totalPlayTime;
-            var timeDelta = currentTime - lastTime;
+            var timeDelta = totalPlayTime - lastTime;
 
             noteGroups.Add(new() { Notes = currentNotes, Length = timeDelta });
         }
@@ -355,10 +372,44 @@ public static class MidiReader
             yield break;
         }
 
+        var pressureIndex = 0;
+        var pressure = 0d;
+
+        var expressionIndex = 0;
+        var expression = note.Expression;
+
+        var volumeIndex = 0;
+        var volume = note.ChannelVolume;
+
         var step = TickDuration * 4;
         for (var time = note.StartTime + step; time < note.EndTime; time += step)
         {
-            yield return note with { StartTime = time, Velocity = note.Velocity * 0.25, IsExpanded = true };
+            while (pressureIndex < note.PressuresChanges.Count && note.PressuresChanges[pressureIndex].Time <= time)
+            {
+                pressure = note.PressuresChanges[pressureIndex].Pressure;
+                pressureIndex++;
+            }
+
+            while (expressionIndex < note.ExpressionChanges.Count && note.ExpressionChanges[expressionIndex].Time <= time)
+            {
+                expression = note.ExpressionChanges[expressionIndex].Expression;
+                expressionIndex++;
+            }
+
+            while (volumeIndex < note.VolumeChanges.Count && note.VolumeChanges[volumeIndex].Time <= time)
+            {
+                volume = note.VolumeChanges[volumeIndex].Volume;
+                volumeIndex++;
+            }
+
+            yield return note with
+            {
+                StartTime = time,
+                Velocity = note.Velocity * (pressure + 1) * 0.25,
+                Expression = expression,
+                ChannelVolume = volume,
+                IsExpanded = true
+            };
         }
     }
 
@@ -372,7 +423,7 @@ public static class MidiReader
         var currentTimeMillis = 0d;
         var lastNoteTimeMillis = 0d;
         var notes = new List<MidiNote>();
-        var activeNotes = new Dictionary<(byte Channel, byte Program, byte NoteNumber), MidiNote>();
+        var activeNotes = Enumerable.Range(0, machine.Channels.Count).Select(_ => new Dictionary<(byte Program, byte NoteNumber), MidiNote>()).ToArray();
         var trackName = new List<string>();
         var text = new List<string>();
         var copyright = new List<string>();
@@ -381,6 +432,7 @@ public static class MidiReader
         {
             var midiEvent = midiMessage.Event;
             var channel = machine.Channels[midiEvent.Channel];
+            var currentChannelActiveNotes = activeNotes[midiEvent.Channel];
 
             currentTimeMillis += tempo / 1000d * midiMessage.DeltaTime / music.DeltaTimeSpec;
 
@@ -406,53 +458,111 @@ public static class MidiReader
                     }
 
                     break;
-                case MidiEvent.NoteOn:
-                case MidiEvent.NoteOff:
-                    var noteNumber = midiEvent.Msb;
-                    var velocity = midiEvent.Lsb;
-
-                    if (midiEvent.EventType == MidiEvent.NoteOn && velocity > 0)
+                case MidiEvent.NoteOn or MidiEvent.NoteOff:
                     {
-                        var isPercussion = midiEvent.Channel == PercussionMidiChannel;
-                        var channelVolume = channel.Controls[MidiCC.Volume];
-                        var expression = channel.Controls[MidiCC.Expression];
-                        var instrument = isPercussion
-                            ? Instrument.Drumkit
-                            : InstrumentMap.TryGetValue(channel.Program, out var instrumentValue) ? instrumentValue : Instrument.Unknown;
-                        var instrumentInfo = Instruments.TryGetValue(instrument, out var info) ? info : null;
-                        var instrumentName = (isPercussion ? GeneralMidi.DrumKitsGM2.ElementAtOrDefault(channel.Program) : GeneralMidi.InstrumentNames.ElementAtOrDefault(channel.Program)) ?? channel.Program.ToString();
-                        var noteName = isPercussion
-                            ? DrumNames.TryGetValue(noteNumber, out var drumName) ? drumName : noteNumber.ToString()
-                            : $"{Notes[noteNumber % Notes.Count]}{noteNumber / Notes.Count - 1}";
+                        var noteNumber = midiEvent.Msb;
+                        var velocity = midiEvent.Lsb;
 
-                        var relativeNoteNumber = instrument == Instrument.Unknown
-                            ? 0
-                            : isPercussion
-                                ? DrumMap.TryGetValue(noteNumber, out var drum) ? (int)drum : 0
-                                : instrument == Instrument.Drumkit
-                                    ? (int)Drum.ReverseCymbal
-                                    : noteNumber + instrumentInfo.BaseNoteOffset;
-
-                        var note = new MidiNote
+                        if (midiEvent.EventType == MidiEvent.NoteOn && velocity > 0)
                         {
-                            OriginalInstrumentName = instrumentName,
-                            OriginalNoteName = noteName,
-                            OriginalNoteNumber = noteNumber,
-                            Instrument = instrument,
-                            RelativeNoteNumber = relativeNoteNumber,
-                            Velocity = velocity / 127d,
-                            Expression = expression > 0 ? expression / 127d : 1,
-                            ChannelVolume = channelVolume > 0 ? channelVolume / 127d : 1,
-                            StartTime = TimeSpan.FromMilliseconds(currentTimeMillis)
-                        };
+                            var isPercussion = midiEvent.Channel == PercussionMidiChannel;
+                            var channelVolume = channel.Controls[MidiCC.Volume];
+                            var expression = channel.Controls[MidiCC.Expression];
+                            var instrument = isPercussion
+                                ? Instrument.Drumkit
+                                : InstrumentMap.TryGetValue(channel.Program, out var instrumentValue) ? instrumentValue : Instrument.Piano;
+                            var instrumentInfo = Instruments.TryGetValue(instrument, out var info) ? info : null;
+                            var instrumentName = (isPercussion ? GeneralMidi.DrumKitsGM2.ElementAtOrDefault(channel.Program) : GeneralMidi.InstrumentNames.ElementAtOrDefault(channel.Program)) ?? channel.Program.ToString();
+                            var noteName = isPercussion
+                                ? DrumNames.TryGetValue(noteNumber, out var drumName) ? drumName : noteNumber.ToString()
+                                : $"{Notes[noteNumber % Notes.Count]}{noteNumber / Notes.Count - 1}";
 
-                        notes.Add(note);
-                        activeNotes[(midiEvent.Channel, channel.Program, noteNumber)] = note;
-                        lastNoteTimeMillis = currentTimeMillis;
+                            var relativeNoteNumber = instrument == Instrument.Unknown
+                                ? 0
+                                : isPercussion
+                                    ? (int)(DrumMap.TryGetValue(noteNumber, out var drum) ? drum : Drum.Snare1)
+                                    : instrument == Instrument.Drumkit
+                                        ? (int)Drum.ReverseCymbal
+                                        : noteNumber + instrumentInfo.BaseNoteOffset;
+
+                            var note = new MidiNote
+                            {
+                                OriginalInstrumentName = instrumentName,
+                                OriginalNoteName = noteName,
+                                OriginalNoteNumber = noteNumber,
+                                Instrument = instrument,
+                                RelativeNoteNumber = relativeNoteNumber,
+                                Velocity = velocity / 127d,
+                                Expression = expression > 0 ? expression / 127d : 1,
+                                ChannelVolume = channelVolume > 0 ? channelVolume / 127d : 1,
+                                StartTime = TimeSpan.FromMilliseconds(currentTimeMillis)
+                            };
+
+                            notes.Add(note);
+                            currentChannelActiveNotes[(channel.Program, noteNumber)] = note;
+                            lastNoteTimeMillis = currentTimeMillis;
+                        }
+                        else if (currentChannelActiveNotes.Remove((channel.Program, noteNumber), out var note))
+                        {
+                            note.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
+                            lastNoteTimeMillis = currentTimeMillis;
+                        }
                     }
-                    else if (activeNotes.Remove((midiEvent.Channel, channel.Program, noteNumber), out var note))
+
+                    break;
+                case MidiEvent.PAf:
                     {
-                        note.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
+                        var noteNumber = midiEvent.Msb;
+                        var pressure = midiEvent.Lsb / 127d;
+
+                        if (currentChannelActiveNotes.TryGetValue((channel.Program, noteNumber), out var activeNote))
+                        {
+                            activeNote.PressuresChanges.Add((TimeSpan.FromMilliseconds(currentTimeMillis), pressure));
+                        }
+                    }
+
+                    break;
+                case MidiEvent.MidiStop:
+                    foreach (var entry in currentChannelActiveNotes)
+                    {
+                        entry.Value.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
+                    }
+
+                    currentChannelActiveNotes.Clear();
+                    lastNoteTimeMillis = currentTimeMillis;
+
+                    break;
+                case MidiEvent.CC:
+                    switch (midiEvent.Msb)
+                    {
+                        case MidiCC.AllSoundOff or MidiCC.ResetAllControllers or MidiCC.AllNotesOff or MidiCC.OmniModeOff or MidiCC.OmniModeOn or MidiCC.PolyModeOnOff or MidiCC.PolyModeOn:
+                            foreach (var entry in currentChannelActiveNotes)
+                            {
+                                entry.Value.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
+                            }
+
+                            currentChannelActiveNotes.Clear();
+                            lastNoteTimeMillis = currentTimeMillis;
+
+                            break;
+                        case MidiCC.Expression:
+                            var expression = midiEvent.Lsb / 127d;
+
+                            foreach (var entry in currentChannelActiveNotes)
+                            {
+                                entry.Value.ExpressionChanges.Add((TimeSpan.FromMilliseconds(currentTimeMillis), expression));
+                            }
+
+                            break;
+                        case MidiCC.Volume:
+                            var channelVolume = midiEvent.Lsb / 127d;
+
+                            foreach (var entry in currentChannelActiveNotes)
+                            {
+                                entry.Value.VolumeChanges.Add((TimeSpan.FromMilliseconds(currentTimeMillis), channelVolume));
+                            }
+
+                            break;
                     }
 
                     break;
@@ -462,7 +572,7 @@ public static class MidiReader
         var maxEndOfSongSilenceMillis = 3000; // Truncate the song if the end is more than 3 seconds after the last note
         var totalPlayTime = TimeSpan.FromMilliseconds(Math.Min(currentTimeMillis, lastNoteTimeMillis + maxEndOfSongSilenceMillis));
 
-        return new MidiData()
+        return new MidiData
         {
             Notes = notes,
             TotalPlayTime = totalPlayTime,
@@ -495,6 +605,9 @@ public static class MidiReader
         public double ChannelVolume { get; init; }
         public TimeSpan StartTime { get; init; }
         public TimeSpan? EndTime { get; set; }
+        public List<(TimeSpan Time, double Pressure)> PressuresChanges { get; } = [];
+        public List<(TimeSpan Time, double Expression)> ExpressionChanges { get; } = [];
+        public List<(TimeSpan Time, double Volume)> VolumeChanges { get; } = [];
         public bool IsExpanded { get; init; }
     }
 }
