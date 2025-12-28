@@ -3,6 +3,10 @@
     loop: true
     disabled: false
     songs:
+      - name: ToccataAndFugueInDMinor
+        displayName: "Toccata and Fugue in D-minor"
+        artist: Bach
+        source: Music\BitMidi\Toccata and Fugue in D Minor.mid
       - name: BeethovenOpus57
         displayName: "Opus #57"
         artist: Beethoven
