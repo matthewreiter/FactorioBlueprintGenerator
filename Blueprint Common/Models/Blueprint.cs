@@ -37,6 +37,15 @@ namespace BlueprintCommon.Models
         public List<Entity> Entities { get; set; }
 
         /// <summary>
+        /// Gets or sets the collection of wire connections, where each wire is represented as an array of integers.
+        /// </summary>
+        /// <remarks>
+        /// Each 4-element array in the collection represents a single wire in the form [entity ID 1, connection point 1, entity ID 2, connection point 2].
+        /// Connection points are: 1 for red input, 2 for green input, 3 for red output, and 4 for green output.
+        /// </remarks>
+        public List<int[]> Wires { get; set; }
+
+        /// <summary>
         /// The name of the item that was saved ("blueprint" in vanilla).
         /// </summary>
         public string Item { get; set; }
@@ -104,7 +113,7 @@ namespace BlueprintCommon.Models
     public class SignalID
     {
         /// <summary>
-        /// Type of the signal. Either "item", "fluid" or "virtual".
+        /// Type of the signal. Either "item", "fluid", "recipe" or "virtual".
         /// </summary>
         public string Type { get; set; }
 
@@ -130,8 +139,21 @@ namespace BlueprintCommon.Models
 
         public static string GetSignalType(string name)
         {
-            return name.StartsWith("signal-") || name.StartsWith("shape-") || name.EndsWith("-arrow") ? SignalTypes.Virtual : SignalTypes.Item;
+            return name.StartsWith("signal-") || name.StartsWith("shape-") || name.EndsWith("-arrow") || name == VirtualSignalNames.NoFuel ? SignalTypes.Virtual : SignalTypes.Item;
         }
+    }
+
+    public class SignalNetworks
+    {
+        /// <summary>
+        /// Whether the red network filter is enabled.
+        /// </summary>
+        public bool Red { get; set; }
+
+        /// <summary>
+        /// Whether the green network filter is enabled.
+        /// </summary>
+        public bool Green { get; set; }
     }
 
     public class Entity
@@ -498,14 +520,24 @@ namespace BlueprintCommon.Models
         public double Playback_volume { get; set; }
 
         /// <summary>
-        /// Whether global playback is enabled.
+        /// Where playback is enabled. Can be "local", "surface", or "global".
         /// </summary>
-        public bool Playback_globally { get; set; }
+        public string Playback_mode { get; set; }
 
         /// <summary>
         /// Boolean, whether polyphony is allowed.
         /// </summary>
         public bool Allow_polyphony { get; set; }
+
+        /// <summary>
+        /// Whether the speaker volume is controlled by a signal.
+        /// </summary>
+        public bool Volume_controlled_by_signal { get; set; }
+
+        /// <summary>
+        /// The signal that controls the volume if <see cref="Volume_controlled_by_signal"/> is true.
+        /// </summary>
+        public SignalID Volume_signal_id { get; set; }
     }
 
     public class SpeakerAlertParameter
@@ -627,26 +659,29 @@ namespace BlueprintCommon.Models
         /// </summary>
         public int Index { get; set; }
 
-        public static Filter Create(string signalName, int count = 1)
+        public static Filter Create(string signalName, int count = 1) => Create(SignalID.Create(signalName), count);
+
+        public static Filter Create(SignalID signal, int count = 1) => new Filter
         {
-            return new Filter
-            {
-                Type = SignalID.GetSignalType(signalName),
-                Name = signalName,
-                Quality = "normal",
-                Comparator = "=",
-                Count = count
-            };
-        }
+            Type = signal.Type,
+            Name = signal.Name,
+            Quality = "normal",
+            Comparator = "=",
+            Count = count
+        };
     }
 
     public class ArithmeticConditions
     {
         public SignalID First_signal { get; set; }
 
+        public SignalNetworks First_signal_networks { get; set; }
+
         public int? First_constant { get; set; }
 
         public SignalID Second_signal { get; set; }
+
+        public SignalNetworks Second_signal_networks { get; set; }
 
         public int? Second_constant { get; set; }
 
@@ -657,6 +692,12 @@ namespace BlueprintCommon.Models
 
     public class DeciderConditions
     {
+        public List<DeciderCondition> Conditions { get; set; }
+
+        public List<DeciderOutput> Outputs { get; set; }
+
+        // All properties below here are obsolete
+
         public SignalID First_signal { get; set; }
 
         public SignalID Second_signal { get; set; }
@@ -668,6 +709,35 @@ namespace BlueprintCommon.Models
         public SignalID Output_signal { get; set; }
 
         public bool Copy_count_from_input { get; set; }
+    }
+
+    public class DeciderCondition
+    {
+        public SignalID First_signal { get; set; }
+
+        public SignalNetworks First_signal_networks { get; set; }
+
+        public SignalID Second_signal { get; set; }
+
+        public SignalNetworks Second_signal_networks { get; set; }
+
+        public int? Constant { get; set; }
+
+        public string Comparator { get; set; }
+
+        /// <summary>
+        /// Either "and" or "or". Defaults to "or".
+        /// </summary>
+        public string Compare_type {  get; set; }
+    }
+
+    public class DeciderOutput
+    {
+        public SignalID Signal { get; set; }
+
+        public bool Copy_count_from_input { get; set; }
+
+        public SignalNetworks Networks { get; set; }
     }
 
     public class CircuitCondition
@@ -683,10 +753,24 @@ namespace BlueprintCommon.Models
 
     public class CircuitParameters
     {
+        /// <summary>
+        /// If true, the signal controls the pitch of the speaker. Otherwise, it only controls whether the speaker plays or not.
+        /// </summary>
         public bool Signal_value_is_pitch { get; set; }
 
+        /// <summary>
+        /// If true, change of the input network signal will stop currently playing sounds immediately instead of waiting for them to finish.
+        /// </summary>
+        public bool Stop_playing_sounds { get; set; }
+
+        /// <summary>
+        /// Which instrument the speaker will play.
+        /// </summary>
         public int Instrument_id { get; set; }
 
+        /// <summary>
+        /// Which note the speaker will play if <see cref="Signal_value_is_pitch"/> is true.
+        /// </summary>
         public int Note_id { get; set; }
     }
 }
