@@ -44,6 +44,10 @@
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/musicBoxSpeakers.txt\" --OutputJson=\"$(ProjectDir)/Test/musicBoxSpeakers.json\" --MemoryType=MusicBoxSpeaker --Width=48 --SpeakersPerConfiguration=10 --VolumeLevels=10 --MinVolume=0.1 --BaseAddress=1 --ReverseAddressY=true --IncludePower=true"
     },
+    "MusicBoxV2Speakers": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/musicBoxV2Speakers.txt\" --OutputJson=\"$(ProjectDir)/Test/musicBoxV2Speakers.json\" --MemoryType=MusicBoxV2Speaker --InstrumentCount=10 --ChannelCount=20 --IncludePower=true"
+    },
     "Font": {
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/font.txt\" --OutputJson=\"$(ProjectDir)/Test/font.json\" --FontImage=\"$(ProjectDir)/Fonts/5x7 Font.png\" --MemoryType=Font --Signals=0123456789ABCDEFGHIJKLMNOPQRSTUVWXY"

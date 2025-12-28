@@ -1,5 +1,6 @@
 ﻿using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
+using BlueprintGenerator.Models;
 using System;
 using System.Collections.Generic;
 
@@ -7,6 +8,55 @@ namespace BlueprintGenerator
 {
     public class PowerUtil
     {
+        public static void AddSubstations(List<Entity> entities, List<Wire> wires, int substationWidth, int substationHeight, int xOffset, int yOffset, GridConnectivity connectivity = GridConnectivity.Full)
+        {
+            var (newEntities, newWires) = CreateSubstations(substationWidth, substationHeight, xOffset, yOffset, connectivity);
+            entities.AddRange(newEntities);
+            wires.AddRange(newWires);
+        }
+
+        public static (List<Entity> Entities, List<Wire> Wires) CreateSubstations(int substationWidth, int substationHeight, int xOffset, int yOffset, GridConnectivity connectivity = GridConnectivity.Full)
+        {
+            var entities = new List<Entity>();
+            var wires = new List<Wire>();
+
+            for (int row = 0; row < substationHeight; row++)
+            {
+                for (int column = 0; column < substationWidth; column++)
+                {
+                    var substation = new Entity
+                    {
+                        Name = ItemNames.Substation,
+                        Position = new Position
+                        {
+                            X = column * 18 + 0.5 + xOffset,
+                            Y = row * 18 + 0.5 + yOffset
+                        }
+                    };
+
+                    if ((row == 0 && connectivity.HasFlag(GridConnectivity.Top) ||
+                        row == substationHeight - 1 && connectivity.HasFlag(GridConnectivity.Bottom) ||
+                        connectivity.HasFlag(GridConnectivity.Horizontal)) &&
+                        column > 0)
+                    {
+                        wires.Add(new((substation, ConnectionType.Copper1), (entities[^1], ConnectionType.Copper1)));
+                    }
+
+                    if ((column == 0 && connectivity.HasFlag(GridConnectivity.Left) ||
+                        column == substationWidth - 1 && connectivity.HasFlag(GridConnectivity.Right) ||
+                        connectivity.HasFlag(GridConnectivity.Vertical)) &&
+                        row > 0)
+                    {
+                        wires.Add(new((substation, ConnectionType.Copper1), (entities[^substationWidth], ConnectionType.Copper1)));
+                    }
+
+                    entities.Add(substation);
+                }
+            }
+
+            return (entities, wires);
+        }
+
         public static List<Entity> CreateSubstations(int substationWidth, int substationHeight, int xOffset, int yOffset, int baseEntityNumber, GridConnectivity connectivity = GridConnectivity.Full)
         {
             var substations = new List<Entity>();
