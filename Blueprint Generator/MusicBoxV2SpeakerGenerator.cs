@@ -30,9 +30,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         var width = channelCount;
         var height = instrumentCount;
 
-        const int entitiesPerColumnHeader = 5;
-        const int headerHeight = 25;
-        const int entitiesPerCell = 2;
+        const int headerHeight = 21;
         const int cellHeight = 3;
 
         var gridWidth = width + (includePower ? ((width + 7) / 16 + 1) * 2 : 0);
@@ -48,10 +46,10 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         var entities = new List<Entity>();
         var wires = new List<Wire>();
         Entity previousDurationDivider = null;
+        Entity previousInstrumentDivider = null;
 
         for (int column = 0; column < width; column++)
         {
-            var baseColumnEntityNumber = column * (entitiesPerColumnHeader + height * entitiesPerCell) + 1;
             var columnX = column + (includePower ? (column / 16 + 1) * 2 : 0) + xOffset;
             var y = yOffset;
             var inputSignal = SignalID.CreateLetterOrDigit((char)('A' + column));
@@ -73,7 +71,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                         First_signal = inputSignal,
                         Second_constant = maxInstruments * maxPitches * maxVolumes,
                         Operation = ArithmeticOperations.Division,
-                        Output_signal = SignalID.CreateVirtual(VirtualSignalNames.Dot)
+                        Output_signal = durationSignal
                     }
                 }
             };
@@ -81,34 +79,10 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             if (previousDurationDivider is not null)
             {
-                wires.Add(new((durationDivider, ConnectionType.Green1), (previousDurationDivider, ConnectionType.Green1)));
+                wires.Add(new((durationDivider, ConnectionType.Red1), (previousDurationDivider, ConnectionType.Red1)));
             }
 
             previousDurationDivider = durationDivider;
-
-            var durationBuffer = new Entity
-            {
-                Name = ItemNames.ArithmeticCombinator,
-                Position = new Position
-                {
-                    X = columnX,
-                    Y = (y += 2) - 1.5
-                },
-                Direction = Direction.Down,
-                Control_behavior = new ControlBehavior
-                {
-                    Arithmetic_conditions = new ArithmeticConditions
-                    {
-                        First_signal = SignalID.CreateVirtual(VirtualSignalNames.Dot),
-                        Second_constant = 1,
-                        Operation = ArithmeticOperations.Multiplication,
-                        Output_signal = durationSignal
-                    }
-                }
-            };
-            entities.Add(durationBuffer);
-
-            wires.Add(new((durationBuffer, ConnectionType.Red1), (durationDivider, ConnectionType.Red2)));
 
             var instrumentDivider = new Entity
             {
@@ -132,7 +106,12 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             };
             entities.Add(instrumentDivider);
 
-            wires.Add(new((instrumentDivider, ConnectionType.Green1), (durationDivider, ConnectionType.Green1)));
+            if (previousInstrumentDivider is not null)
+            {
+                wires.Add(new((instrumentDivider, ConnectionType.Green1), (previousInstrumentDivider, ConnectionType.Green1)));
+            }
+
+            previousInstrumentDivider = instrumentDivider;
 
             var instrumentExtractor = new Entity
             {
@@ -157,7 +136,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             entities.Add(instrumentExtractor);
 
             wires.Add(new((instrumentExtractor, ConnectionType.Red1), (instrumentDivider, ConnectionType.Red2)));
-            wires.Add(new((instrumentExtractor, ConnectionType.Green2), (durationBuffer, ConnectionType.Green2)));
+            wires.Add(new((instrumentExtractor, ConnectionType.Green2), (durationDivider, ConnectionType.Green2)));
 
             var pitchDivider = new Entity
             {
@@ -208,30 +187,6 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             wires.Add(new((pitchExtractor, ConnectionType.Red1), (pitchDivider, ConnectionType.Red2)));
             wires.Add(new((pitchExtractor, ConnectionType.Green2), (instrumentExtractor, ConnectionType.Green2)));
 
-            var volumeDivider = new Entity
-            {
-                Name = ItemNames.ArithmeticCombinator,
-                Position = new Position
-                {
-                    X = columnX,
-                    Y = (y += 2) - 1.5
-                },
-                Direction = Direction.Down,
-                Control_behavior = new ControlBehavior
-                {
-                    Arithmetic_conditions = new ArithmeticConditions
-                    {
-                        First_signal = inputSignal,
-                        Second_constant = 1,
-                        Operation = ArithmeticOperations.Division,
-                        Output_signal = SignalID.CreateVirtual(VirtualSignalNames.Dot)
-                    }
-                }
-            };
-            entities.Add(volumeDivider);
-
-            wires.Add(new((volumeDivider, ConnectionType.Green1), (pitchDivider, ConnectionType.Green1)));
-
             var volumeExtractor = new Entity
             {
                 Name = ItemNames.ArithmeticCombinator,
@@ -245,7 +200,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                 {
                     Arithmetic_conditions = new ArithmeticConditions
                     {
-                        First_signal = SignalID.CreateVirtual(VirtualSignalNames.Dot),
+                        First_signal = inputSignal,
                         Second_constant = maxVolumes,
                         Operation = ArithmeticOperations.Modulus,
                         Output_signal = volumeSignal
@@ -254,7 +209,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             };
             entities.Add(volumeExtractor);
 
-            wires.Add(new((volumeExtractor, ConnectionType.Red1), (volumeDivider, ConnectionType.Red2)));
+            wires.Add(new((volumeExtractor, ConnectionType.Red1), (durationDivider, ConnectionType.Red1)));
             wires.Add(new((volumeExtractor, ConnectionType.Green2), (pitchExtractor, ConnectionType.Green2)));
 
             var decrementer = new Entity
