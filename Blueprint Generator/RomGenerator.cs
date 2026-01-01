@@ -117,11 +117,43 @@ public class RomGenerator : IBlueprintGenerator
                     {
                         Decider_conditions = new DeciderConditions
                         {
-                            First_signal = SignalID.CreateVirtual(VirtualSignalNames.Info),
-                            Constant = memoryCell.Address,
-                            Comparator = Comparators.IsEqual,
-                            Output_signal = SignalID.CreateVirtual(VirtualSignalNames.Everything),
-                            Copy_count_from_input = true
+                            Conditions = [.. memoryCell.AddressRanges.SelectMany<(int Start, int End), DeciderCondition>(range =>
+                            {
+                                if (range.Start == range.End)
+                                {
+                                    return [new DeciderCondition
+                                    {
+                                        First_signal = SignalID.CreateVirtual(VirtualSignalNames.Info),
+                                        Constant = range.Start,
+                                        Comparator = Comparators.IsEqual,
+                                        Compare_type = CompareTypes.Or
+                                    }];
+                                }
+                                else
+                                {
+                                    return [
+                                        new DeciderCondition
+                                        {
+                                            First_signal = SignalID.CreateVirtual(VirtualSignalNames.Info),
+                                            Constant = range.Start,
+                                            Comparator = Comparators.GreaterThanOrEqualTo,
+                                            Compare_type = CompareTypes.Or
+                                        },
+                                        new DeciderCondition
+                                        {
+                                            First_signal = SignalID.CreateVirtual(VirtualSignalNames.Info),
+                                            Constant = range.End,
+                                            Comparator = Comparators.LessThanOrEqualTo,
+                                            Compare_type = CompareTypes.And
+                                        }
+                                    ];
+                                }
+                            })],
+                            Outputs = [new()
+                            {
+                                Signal = SignalID.CreateVirtual(VirtualSignalNames.Everything),
+                                Copy_count_from_input = true
+                            }]
                         }
                     },
                     Connections = CreateConnections(new ConnectionPoint
@@ -178,7 +210,7 @@ public class RomGenerator : IBlueprintGenerator
         return new Blueprint
         {
             Label = $"{width}x{height} ROM{(programName != null ? $": {programName}": "")}",
-            Icons = iconNames.Select(Icon.Create).ToList(),
+            Icons = [.. iconNames.Select(Icon.Create)],
             Entities = entities,
             SnapToGrid = snapToGrid ? new() { X = (ulong)gridWidth, Y = (ulong)gridHeight } : null,
             AbsoluteSnapping = snapToGrid ? true : null,
@@ -233,7 +265,8 @@ public class RomConfiguration
 
 public class MemoryCell
 {
-    public int Address { get; set; }
+    public int Address { set => AddressRanges = [new(value, value)]; }
+    public List<(int Start, int End)> AddressRanges { get; set; }
     public List<Filter> Filters { get; set; }
     public bool IsEnabled { get; set; } = true;
 }
