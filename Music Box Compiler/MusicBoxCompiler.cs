@@ -548,10 +548,7 @@ public static class MusicBoxCompiler
                         continue;
                     }
 
-                    List<Filter> noteGroupFilters =
-                    [
-                        CreateFilter('Y', metadataAddress + ((currentTimeOffset + 1) << MetadataAddressBits))
-                    ];
+                    List<Filter> noteGroupFilters = [];
 
                     foreach (var note in noteGroup.Notes)
                     {
@@ -616,6 +613,13 @@ public static class MusicBoxCompiler
 
                 var songLength = currentAddress - songAddress;
                 totalPlayTime += songLength;
+
+                // Add a reference to the song metadata
+                songCells.Add(new()
+                {
+                    AddressRanges = [(songAddress, currentAddress)], // From the beginning of the song to the jump at the end
+                    Filters = [CreateFilter('Y', metadataAddress)]
+                });
 
                 // Create a jump back to the beginning of the song
                 AddJump(songAddress, isEnabled: song.Loop);
