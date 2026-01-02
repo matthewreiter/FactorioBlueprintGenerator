@@ -25,6 +25,7 @@ public static class MusicBoxCompiler
     private const int NoteGroupTimeOffsetBits = 11;
     private const int MetadataAddressBits = 10;
     private const int MinimumNoteDuration = 10;
+    private const double SustainedNoteVolumeFactor = 0.3;
 
     public static void Run(IConfigurationRoot configuration)
     {
@@ -493,11 +494,19 @@ public static class MusicBoxCompiler
             return jumpFilter;
         }
 
-        int EncodeVolume(double volume) => (int)(volume * 100);
-
         int EncodeDuration(TimeSpan duration) => Math.Max((int)double.Ceiling(duration.TotalSeconds * 60), MinimumNoteDuration);
 
-        int EncodeNote(Note note) => EncodeVolume(note.Volume) + (note.Number - 1 + ((int)note.Instrument - 3 + EncodeDuration(note.Duration) * InstrumentCountV2) * PitchCountV2) * VolumeCountV2;
+        int EncodeNote(Note note)
+        {
+            var encodedDuration = EncodeDuration(note.Duration);
+            var encodedInstrument = (int)note.Instrument - 3;
+            var encodedPitch = note.Number - 1;
+
+            var effectiveVolume = note.Volume * (encodedDuration == MinimumNoteDuration ? 1 : SustainedNoteVolumeFactor);
+            var encodedVolume = Math.Min(Math.Max((int)double.Round(effectiveVolume * 100), 1), 100) - 1;
+
+            return encodedVolume + (encodedPitch + (encodedInstrument + encodedDuration * InstrumentCountV2) * PitchCountV2) * VolumeCountV2;
+        }
 
         var allSongs = playlists.SelectMany(playlist => playlist.Songs).ToList();
 
