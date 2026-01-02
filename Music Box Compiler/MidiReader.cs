@@ -15,7 +15,6 @@ namespace MusicBoxCompiler;
 public static class MidiReader
 {
     // http://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html
-    private const int ChannelCount = 10;
     private const int PercussionMidiChannel = 9;
     private static readonly List<string> Notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
     private static readonly Dictionary<byte, string> DrumNames =
@@ -135,7 +134,7 @@ public static class MidiReader
             .ToDictionary(entry => entry.channel, entry => entry.Instrument);
     }
 
-    public static Song ReadSong(string midiFile, bool debug, Dictionary<Instrument, int> instrumentOffsets, double masterVolume, Dictionary<Instrument, double> instrumentVolumes, bool allowInstrumentFallback, bool expandNotes)
+    public static Song ReadSong(string midiFile, bool debug, Dictionary<Instrument, int> instrumentOffsets, double masterVolume, Dictionary<Instrument, double> instrumentVolumes, bool allowInstrumentFallback, bool expandNotes, int? channelCount)
     {
         const int unreasonablyHighOctave = 12; // This is to ensure that we don't have a negative number before calculating the octave, which would throw off the result
 
@@ -298,7 +297,7 @@ public static class MidiReader
                         ? [effectiveNoteNumber]
                         : [effectiveNoteNumber + 12, effectiveNoteNumber + 19, effectiveNoteNumber + 24];
 
-                    if (midiNote.StartTime - currentTime >= TickDuration || currentNotes.Count + effectiveNoteNumbers.Count > ChannelCount)
+                    if (midiNote.StartTime - currentTime >= TickDuration || channelCount is not null && currentNotes.Count + effectiveNoteNumbers.Count > channelCount)
                     {
                         noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = currentTime - lastTime });
                         currentNotes = [];
@@ -320,7 +319,8 @@ public static class MidiReader
                             {
                                 Instrument = instrument,
                                 Number = noteNumber,
-                                Volume = volume
+                                Volume = volume,
+                                Duration = midiNote.EndTime.HasValue && !midiNote.IsExpanded ? midiNote.EndTime.Value - midiNote.StartTime : TimeSpan.Zero,
                             });
                         }
                     }

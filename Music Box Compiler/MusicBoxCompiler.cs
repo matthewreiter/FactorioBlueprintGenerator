@@ -16,9 +16,15 @@ namespace MusicBoxCompiler;
 public static class MusicBoxCompiler
 {
     private const int InstrumentCount = 12;
+    private const int InstrumentCountV2 = 10;
+    private const int PitchCountV2 = 48;
+    private const int VolumeCountV2 = 100;
+    private const int ChannelCount = 10;
+    private const int ChannelCountV2 = 20;
     private const int NoteGroupAddressBits = 16;
     private const int NoteGroupTimeOffsetBits = 11;
     private const int MetadataAddressBits = 10;
+    private const int MinimumNoteDuration = 10;
 
     public static void Run(IConfigurationRoot configuration)
     {
@@ -32,6 +38,7 @@ public static class MusicBoxCompiler
         var outputJsonFile = configuration.OutputJson;
         var outputConstantsFile = configuration.OutputConstants;
         var outputMidiEventsFile = configuration.OutputMidiEvents;
+        var version = configuration.Version ?? 1;
         var baseMetadataAddress = configuration.BaseMetadataAddress ?? 1;
         var constantsNamespace = configuration.ConstantsNamespace ?? "Music";
 
@@ -87,7 +94,8 @@ public static class MusicBoxCompiler
                                     ProcessMasterVolume(songConfig.Volume),
                                     ProcessInstrumentVolumes(songConfig.InstrumentVolumes),
                                     !songConfig.SuppressInstrumentFallback,
-                                    songConfig.ExpandNotes),
+                                    songConfig.ExpandNotes && version == 1,
+                                    version == 1 ? ChannelCount : null),
                                 _ => throw new Exception($"Unsupported source file extension for {songConfig.Source}")
                             } with { Name = songConfig.Name, DisplayName = songConfig.DisplayName, Artist = songConfig.Artist, Loop = songConfig.Loop, Gapless = songConfig.Gapless, AddressIndex = songConfig.AddressIndex }
                         )
@@ -114,14 +122,16 @@ public static class MusicBoxCompiler
             });
         }
 
-        var blueprint = CreateBlueprintFromPlaylists(playlists, configuration, out var addresses);
+        Addresses addresses;
+        var blueprint = version switch
+        {
+            1 => CreateBlueprintFromPlaylists(playlists, configuration, out addresses),
+            2 => CreateBlueprintFromPlaylistsV2(playlists, configuration, out addresses),
+            _ => throw new Exception($"Unsupported version: {version}"),
+        };
         BlueprintUtil.PopulateIndices(blueprint);
 
         var blueprintWrapper = new BlueprintWrapper { Blueprint = blueprint };
-        var memoryCells = blueprint.Entities
-            .Where(entity => entity.Name == ItemNames.ConstantCombinator)
-            .OrderBy(entity => entity.Position.X - entity.Position.Y * 1000000)
-            .ToList();
 
         BlueprintUtil.WriteOutBlueprint(outputBlueprintFile, blueprintWrapper);
         BlueprintUtil.WriteOutJson(outputJsonFile, blueprintWrapper);
@@ -208,20 +218,10 @@ public static class MusicBoxCompiler
         {
             var notes = noteGroup.Notes
                 .OrderBy(note => note.Instrument).ThenBy(note => note.Number)
-                .Select(note => note.Number + ((int)note.Instrument + EncodeVolume(note.Volume) * InstrumentCount) * 256);
+                .Select(note => note.Number + ((int)note.Instrument + EncodeVolume(note.Volume) * InstrumentCount) * 256)
+                .ToArray();
 
-            return new(
-                notes.ElementAtOrDefault(0),
-                notes.ElementAtOrDefault(1),
-                notes.ElementAtOrDefault(2),
-                notes.ElementAtOrDefault(3),
-                notes.ElementAtOrDefault(4),
-                notes.ElementAtOrDefault(5),
-                notes.ElementAtOrDefault(6),
-                notes.ElementAtOrDefault(7),
-                notes.ElementAtOrDefault(8),
-                notes.ElementAtOrDefault(9)
-            );
+            return new(notes);
         }
 
         var allSongs = playlists.SelectMany(playlist => playlist.Songs).ToList();
@@ -455,6 +455,220 @@ public static class MusicBoxCompiler
         }, constantCells, memoryCells);
     }
 
+    private static Blueprint CreateBlueprintFromPlaylistsV2(List<Playlist> playlists, MusicBoxConfiguration configuration, out Addresses addresses)
+    {
+        var baseAddress = configuration.BaseAddress ?? 1;
+        var baseMetadataAddress = configuration.BaseMetadataAddress ?? 1;
+        var nextAddress = configuration.NextAddress ?? baseAddress;
+        var snapToGrid = configuration.SnapToGrid;
+        var x = configuration.X;
+        var y = configuration.Y;
+        var width = configuration.Width ?? 16;
+        var height = configuration.Height ?? 16;
+
+        var songCells = new List<MemoryCell>();
+        var metadataCells = new List<MemoryCell>();
+        var allNoteTuples = new HashSet<NoteTuple>();
+        var channelRemainingTimes = new int[ChannelCountV2];
+        var currentAddress = baseAddress;
+        var totalPlayTime = 0;
+
+        addresses = new Addresses();
+
+        Filter CreateJumpFilter(int targetAddress)
+        {
+            return CreateFilter('U', targetAddress - (currentAddress + 3));
+        }
+
+        void AddSongCell(List<Filter> filters, int length = 1, bool isEnabled = true)
+        {
+            songCells.Add(new() { Address = currentAddress, Filters = filters, IsEnabled = isEnabled });
+            currentAddress += length;
+        }
+
+        Filter AddJump(int targetAddress, bool isEnabled = true)
+        {
+            var jumpFilter = CreateJumpFilter(targetAddress);
+            AddSongCell([jumpFilter], length: 4, isEnabled: isEnabled);
+            return jumpFilter;
+        }
+
+        int EncodeVolume(double volume) => (int)(volume * 100);
+
+        int EncodeDuration(TimeSpan duration) => Math.Max((int)double.Ceiling(duration.TotalSeconds * 60), MinimumNoteDuration);
+
+        int EncodeNote(Note note) => EncodeVolume(note.Volume) + (note.Number - 1 + ((int)note.Instrument - 3 + EncodeDuration(note.Duration) * InstrumentCountV2) * PitchCountV2) * VolumeCountV2;
+
+        var allSongs = playlists.SelectMany(playlist => playlist.Songs).ToList();
+
+        var currentMetadataAddressIndex = 0;
+        var reservedMetadataAddressIndices = allSongs.Where(song => song.AddressIndex != null).Select(song => song.AddressIndex.Value).ToHashSet();
+
+        int AllocateNextMetadataAddress()
+        {
+            while (reservedMetadataAddressIndices.Contains(currentMetadataAddressIndex))
+            {
+                currentMetadataAddressIndex++;
+            }
+
+            return currentMetadataAddressIndex++;
+        }
+
+        // Add the songs
+        var trackNumber = 0;
+        foreach (var playlist in playlists)
+        {
+            var playlistAddress = currentAddress;
+
+            foreach (var song in playlist.Songs)
+            {
+                var metadataAddress = baseMetadataAddress + (song.AddressIndex ?? AllocateNextMetadataAddress());
+                var songAddress = currentAddress;
+                var currentTimeOffset = 0;
+                var cellStartTime = 0;
+                var timeDeficit = 0;
+
+                trackNumber++;
+
+                // Add the notes for the song
+                foreach (var noteGroup in song.NoteGroups)
+                {
+                    // Strip leading silence
+                    if (song.Gapless && noteGroup.Notes.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    List<Filter> noteGroupFilters =
+                    [
+                        CreateFilter('Y', metadataAddress + ((currentTimeOffset + 1) << MetadataAddressBits))
+                    ];
+
+                    foreach (var note in noteGroup.Notes)
+                    {
+                        // Find the next available channel
+                        var channelIndex = Array.IndexOf(channelRemainingTimes, 0);
+
+                        // If all channels are busy, give up
+                        if (channelIndex == -1)
+                        {
+                            continue;
+                        }
+
+                        // Allocate time on the channel
+                        var noteDuration = EncodeDuration(note.Duration);
+                        channelRemainingTimes[channelIndex] = noteDuration;
+
+                        // Add the note to the channel
+                        noteGroupFilters.Add(CreateFilter((char)('A' + channelIndex), EncodeNote(note)));
+                    }
+
+                    // Strip trailing silence
+                    var noteGroupLength = noteGroup.Length;
+                    if (song.Gapless && noteGroup == song.NoteGroups[^1] && song.NoteGroups.Count > 1)
+                    {
+                        var previousNoteGroupLength = song.NoteGroups[^2].Length;
+                        if (noteGroupLength > previousNoteGroupLength)
+                        {
+                            noteGroupLength = previousNoteGroupLength;
+                        }
+                    }
+
+                    var length = (int)(noteGroupLength.TotalSeconds * 60) - timeDeficit;
+
+                    // We can't have multiple note groups play too close to each other.
+                    // However, to avoid delaying future notes we capture the amount that the length is adjusted
+                    // as the time deficit and apply that to the next note.
+                    const int minimumLength = 1;
+                    if (length < minimumLength)
+                    {
+                        timeDeficit = minimumLength - length;
+                        length = minimumLength;
+                    }
+                    else
+                    {
+                        timeDeficit = 0;
+                    }
+
+                    currentTimeOffset += length;
+
+                    var cellLength = currentTimeOffset - cellStartTime;
+
+                    AddSongCell(noteGroupFilters, cellLength);
+
+                    cellStartTime = currentTimeOffset;
+
+                    // Reduce channel remaining times
+                    for (var channel = 0; channel < ChannelCountV2; channel++)
+                    {
+                        channelRemainingTimes[channel] = Math.Max(0, channelRemainingTimes[channel] - cellLength);
+                    }
+                }
+
+                var songLength = currentAddress - songAddress;
+                totalPlayTime += songLength;
+
+                // Create a jump back to the beginning of the song
+                AddJump(songAddress, isEnabled: song.Loop);
+
+                // Add a pause between songs
+                if (!song.Gapless)
+                {
+                    currentAddress += 120;
+                }
+
+                // Add song metadata
+                if (song.Name != null)
+                {
+                    addresses.SongMetadataAddresses[song.Name] = metadataAddress;
+                }
+
+                var metadataFilters = new List<Filter>
+                {
+                    CreateFilter('0', songAddress),
+                    CreateFilter('1', trackNumber),
+                    CreateFilter('2', (songLength + 59) / 60 * 60) // Round up to the next second
+                };
+
+                var displayName = song.DisplayName ?? song.Name;
+                if (displayName != null)
+                {
+                    metadataFilters.AddRange(CreateFiltersForString(displayName, 32, 'A'));
+                }
+
+                if (song.Artist != null)
+                {
+                    metadataFilters.AddRange(CreateFiltersForString(song.Artist, 20, 'I'));
+                }
+
+                metadataCells.Add(new MemoryCell { Address = metadataAddress, Filters = metadataFilters });
+            }
+
+            // Create a jump back to the beginning of the playlist
+            AddJump(playlistAddress, isEnabled: playlist.Loop);
+        }
+
+        AddJump(nextAddress);
+
+        var romUsed = songCells.Count + metadataCells.Count;
+        var totalRom = width * height;
+
+        Console.WriteLine($"Total play time: {TimeSpan.FromSeconds(totalPlayTime / 60d):h\\:mm\\:ss\\.fff}");
+        Console.WriteLine($"ROM usage: {romUsed}/{totalRom} ({(double)romUsed / totalRom * 100:F1}%)");
+
+        return RomGenerator.Generate(new RomConfiguration
+        {
+            SnapToGrid = snapToGrid,
+            X = x,
+            Y = y,
+            Width = width,
+            Height = height,
+            ProgramRows = 1, // Allocate one line for the metadata cells
+            ProgramName = "Songs V2",
+            IconNames = [ItemNames.ElectronicCircuit, ItemNames.ProgrammableSpeaker]
+        }, metadataCells, songCells);
+    }
+
     private static void WriteOutConstants(string outputConstantsFile, Addresses addresses, string constantsNamespace)
     {
         if (outputConstantsFile == null)
@@ -531,8 +745,52 @@ public static class MusicBoxCompiler
         public Dictionary<string, int> SongMetadataAddresses { get; } = [];
     }
 
-    private record NoteTuple(int Note0, int Note1, int Note2, int Note3, int Note4, int Note5, int Note6, int Note7, int Note8, int Note9) : IEnumerable<int>
+    private record NoteTuple(
+        int Note0 = 0,
+        int Note1 = 0,
+        int Note2 = 0,
+        int Note3 = 0,
+        int Note4 = 0,
+        int Note5 = 0,
+        int Note6 = 0,
+        int Note7 = 0,
+        int Note8 = 0,
+        int Note9 = 0,
+        int Note10 = 0,
+        int Note11 = 0,
+        int Note12 = 0,
+        int Note13 = 0,
+        int Note14 = 0,
+        int Note15 = 0,
+        int Note16 = 0,
+        int Note17 = 0,
+        int Note18 = 0,
+        int Note19 = 0) : IEnumerable<int>
     {
+        public NoteTuple(ICollection<int> notes)
+            : this(
+                notes.ElementAtOrDefault(0),
+                notes.ElementAtOrDefault(1),
+                notes.ElementAtOrDefault(2),
+                notes.ElementAtOrDefault(3),
+                notes.ElementAtOrDefault(4),
+                notes.ElementAtOrDefault(5),
+                notes.ElementAtOrDefault(6),
+                notes.ElementAtOrDefault(7),
+                notes.ElementAtOrDefault(8),
+                notes.ElementAtOrDefault(9),
+                notes.ElementAtOrDefault(10),
+                notes.ElementAtOrDefault(11),
+                notes.ElementAtOrDefault(12),
+                notes.ElementAtOrDefault(13),
+                notes.ElementAtOrDefault(14),
+                notes.ElementAtOrDefault(15),
+                notes.ElementAtOrDefault(16),
+                notes.ElementAtOrDefault(17),
+                notes.ElementAtOrDefault(18),
+                notes.ElementAtOrDefault(19)
+            ) { }
+
         public IEnumerator<int> GetEnumerator()
         {
             if (Note0 != 0) yield return Note0;
@@ -545,6 +803,16 @@ public static class MusicBoxCompiler
             if (Note7 != 0) yield return Note7;
             if (Note8 != 0) yield return Note8;
             if (Note9 != 0) yield return Note9;
+            if (Note10 != 0) yield return Note10;
+            if (Note11 != 0) yield return Note11;
+            if (Note12 != 0) yield return Note12;
+            if (Note13 != 0) yield return Note13;
+            if (Note14 != 0) yield return Note14;
+            if (Note15 != 0) yield return Note15;
+            if (Note16 != 0) yield return Note16;
+            if (Note17 != 0) yield return Note17;
+            if (Note18 != 0) yield return Note18;
+            if (Note19 != 0) yield return Note19;
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
@@ -561,6 +829,7 @@ public class MusicBoxConfiguration
     public string OutputJson { get; set; }
     public string OutputConstants { get; set; }
     public string OutputMidiEvents { get; set; }
+    public int? Version { get; set; }
     public int? BaseAddress { get; set; }
     public int? BaseNoteAddress { get; set; }
     public int? BaseMetadataAddress { get; set; }

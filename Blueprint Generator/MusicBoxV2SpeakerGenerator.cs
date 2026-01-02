@@ -26,12 +26,13 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         const int maxInstruments = 10;
         const int maxPitches = 48;
         const int maxVolumes = 100;
-        const int ticksPerCycle = 3;
+        const int ticksPerCycle = 4;
+        const int trailOffTicks = 10;
 
         var width = channelCount;
         var height = instrumentCount;
 
-        const int headerHeight = 22;
+        const int headerHeight = 24;
         const int cellHeight = 3;
 
         var gridWidth = width + (includePower ? ((width + 7) / 16 + 1) * 2 : 0);
@@ -40,7 +41,9 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         var yOffset = -gridHeight / 2;
 
         var durationSignal = SignalID.CreateVirtual(VirtualSignalNames.Wait);
-        var timeSignal = SignalID.CreateVirtual(VirtualSignalNames.Clock);
+        var elapsedTimeSignal = SignalID.CreateVirtual(VirtualSignalNames.Clock);
+        var remainingTimeSignal = SignalID.CreateVirtual(VirtualSignalNames.Sun);
+        var modularTimeSignal = SignalID.CreateVirtual(VirtualSignalNames.Speed);
         var instrumentSignal = SignalID.CreateVirtual(VirtualSignalNames.Snowflake);
         var pitchSignal = SignalID.CreateVirtual(VirtualSignalNames.Explosion);
         var volumeSignal = SignalID.CreateVirtual(VirtualSignalNames.Alarm);
@@ -237,9 +240,9 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             wires.Add(new((volumeExtractor, ConnectionType.Red1), (durationDivider, ConnectionType.Red1)));
             wires.Add(new((volumeExtractor, ConnectionType.Green2), (pitchExtractor, ConnectionType.Green2)));
 
-            var durationDecrementer = new Entity
+            var elapsedTimeIncrementer = new Entity
             {
-                Player_description = "Duration decrementer",
+                Player_description = "Elapsed time incrementer",
                 Name = ItemNames.ConstantCombinator,
                 Position = new Position
                 {
@@ -249,16 +252,16 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                 Direction = Direction.Down,
                 Control_behavior = new ControlBehavior
                 {
-                    Sections = Sections.Create([Filter.Create(durationSignal, -1)])
+                    Sections = Sections.Create([Filter.Create(elapsedTimeSignal, 1)])
                 },
             };
-            entities.Add(durationDecrementer);
+            entities.Add(elapsedTimeIncrementer);
 
-            wires.Add(new((durationDecrementer, ConnectionType.Green1), (volumeExtractor, ConnectionType.Green2)));
+            wires.Add(new((elapsedTimeIncrementer, ConnectionType.Green1), (volumeExtractor, ConnectionType.Green2)));
 
-            var remainingDurationMemory = new Entity
+            var currentNoteMemory = new Entity
             {
-                Player_description = "Remaining duration memory",
+                Player_description = "Current note memory",
                 Name = ItemNames.DeciderCombinator,
                 Position = new Position
                 {
@@ -274,9 +277,9 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                         [
                             new()
                             {
-                                First_signal = durationSignal,
-                                Constant = 0,
-                                Comparator = Comparators.GreaterThan
+                                First_signal = elapsedTimeSignal,
+                                Second_signal = durationSignal,
+                                Comparator = Comparators.LessThanOrEqualTo
                             },
                             new()
                             {
@@ -297,10 +300,10 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                     }
                 }
             };
-            entities.Add(remainingDurationMemory);
+            entities.Add(currentNoteMemory);
 
-            wires.Add(new((remainingDurationMemory, ConnectionType.Red1), (remainingDurationMemory, ConnectionType.Red2)));
-            wires.Add(new((remainingDurationMemory, ConnectionType.Green1), (durationDecrementer, ConnectionType.Green1)));
+            wires.Add(new((currentNoteMemory, ConnectionType.Red1), (currentNoteMemory, ConnectionType.Red2)));
+            wires.Add(new((currentNoteMemory, ConnectionType.Green1), (elapsedTimeIncrementer, ConnectionType.Green1)));
 
             var timeDivider = new Entity
             {
@@ -316,17 +319,43 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                 {
                     Arithmetic_conditions = new ArithmeticConditions
                     {
-                        First_signal = durationSignal,
+                        First_signal = elapsedTimeSignal,
                         Second_constant = ticksPerCycle,
                         Operation = ArithmeticOperations.Modulus,
-                        Output_signal = timeSignal
+                        Output_signal = modularTimeSignal
                     }
                 }
             };
             entities.Add(timeDivider);
 
-            wires.Add(new((timeDivider, ConnectionType.Green1), (remainingDurationMemory, ConnectionType.Green2)));
+            wires.Add(new((timeDivider, ConnectionType.Green1), (currentNoteMemory, ConnectionType.Green2)));
             wires.Add(new((timeDivider, ConnectionType.Green2), (timeDivider, ConnectionType.Green1)));
+
+            var remainingTimeCalculator = new Entity
+            {
+                Player_description = "Remaining time calculator",
+                Name = ItemNames.ArithmeticCombinator,
+                Position = new Position
+                {
+                    X = columnX,
+                    Y = (y += 2) - 1.5
+                },
+                Direction = Direction.Down,
+                Control_behavior = new ControlBehavior
+                {
+                    Arithmetic_conditions = new ArithmeticConditions
+                    {
+                        First_signal = durationSignal,
+                        Second_signal = elapsedTimeSignal,
+                        Operation = ArithmeticOperations.Subtraction,
+                        Output_signal = remainingTimeSignal
+                    }
+                }
+            };
+            entities.Add(remainingTimeCalculator);
+
+            wires.Add(new((remainingTimeCalculator, ConnectionType.Green1), (timeDivider, ConnectionType.Green2)));
+            wires.Add(new((remainingTimeCalculator, ConnectionType.Green2), (remainingTimeCalculator, ConnectionType.Green1)));
 
             var offsetter = new Entity
             {
@@ -345,7 +374,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             };
             entities.Add(offsetter);
 
-            wires.Add(new((offsetter, ConnectionType.Green1), (timeDivider, ConnectionType.Green2)));
+            wires.Add(new((offsetter, ConnectionType.Green1), (remainingTimeCalculator, ConnectionType.Green2)));
 
             var timeGate = new Entity
             {
@@ -365,9 +394,23 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                         [
                             new()
                             {
-                                First_signal = timeSignal,
+                                First_signal = elapsedTimeSignal,
                                 Constant = 1,
                                 Comparator = Comparators.IsEqual
+                            },
+                            new()
+                            {
+                                First_signal = modularTimeSignal,
+                                Constant = 1,
+                                Comparator = Comparators.IsEqual,
+                                Compare_type = CompareTypes.Or
+                            },
+                            new()
+                            {
+                                First_signal = remainingTimeSignal,
+                                Constant = trailOffTicks,
+                                Comparator = Comparators.GreaterThan,
+                                Compare_type = CompareTypes.And
                             }
                         ],
                         Outputs =

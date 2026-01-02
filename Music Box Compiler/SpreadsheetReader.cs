@@ -108,7 +108,7 @@ public static class SpreadsheetReader
                                         Number = effectiveNoteNumber + noteOffset,
                                         Name = isDrum ? noteName : $"{noteName[0]}{sharpOrFlat}{noteName.Substring(1)}",
                                         Volume = instrumentVolume * masterVolume,
-                                        Length = length
+                                        InverseLength = length
                                     };
                                 }
                                 else
@@ -243,7 +243,7 @@ public static class SpreadsheetReader
                     .SelectMany(noteList => noteList)
                     .Where(note => note != null && note.Number != 0)
                     .ToList();
-                var length = allNotesInColumn.Count > 0 ? allNotesInColumn.Max(note => note.Length) : 0;
+                var inverseLength = allNotesInColumn.Count > 0 ? allNotesInColumn.Max(note => note.InverseLength) : 0;
 
                 for (int noteListIndex = 0; noteListIndex < noteListCount; noteListIndex++)
                 {
@@ -257,7 +257,7 @@ public static class SpreadsheetReader
                             {
                                 if (note.Name == "Tempo")
                                 {
-                                    beatsPerMinute = (int)note.Length;
+                                    beatsPerMinute = (int)note.InverseLength;
                                 }
                                 else
                                 {
@@ -267,7 +267,7 @@ public static class SpreadsheetReader
                         }
                     }
 
-                    noteGroups.Add(new NoteGroup { Notes = notes, Length = TimeSpan.FromMinutes(4 / length / beatsPerMinute) });
+                    noteGroups.Add(new NoteGroup { Notes = notes, Length = TimeSpan.FromMinutes(4 / inverseLength / beatsPerMinute) });
                 }
             }
 
