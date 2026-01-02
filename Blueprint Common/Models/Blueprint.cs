@@ -308,6 +308,11 @@ namespace BlueprintCommon.Models
         /// The name of the train station, optional.
         /// </summary>
         public string Station { get; set; }
+
+        /// <summary>
+        /// The description entered by the player.
+        /// </summary>
+        public string Player_description { get; set; }
     }
 
     public enum Direction : uint
