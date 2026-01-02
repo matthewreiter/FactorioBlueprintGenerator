@@ -28,6 +28,10 @@
       "commandName": "Project",
       "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/rick.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=64 --Height=3 --BaseAddress=3 --BaseMetadataAddress=1"
     },
+    "Rick V2": {
+      "commandName": "Project",
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/rick.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Version=2 --Width=64 --Height=27 --BaseAddress=3 --BaseMetadataAddress=1"
+    },
     "PyGamePart1": {
       "commandName": "Project",
       "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/pyGamePart1.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=128 --SnapToGrid=true --X=35 --Y=115 --BaseAddress=3 --BaseMetadataAddress=1 --NextAddress=8192"
