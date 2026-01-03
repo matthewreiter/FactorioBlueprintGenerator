@@ -469,28 +469,18 @@ public static class MusicBoxCompiler
 
         var songCells = new List<MemoryCell>();
         var metadataCells = new List<MemoryCell>();
-        var allNoteTuples = new HashSet<NoteTuple>();
+        var noteTuplesToCells = new Dictionary<NoteTuple, MemoryCell>();
         var channelRemainingTimes = new int[ChannelCountV2];
         var currentAddress = baseAddress;
         var totalPlayTime = 0;
 
         addresses = new Addresses();
 
-        Filter CreateJumpFilter(int targetAddress)
-        {
-            return CreateFilter('U', targetAddress - (currentAddress + 3));
-        }
-
-        void AddSongCell(List<Filter> filters, int length = 1, bool isEnabled = true)
-        {
-            songCells.Add(new() { Address = currentAddress, Filters = filters, IsEnabled = isEnabled });
-            currentAddress += length;
-        }
-
         Filter AddJump(int targetAddress, bool isEnabled = true)
         {
-            var jumpFilter = CreateJumpFilter(targetAddress);
-            AddSongCell([jumpFilter], length: 4, isEnabled: isEnabled);
+            var jumpFilter = CreateFilter('U', targetAddress - (currentAddress + 3));
+            songCells.Add(new() { Address = currentAddress, Filters = [jumpFilter], IsEnabled = isEnabled });
+            currentAddress += 4;
             return jumpFilter;
         }
 
@@ -548,7 +538,7 @@ public static class MusicBoxCompiler
                         continue;
                     }
 
-                    List<Filter> noteGroupFilters = [];
+                    var channelNotes = new int[ChannelCountV2];
 
                     foreach (var note in noteGroup.Notes)
                     {
@@ -566,7 +556,27 @@ public static class MusicBoxCompiler
                         channelRemainingTimes[channelIndex] = noteDuration;
 
                         // Add the note to the channel
-                        noteGroupFilters.Add(CreateFilter((char)('A' + channelIndex), EncodeNote(note)));
+                        channelNotes[channelIndex] = EncodeNote(note);
+                    }
+
+                    var noteTuple = new NoteTuple(channelNotes);
+
+                    if (noteTuplesToCells.TryGetValue(noteTuple, out var noteCell))
+                    {
+                        // Reuse an existing memory cell
+                        noteCell.AddressRanges.Add((currentAddress, currentAddress));
+                    }
+                    else
+                    {
+                        // Create a new memory cell
+                        noteCell = new MemoryCell
+                        {
+                            Address = currentAddress,
+                            Filters = [.. channelNotes.Select((note, channelIndex) => CreateFilter((char)('A' + channelIndex), note)).Where(filter => filter.Count > 0)]
+                        };
+
+                        noteTuplesToCells[noteTuple] = noteCell;
+                        songCells.Add(noteCell);
                     }
 
                     // Strip trailing silence
@@ -600,8 +610,7 @@ public static class MusicBoxCompiler
 
                     var cellLength = currentTimeOffset - cellStartTime;
 
-                    AddSongCell(noteGroupFilters, cellLength);
-
+                    currentAddress += cellLength;
                     cellStartTime = currentTimeOffset;
 
                     // Reduce channel remaining times
