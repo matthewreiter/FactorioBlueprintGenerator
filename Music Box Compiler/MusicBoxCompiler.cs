@@ -26,6 +26,7 @@ public static class MusicBoxCompiler
     private const int NoteGroupTimeOffsetBits = 11;
     private const int MetadataAddressBits = 10;
     private const int MinimumNoteDuration = 10;
+    private const int ChannelCooldownTicks = 1;
     private const double SustainedNoteVolumeFactor = 0.3;
 
     public static void Run(IConfigurationRoot configuration)
@@ -564,7 +565,7 @@ public static class MusicBoxCompiler
 
                         // Allocate time on the channel
                         var noteDuration = EncodeDuration(note.Duration);
-                        channelRemainingTimes[channelIndex] = noteDuration;
+                        channelRemainingTimes[channelIndex] = noteDuration + ChannelCooldownTicks;
 
                         // Add the note to the channel
                         channelNotes[channelIndex] = EncodeNote(note);
