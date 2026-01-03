@@ -22,7 +22,7 @@
     },
     "Ode to Joy V2": {
       "commandName": "Project",
-      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/odeToJoy.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Version=2 --Width=64 --Height=9 --BaseAddress=3 --BaseMetadataAddress=1"
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/odeToJoy.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Version=2 --Width=64 --Height=6 --BaseAddress=3 --BaseMetadataAddress=1"
     },
     "Rick": {
       "commandName": "Project",
@@ -30,7 +30,7 @@
     },
     "Rick V2": {
       "commandName": "Project",
-      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/rick.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Version=2 --Width=64 --Height=27 --BaseAddress=3 --BaseMetadataAddress=1"
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/rick.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Version=2 --Width=64 --Height=22 --BaseAddress=3 --BaseMetadataAddress=1"
     },
     "PyGamePart1": {
       "commandName": "Project",
