@@ -1,6 +1,7 @@
 ﻿using BlueprintCommon;
 using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
+using BlueprintGenerator.Constants;
 using BlueprintGenerator.Models;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
@@ -80,7 +81,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         {
             var columnX = column + (includePower ? (column / 16 + 1) * 2 : 0) + xOffset;
             var y = yOffset;
-            var inputSignal = SignalID.CreateLetterOrDigit((char)('A' + column));
+            var inputSignal = SignalID.Create(SpeakerChannelSignals.Signals[column]);
             var players = new List<Entity>();
 
             var durationDivider = new Entity

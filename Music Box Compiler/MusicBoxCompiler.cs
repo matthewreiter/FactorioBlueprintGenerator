@@ -2,6 +2,7 @@
 using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
 using BlueprintGenerator;
+using BlueprintGenerator.Constants;
 using Microsoft.Extensions.Configuration;
 using MusicBoxCompiler.Models;
 using System;
@@ -20,7 +21,7 @@ public static class MusicBoxCompiler
     private const int PitchCountV2 = 48;
     private const int VolumeCountV2 = 100;
     private const int ChannelCount = 10;
-    private const int ChannelCountV2 = 20;
+    private const int ChannelCountV2 = 30;
     private const int NoteGroupAddressBits = 16;
     private const int NoteGroupTimeOffsetBits = 11;
     private const int MetadataAddressBits = 10;
@@ -582,7 +583,7 @@ public static class MusicBoxCompiler
                         noteCell = new MemoryCell
                         {
                             Address = currentAddress,
-                            Filters = [.. channelNotes.Select((note, channelIndex) => CreateFilter((char)('A' + channelIndex), note)).Where(filter => filter.Count > 0)]
+                            Filters = [.. channelNotes.Select((note, channelIndex) => CreateFilter(SpeakerChannelSignals.Signals[channelIndex], note)).Where(filter => filter.Count > 0)]
                         };
 
                         noteTuplesToCells[noteTuple] = noteCell;
@@ -797,7 +798,17 @@ public static class MusicBoxCompiler
         int Note16 = 0,
         int Note17 = 0,
         int Note18 = 0,
-        int Note19 = 0) : IEnumerable<int>
+        int Note19 = 0,
+        int Note20 = 0,
+        int Note21 = 0,
+        int Note22 = 0,
+        int Note23 = 0,
+        int Note24 = 0,
+        int Note25 = 0,
+        int Note26 = 0,
+        int Note27 = 0,
+        int Note28 = 0,
+        int Note29 = 0) : IEnumerable<int>
     {
         public NoteTuple(ICollection<int> notes)
             : this(
@@ -820,7 +831,17 @@ public static class MusicBoxCompiler
                 notes.ElementAtOrDefault(16),
                 notes.ElementAtOrDefault(17),
                 notes.ElementAtOrDefault(18),
-                notes.ElementAtOrDefault(19)
+                notes.ElementAtOrDefault(19),
+                notes.ElementAtOrDefault(20),
+                notes.ElementAtOrDefault(21),
+                notes.ElementAtOrDefault(22),
+                notes.ElementAtOrDefault(23),
+                notes.ElementAtOrDefault(24),
+                notes.ElementAtOrDefault(25),
+                notes.ElementAtOrDefault(26),
+                notes.ElementAtOrDefault(27),
+                notes.ElementAtOrDefault(28),
+                notes.ElementAtOrDefault(29)
             ) { }
 
         public IEnumerator<int> GetEnumerator()
@@ -845,6 +866,16 @@ public static class MusicBoxCompiler
             if (Note17 != 0) yield return Note17;
             if (Note18 != 0) yield return Note18;
             if (Note19 != 0) yield return Note19;
+            if (Note20 != 0) yield return Note20;
+            if (Note21 != 0) yield return Note21;
+            if (Note22 != 0) yield return Note22;
+            if (Note23 != 0) yield return Note23;
+            if (Note24 != 0) yield return Note24;
+            if (Note25 != 0) yield return Note25;
+            if (Note26 != 0) yield return Note26;
+            if (Note27 != 0) yield return Note27;
+            if (Note28 != 0) yield return Note28;
+            if (Note29 != 0) yield return Note29;
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
