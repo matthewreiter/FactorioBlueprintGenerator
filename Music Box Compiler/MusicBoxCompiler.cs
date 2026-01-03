@@ -305,6 +305,11 @@ public static class MusicBoxCompiler
         {
             var playlistAddress = currentAddress;
 
+            if (playlist.Name is not null)
+            {
+                addresses.PlaylistAddresses[playlist.Name] = playlistAddress;
+            }
+
             foreach (var song in playlist.Songs)
             {
                 var metadataAddress = baseMetadataAddress + (song.AddressIndex ?? AllocateNextMetadataAddress());
@@ -518,6 +523,11 @@ public static class MusicBoxCompiler
         foreach (var playlist in playlists)
         {
             var playlistAddress = currentAddress;
+
+            if (playlist.Name is not null)
+            {
+                addresses.PlaylistAddresses[playlist.Name] = playlistAddress;
+            }
 
             foreach (var song in playlist.Songs)
             {
