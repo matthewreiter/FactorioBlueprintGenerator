@@ -21,7 +21,7 @@ public static class MusicBoxCompiler
     private const int PitchCountV2 = 48;
     private const int VolumeCountV2 = 100;
     private const int ChannelCount = 10;
-    private const int ChannelCountV2 = 30;
+    private const int ChannelCountV2 = 40;
     private const int NoteGroupAddressBits = 16;
     private const int NoteGroupTimeOffsetBits = 11;
     private const int MetadataAddressBits = 10;
@@ -809,7 +809,17 @@ public static class MusicBoxCompiler
         int Note26 = 0,
         int Note27 = 0,
         int Note28 = 0,
-        int Note29 = 0) : IEnumerable<int>
+        int Note29 = 0,
+        int Note30 = 0,
+        int Note31 = 0,
+        int Note32 = 0,
+        int Note33 = 0,
+        int Note34 = 0,
+        int Note35 = 0,
+        int Note36 = 0,
+        int Note37 = 0,
+        int Note38 = 0,
+        int Note39 = 0) : IEnumerable<int>
     {
         public NoteTuple(ICollection<int> notes)
             : this(
@@ -842,8 +852,19 @@ public static class MusicBoxCompiler
                 notes.ElementAtOrDefault(26),
                 notes.ElementAtOrDefault(27),
                 notes.ElementAtOrDefault(28),
-                notes.ElementAtOrDefault(29)
-            ) { }
+                notes.ElementAtOrDefault(29),
+                notes.ElementAtOrDefault(30),
+                notes.ElementAtOrDefault(31),
+                notes.ElementAtOrDefault(32),
+                notes.ElementAtOrDefault(33),
+                notes.ElementAtOrDefault(34),
+                notes.ElementAtOrDefault(35),
+                notes.ElementAtOrDefault(36),
+                notes.ElementAtOrDefault(37),
+                notes.ElementAtOrDefault(38),
+                notes.ElementAtOrDefault(39)
+            )
+        { }
 
         public IEnumerator<int> GetEnumerator()
         {
@@ -877,6 +898,16 @@ public static class MusicBoxCompiler
             if (Note27 != 0) yield return Note27;
             if (Note28 != 0) yield return Note28;
             if (Note29 != 0) yield return Note29;
+            if (Note30 != 0) yield return Note30;
+            if (Note31 != 0) yield return Note31;
+            if (Note32 != 0) yield return Note32;
+            if (Note33 != 0) yield return Note33;
+            if (Note34 != 0) yield return Note34;
+            if (Note35 != 0) yield return Note35;
+            if (Note36 != 0) yield return Note36;
+            if (Note37 != 0) yield return Note37;
+            if (Note38 != 0) yield return Note38;
+            if (Note39 != 0) yield return Note39;
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()

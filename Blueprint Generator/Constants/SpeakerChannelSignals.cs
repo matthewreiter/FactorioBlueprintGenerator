@@ -45,6 +45,7 @@ public static class SpeakerChannelSignals
         ItemNames.PersonalBattery,
         ItemNames.PersonalBatteryMk2,
         ItemNames.BeltImmunityEquipment,
-        ItemNames.Exoskeleton
+        ItemNames.Exoskeleton,
+        ItemNames.PersonalRoboport
     ];
 }
