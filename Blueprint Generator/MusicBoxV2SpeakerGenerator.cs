@@ -48,11 +48,13 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         var instrumentSignal = SignalID.CreateVirtual(VirtualSignalNames.Snowflake);
         var pitchSignal = SignalID.CreateVirtual(VirtualSignalNames.Explosion);
         var volumeSignal = SignalID.CreateVirtual(VirtualSignalNames.Alarm);
+        var resetSignal = SignalID.CreateVirtual(VirtualSignalNames.Deny);
 
         var entities = new List<Entity>();
         var wires = new List<Wire>();
         Entity previousDurationDivider = null;
         Entity previousInstrumentDivider = null;
+        Entity previousCurrentNoteMemory = null;
 
         var inputBuffer = new Entity
         {
@@ -76,6 +78,41 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             }
         };
         entities.Add(inputBuffer);
+
+        var resetter = new Entity
+        {
+            Player_description = "Resetter",
+            Name = ItemNames.DeciderCombinator,
+            Position = new Position
+            {
+                X = (includePower ? 2 : 0) + xOffset - 1,
+                Y = yOffset + 4.5
+            },
+            Direction = Direction.Down,
+            Control_behavior = new ControlBehavior
+            {
+                Decider_conditions = new DeciderConditions
+                {
+                    Conditions =
+                    [
+                        new()
+                        {
+                            First_signal = SignalID.CreateVirtual(VirtualSignalNames.Check),
+                            Constant = 34817,
+                            Comparator = Comparators.IsEqual
+                        }
+                    ],
+                    Outputs =
+                    [
+                        new()
+                        {
+                            Signal = resetSignal
+                        }
+                    ]
+                }
+            }
+        };
+        entities.Add(resetter);
 
         for (int column = 0; column < width; column++)
         {
@@ -162,7 +199,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             entities.Add(instrumentExtractor);
 
             wires.Add(new((instrumentExtractor, ConnectionType.Red1), (instrumentDivider, ConnectionType.Red2)));
-            wires.Add(new((instrumentExtractor, ConnectionType.Green2), (durationDivider, ConnectionType.Green2)));
+            wires.Add(new((instrumentExtractor, ConnectionType.Red2), (durationDivider, ConnectionType.Red2)));
 
             var pitchDivider = new Entity
             {
@@ -213,7 +250,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             entities.Add(pitchExtractor);
 
             wires.Add(new((pitchExtractor, ConnectionType.Red1), (pitchDivider, ConnectionType.Red2)));
-            wires.Add(new((pitchExtractor, ConnectionType.Green2), (instrumentExtractor, ConnectionType.Green2)));
+            wires.Add(new((pitchExtractor, ConnectionType.Red2), (instrumentExtractor, ConnectionType.Red2)));
 
             var volumeExtractor = new Entity
             {
@@ -239,7 +276,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             entities.Add(volumeExtractor);
 
             wires.Add(new((volumeExtractor, ConnectionType.Red1), (durationDivider, ConnectionType.Red1)));
-            wires.Add(new((volumeExtractor, ConnectionType.Green2), (pitchExtractor, ConnectionType.Green2)));
+            wires.Add(new((volumeExtractor, ConnectionType.Red2), (pitchExtractor, ConnectionType.Red2)));
 
             var elapsedTimeIncrementer = new Entity
             {
@@ -258,7 +295,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             };
             entities.Add(elapsedTimeIncrementer);
 
-            wires.Add(new((elapsedTimeIncrementer, ConnectionType.Green1), (volumeExtractor, ConnectionType.Green2)));
+            wires.Add(new((elapsedTimeIncrementer, ConnectionType.Red1), (volumeExtractor, ConnectionType.Red2)));
 
             var currentNoteMemory = new Entity
             {
@@ -284,7 +321,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                             },
                             new()
                             {
-                                First_signal = SignalID.CreateVirtual(VirtualSignalNames.Deny),
+                                First_signal = resetSignal,
                                 Constant = 0,
                                 Comparator = Comparators.IsEqual,
                                 Compare_type = CompareTypes.And
@@ -304,7 +341,10 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             entities.Add(currentNoteMemory);
 
             wires.Add(new((currentNoteMemory, ConnectionType.Red1), (currentNoteMemory, ConnectionType.Red2)));
-            wires.Add(new((currentNoteMemory, ConnectionType.Green1), (elapsedTimeIncrementer, ConnectionType.Green1)));
+            wires.Add(new((currentNoteMemory, ConnectionType.Red1), (elapsedTimeIncrementer, ConnectionType.Red1)));
+            wires.Add(new((currentNoteMemory, ConnectionType.Green1), column == 0 ? (resetter, ConnectionType.Green2) : (previousCurrentNoteMemory, ConnectionType.Green1)));
+
+            previousCurrentNoteMemory = currentNoteMemory;
 
             var timeDivider = new Entity
             {
