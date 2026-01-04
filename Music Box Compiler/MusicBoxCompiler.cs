@@ -184,9 +184,9 @@ public static class MusicBoxCompiler
         var minVolume = configuration.MinVolume ?? 0.1;
         var maxVolume = configuration.MaxVolume ?? 1;
 
-        var memoryCells = new List<MemoryCell>();
+        var songCells = new List<MemoryCell>();
         var noteGroupCells = new List<MemoryCell>();
-        var constantCells = new List<MemoryCell>();
+        var metadataCells = new List<MemoryCell>();
         var allNoteTuples = new HashSet<NoteTuple>();
         var noteTuplesToAddresses = new Dictionary<NoteTuple, (int Address, int SubAddress)>();
         var currentAddress = baseAddress;
@@ -202,7 +202,7 @@ public static class MusicBoxCompiler
 
         void AddMemoryCell(List<Filter> filters, int length = 1, bool isEnabled = true)
         {
-            memoryCells.Add(new() { Address = currentAddress, Filters = filters, IsEnabled = isEnabled });
+            songCells.Add(new() { Address = currentAddress, Filters = filters, IsEnabled = isEnabled });
             currentAddress += length;
         }
 
@@ -434,7 +434,7 @@ public static class MusicBoxCompiler
                     metadataFilters.AddRange(CreateFiltersForString(song.Artist, 20, 'I'));
                 }
 
-                constantCells.Add(new MemoryCell { Address = metadataAddress, Filters = metadataFilters });
+                metadataCells.Add(new MemoryCell { Address = metadataAddress, Filters = metadataFilters });
             }
 
             // Create a jump back to the beginning of the playlist
@@ -443,10 +443,10 @@ public static class MusicBoxCompiler
 
         AddJump(nextAddress);
 
-        memoryCells.AddRange(noteGroupCells);
+        songCells.AddRange(noteGroupCells);
 
-        var romUsed = memoryCells.Count + constantCells.Count;
-        var totalRom = width * height;
+        var romUsed = songCells.Count;
+        var totalRom = width * (height - 1);
 
         Console.WriteLine($"Total play time: {TimeSpan.FromSeconds(totalPlayTime / 60d):h\\:mm\\:ss\\.fff}");
         Console.WriteLine($"ROM usage: {romUsed}/{totalRom} ({(double)romUsed / totalRom * 100:F1}%)");
@@ -461,7 +461,7 @@ public static class MusicBoxCompiler
             ProgramRows = 1, // Allocate one line for the constant cells
             ProgramName = "Songs",
             IconNames = [ItemNames.ElectronicCircuit, ItemNames.ProgrammableSpeaker]
-        }, constantCells, memoryCells);
+        }, metadataCells, songCells);
     }
 
     private static Blueprint CreateBlueprintFromPlaylistsV2(List<Playlist> playlists, MusicBoxConfiguration configuration, out Addresses addresses)
@@ -685,8 +685,8 @@ public static class MusicBoxCompiler
 
         AddJump(nextAddress);
 
-        var romUsed = songCells.Count + metadataCells.Count;
-        var totalRom = width * height;
+        var romUsed = songCells.Count;
+        var totalRom = width * (height - 1);
 
         Console.WriteLine($"Total play time: {TimeSpan.FromSeconds(totalPlayTime / 60d):h\\:mm\\:ss\\.fff}");
         Console.WriteLine($"ROM usage: {romUsed}/{totalRom} ({(double)romUsed / totalRom * 100:F1}%)");
