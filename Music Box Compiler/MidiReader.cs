@@ -528,8 +528,12 @@ public static class MidiReader
                         entry.Value.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
                     }
 
+                    if (currentChannelActiveNotes.Count > 0)
+                    {
+                        lastNoteTimeMillis = currentTimeMillis;
+                    }
+
                     currentChannelActiveNotes.Clear();
-                    lastNoteTimeMillis = currentTimeMillis;
 
                     break;
                 case MidiEvent.CC:
@@ -541,8 +545,12 @@ public static class MidiReader
                                 entry.Value.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
                             }
 
+                            if (currentChannelActiveNotes.Count > 0)
+                            {
+                                lastNoteTimeMillis = currentTimeMillis;
+                            }
+
                             currentChannelActiveNotes.Clear();
-                            lastNoteTimeMillis = currentTimeMillis;
 
                             break;
                         case MidiCC.Expression:
