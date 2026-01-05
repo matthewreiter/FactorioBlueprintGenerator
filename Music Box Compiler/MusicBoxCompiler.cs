@@ -27,8 +27,6 @@ public static class MusicBoxCompiler
     private const int MetadataAddressBits = 10;
     private const int MinimumNoteDuration = 10;
     private const int ChannelCooldownTicks = 1;
-    private const int SustainedNoteDurationThreshold = MinimumNoteDuration * 2;
-    private const double SustainedNoteVolumeFactor = 0.3;
 
     public static void Run(IConfigurationRoot configuration)
     {
@@ -499,9 +497,7 @@ public static class MusicBoxCompiler
             var encodedDuration = EncodeDuration(note.Duration);
             var encodedInstrument = (int)note.Instrument - 3;
             var encodedPitch = note.Number - 1;
-
-            var effectiveVolume = note.Volume * (encodedDuration <= SustainedNoteDurationThreshold ? 1 : SustainedNoteVolumeFactor);
-            var encodedVolume = Math.Min(Math.Max((int)double.Round(effectiveVolume * 100), 1), 100) - 1;
+            var encodedVolume = Math.Min(Math.Max((int)double.Round(note.Volume * 100), 1), 100) - 1;
 
             return encodedVolume + (encodedPitch + (encodedInstrument + encodedDuration * InstrumentCountV2) * PitchCountV2) * VolumeCountV2;
         }
