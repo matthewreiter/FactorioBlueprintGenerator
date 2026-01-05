@@ -14,7 +14,7 @@ namespace MusicBoxCompiler;
 
 public static class MidiReader
 {
-    // http://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html
+    // https://web.archive.org/web/20250511231913/http://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html
     private const int PercussionMidiChannel = 9;
     private static readonly List<string> Notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
     private static readonly Dictionary<byte, string> DrumNames =
