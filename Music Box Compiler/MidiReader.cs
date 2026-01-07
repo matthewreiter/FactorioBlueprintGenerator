@@ -348,9 +348,7 @@ public static class MidiReader
 
         if (currentNotes.Count > 0)
         {
-            var timeDelta = totalPlayTime - lastTime;
-
-            noteGroups.Add(new() { Notes = currentNotes, Length = timeDelta });
+            noteGroups.Add(new() { Notes = currentNotes, Length = totalPlayTime - lastTime });
         }
 
         midiEventWriter?.WriteLine();

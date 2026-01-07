@@ -532,8 +532,6 @@ public static class MusicBoxCompiler
             {
                 var metadataAddress = baseMetadataAddress + (song.AddressIndex ?? AllocateNextMetadataAddress());
                 var songAddress = currentAddress;
-                var currentTimeOffset = 0;
-                var cellStartTime = 0;
                 var timeDeficit = 0;
 
                 trackNumber++;
@@ -604,17 +602,12 @@ public static class MusicBoxCompiler
                         timeDeficit = 0;
                     }
 
-                    currentTimeOffset += length;
-
-                    var cellLength = currentTimeOffset - cellStartTime;
-
-                    currentAddress += cellLength;
-                    cellStartTime = currentTimeOffset;
+                    currentAddress += length;
 
                     // Reduce channel remaining times
                     for (var channel = 0; channel < ChannelCountV2; channel++)
                     {
-                        channelRemainingTimes[channel] = Math.Max(0, channelRemainingTimes[channel] - cellLength);
+                        channelRemainingTimes[channel] = Math.Max(0, channelRemainingTimes[channel] - length);
                     }
                 }
 
