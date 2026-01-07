@@ -421,7 +421,6 @@ public static class MidiReader
 
         var tempo = MidiMetaType.DefaultTempo;
         var currentTimeMillis = 0d;
-        var lastNoteTimeMillis = 0d;
         var notes = new List<MidiNote>();
         var activeNotes = Enumerable.Range(0, machine.Channels.Count).Select(_ => new Dictionary<(byte Program, byte NoteNumber), MidiNote>()).ToArray();
         var trackName = new List<string>();
@@ -466,7 +465,6 @@ public static class MidiReader
                         if (currentChannelActiveNotes.Remove((channel.Program, noteNumber), out var previousNote))
                         {
                             previousNote.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
-                            lastNoteTimeMillis = currentTimeMillis;
                         }
 
                         if (midiEvent.EventType == MidiEvent.NoteOn && velocity > 0)
@@ -506,7 +504,6 @@ public static class MidiReader
 
                             notes.Add(note);
                             currentChannelActiveNotes[(channel.Program, noteNumber)] = note;
-                            lastNoteTimeMillis = currentTimeMillis;
                         }
                     }
 
@@ -529,11 +526,6 @@ public static class MidiReader
                         entry.Value.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
                     }
 
-                    if (currentChannelActiveNotes.Count > 0)
-                    {
-                        lastNoteTimeMillis = currentTimeMillis;
-                    }
-
                     currentChannelActiveNotes.Clear();
 
                     break;
@@ -544,11 +536,6 @@ public static class MidiReader
                             foreach (var entry in currentChannelActiveNotes)
                             {
                                 entry.Value.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
-                            }
-
-                            if (currentChannelActiveNotes.Count > 0)
-                            {
-                                lastNoteTimeMillis = currentTimeMillis;
                             }
 
                             currentChannelActiveNotes.Clear();
@@ -578,8 +565,16 @@ public static class MidiReader
             }
         }
 
-        var maxEndOfSongSilenceMillis = 3000; // Truncate the song if the end is more than 3 seconds after the last note
-        var totalPlayTime = TimeSpan.FromMilliseconds(Math.Min(currentTimeMillis, lastNoteTimeMillis + maxEndOfSongSilenceMillis));
+        // Close out any notes that are still active at the end of the song
+        foreach (var channelActiveNotes in activeNotes)
+        {
+            foreach (var entry in channelActiveNotes)
+            {
+                entry.Value.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
+            }
+        }
+
+        var totalPlayTime = TimeSpan.FromMilliseconds(currentTimeMillis);
 
         return new MidiData
         {
