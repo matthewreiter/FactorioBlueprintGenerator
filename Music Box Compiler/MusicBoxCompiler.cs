@@ -588,18 +588,7 @@ public static class MusicBoxCompiler
                         songCells.Add(noteCell);
                     }
 
-                    // Strip trailing silence
-                    var noteGroupLength = noteGroup.Length;
-                    if (song.Gapless && noteGroup == song.NoteGroups[^1] && song.NoteGroups.Count > 1)
-                    {
-                        var previousNoteGroupLength = song.NoteGroups[^2].Length;
-                        if (noteGroupLength > previousNoteGroupLength)
-                        {
-                            noteGroupLength = previousNoteGroupLength;
-                        }
-                    }
-
-                    var length = (int)(noteGroupLength.TotalSeconds * 60) - timeDeficit;
+                    var length = (int)(noteGroup.Length.TotalSeconds * 60) - timeDeficit;
 
                     // We can't have multiple note groups play too close to each other.
                     // However, to avoid delaying future notes we capture the amount that the length is adjusted
