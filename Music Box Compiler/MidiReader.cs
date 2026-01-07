@@ -299,7 +299,7 @@ public static class MidiReader
 
                     if (midiNote.StartTime - currentTime >= TickDuration || channelCount is not null && currentNotes.Count + effectiveNoteNumbers.Count > channelCount)
                     {
-                        noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = currentTime - lastTime });
+                        noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = midiNote.StartTime - currentTime });
                         currentNotes = [];
                         lastTime = currentTime;
                         currentTime = midiNote.StartTime;
@@ -348,7 +348,7 @@ public static class MidiReader
 
         if (currentNotes.Count > 0)
         {
-            noteGroups.Add(new() { Notes = currentNotes, Length = totalPlayTime - lastTime });
+            noteGroups.Add(new() { Notes = currentNotes, Length = totalPlayTime - currentTime });
         }
 
         midiEventWriter?.WriteLine();
