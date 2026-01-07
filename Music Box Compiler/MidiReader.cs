@@ -463,6 +463,12 @@ public static class MidiReader
                         var noteNumber = midiEvent.Msb;
                         var velocity = midiEvent.Lsb;
 
+                        if (currentChannelActiveNotes.Remove((channel.Program, noteNumber), out var previousNote))
+                        {
+                            previousNote.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
+                            lastNoteTimeMillis = currentTimeMillis;
+                        }
+
                         if (midiEvent.EventType == MidiEvent.NoteOn && velocity > 0)
                         {
                             var isPercussion = midiEvent.Channel == PercussionMidiChannel;
@@ -502,15 +508,10 @@ public static class MidiReader
                             currentChannelActiveNotes[(channel.Program, noteNumber)] = note;
                             lastNoteTimeMillis = currentTimeMillis;
                         }
-                        else if (currentChannelActiveNotes.Remove((channel.Program, noteNumber), out var note))
-                        {
-                            note.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
-                            lastNoteTimeMillis = currentTimeMillis;
-                        }
                     }
 
                     break;
-                case MidiEvent.PAf:
+                case MidiEvent.PAf: // Polyphonic aftertouch
                     {
                         var noteNumber = midiEvent.Msb;
                         var pressure = midiEvent.Lsb / 127d;
