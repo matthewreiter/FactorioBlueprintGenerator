@@ -420,7 +420,7 @@ public static class MidiReader
         var machine = new MidiMachine(); // https://github.com/atsushieno/managed-midi/blob/master/Commons.Music.Midi.Shared/MidiMachine.cs
 
         var tempo = MidiMetaType.DefaultTempo;
-        var currentTimeMillis = 0d;
+        var currentTime = TimeSpan.Zero;
         var notes = new List<MidiNote>();
         var activeNotes = Enumerable.Range(0, machine.Channels.Count).Select(_ => new Dictionary<(byte Program, byte NoteNumber), MidiNote>()).ToArray();
         var trackName = new List<string>();
@@ -433,7 +433,7 @@ public static class MidiReader
             var channel = machine.Channels[midiEvent.Channel];
             var currentChannelActiveNotes = activeNotes[midiEvent.Channel];
 
-            currentTimeMillis += tempo / 1000d * midiMessage.DeltaTime / music.DeltaTimeSpec;
+            currentTime += TimeSpan.FromMilliseconds(tempo / 1000d * midiMessage.DeltaTime / music.DeltaTimeSpec);
 
             machine.ProcessEvent(midiEvent);
 
@@ -464,7 +464,7 @@ public static class MidiReader
 
                         if (currentChannelActiveNotes.Remove((channel.Program, noteNumber), out var previousNote))
                         {
-                            previousNote.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
+                            previousNote.EndTime = currentTime;
                         }
 
                         if (midiEvent.EventType == MidiEvent.NoteOn && velocity > 0)
@@ -499,7 +499,7 @@ public static class MidiReader
                                 Velocity = velocity / 127d,
                                 Expression = expression > 0 ? expression / 127d : 1,
                                 ChannelVolume = channelVolume > 0 ? channelVolume / 127d : 1,
-                                StartTime = TimeSpan.FromMilliseconds(currentTimeMillis)
+                                StartTime = currentTime
                             };
 
                             notes.Add(note);
@@ -515,7 +515,7 @@ public static class MidiReader
 
                         if (currentChannelActiveNotes.TryGetValue((channel.Program, noteNumber), out var activeNote))
                         {
-                            activeNote.PressuresChanges.Add((TimeSpan.FromMilliseconds(currentTimeMillis), pressure));
+                            activeNote.PressuresChanges.Add((currentTime, pressure));
                         }
                     }
 
@@ -523,7 +523,7 @@ public static class MidiReader
                 case MidiEvent.MidiStop:
                     foreach (var entry in currentChannelActiveNotes)
                     {
-                        entry.Value.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
+                        entry.Value.EndTime = currentTime;
                     }
 
                     currentChannelActiveNotes.Clear();
@@ -535,7 +535,7 @@ public static class MidiReader
                         case MidiCC.AllSoundOff or MidiCC.ResetAllControllers or MidiCC.AllNotesOff or MidiCC.OmniModeOff or MidiCC.OmniModeOn or MidiCC.PolyModeOnOff or MidiCC.PolyModeOn:
                             foreach (var entry in currentChannelActiveNotes)
                             {
-                                entry.Value.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
+                                entry.Value.EndTime = currentTime;
                             }
 
                             currentChannelActiveNotes.Clear();
@@ -546,7 +546,7 @@ public static class MidiReader
 
                             foreach (var entry in currentChannelActiveNotes)
                             {
-                                entry.Value.ExpressionChanges.Add((TimeSpan.FromMilliseconds(currentTimeMillis), expression));
+                                entry.Value.ExpressionChanges.Add((currentTime, expression));
                             }
 
                             break;
@@ -555,7 +555,7 @@ public static class MidiReader
 
                             foreach (var entry in currentChannelActiveNotes)
                             {
-                                entry.Value.VolumeChanges.Add((TimeSpan.FromMilliseconds(currentTimeMillis), channelVolume));
+                                entry.Value.VolumeChanges.Add((currentTime, channelVolume));
                             }
 
                             break;
@@ -570,16 +570,14 @@ public static class MidiReader
         {
             foreach (var entry in channelActiveNotes)
             {
-                entry.Value.EndTime = TimeSpan.FromMilliseconds(currentTimeMillis);
+                entry.Value.EndTime = currentTime;
             }
         }
-
-        var totalPlayTime = TimeSpan.FromMilliseconds(currentTimeMillis);
 
         return new MidiData
         {
             Notes = notes,
-            TotalPlayTime = totalPlayTime,
+            TotalPlayTime = currentTime,
             TrackName = trackName.Count > 0 ? string.Join(", ", trackName) : null,
             Text = text.Count > 0 ? string.Join("", text) : null,
             Copyright = copyright.Count > 0 ? string.Join(", ", copyright) : null
