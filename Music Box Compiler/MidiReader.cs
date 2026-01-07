@@ -576,7 +576,7 @@ public static class MidiReader
 
         return new MidiData
         {
-            Notes = notes,
+            Notes = [.. notes.Where(note => note.EndTime != note.StartTime)],
             TotalPlayTime = currentTime,
             TrackName = trackName.Count > 0 ? string.Join(", ", trackName) : null,
             Text = text.Count > 0 ? string.Join("", text) : null,
