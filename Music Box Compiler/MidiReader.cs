@@ -572,10 +572,18 @@ public static class MidiReader
             }
         }
 
+        // Remove zero-length notes
+        notes = [.. notes.Where(note => note.EndTime != note.StartTime)];
+
+        // Truncate the song if the end is more than 3 seconds after the last note
+        var lastNoteEndTime = notes.Max(note => note.EndTime) ?? TimeSpan.Zero;
+        var maxEndTime = lastNoteEndTime + TimeSpan.FromSeconds(3);
+        var totalPlayTime = currentTime < maxEndTime ? currentTime : maxEndTime;
+
         return new MidiData
         {
-            Notes = [.. notes.Where(note => note.EndTime != note.StartTime)],
-            TotalPlayTime = currentTime,
+            Notes = notes,
+            TotalPlayTime = totalPlayTime,
             TrackName = trackName.Count > 0 ? string.Join(", ", trackName) : null,
             Text = text.Count > 0 ? string.Join("", text) : null,
             Copyright = copyright.Count > 0 ? string.Join(", ", copyright) : null
