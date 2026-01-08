@@ -1,11 +1,11 @@
-﻿using BlueprintCommon.Constants;
+﻿using BlueprintCommon;
+using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
+using BlueprintGenerator.Models;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static BlueprintGenerator.ConnectionUtil;
-using static BlueprintGenerator.PowerUtil;
 
 namespace BlueprintGenerator;
 
@@ -40,17 +40,16 @@ public class RomGenerator : IBlueprintGenerator
             height = programRows + (data.Count - 1) / width + 1;
         }
 
-        var entitiesPerCell = 2;
         var cellHeight = 3;
         var blockHeightInCells = 64;
         var blockGapHeight = 8;
-
-        var readerEntityOffset = 1;
 
         var gridWidth = width + ((width + 7) / 16 + 1) * 2;
         var gridHeight = height * cellHeight + (height - 1) / blockHeightInCells * blockGapHeight;
 
         var entities = new List<Entity>();
+        var wires = new List<Wire>();
+        var memoryCellReaders = new Entity[height, width];
 
         for (int row = 0; row < height; row++)
         {
@@ -59,23 +58,25 @@ public class RomGenerator : IBlueprintGenerator
                 var memoryCell = row < programRows
                     ? program?.ElementAtOrDefault(row * width + column) ?? new MemoryCell { Address = -1, IsEnabled = false }
                     : data?.ElementAtOrDefault((row - programRows) * width + column) ?? new MemoryCell { Address = -1, IsEnabled = false };
-                var memoryCellEntityNumber = (row * width + column) * entitiesPerCell + 1;
                 var memoryCellX = column + (column / 16 + 1) * 2 + xOffset;
                 var memoryCellY = gridHeight - (row + 1) * cellHeight - row / blockHeightInCells * blockGapHeight + yOffset;
 
-                var adjacentMemoryCells = new List<int> { -1, 1 }
-                    .Where(offset => column + offset >= 0 && column + offset < width)
-                    .Select(offset => memoryCellEntityNumber + offset * entitiesPerCell)
-                    .Concat(new List<int> { -1, 1 }
-                        .Where(offset => row + offset >= 0 && row + offset < height && (row < programRows == row + offset < programRows) && column == 0)
-                        .Select(offset => memoryCellEntityNumber + offset * width * entitiesPerCell)
-                    )
-                    .ToList();
+                var adjacentMemoryCells = new List<Entity>();
 
-                // Memory cell
-                entities.Add(new Entity
+                // Add left neighbor if it exists
+                if (column > 0)
                 {
-                    Entity_number = memoryCellEntityNumber,
+                    adjacentMemoryCells.Add(memoryCellReaders[row, column - 1]);
+                }
+
+                // Add top neighbor if it exists, is in the same section (program/data), and is in the first column
+                if (row > 0 && row != programRows && column == 0)
+                {
+                    adjacentMemoryCells.Add(memoryCellReaders[row - 1, column]);
+                }
+
+                var memoryCellData = new Entity
+                {
                     Name = ItemNames.ConstantCombinator,
                     Position = new Position
                     {
@@ -87,25 +88,12 @@ public class RomGenerator : IBlueprintGenerator
                     {
                         Sections = Sections.Create(memoryCell.Filters),
                         Is_on = memoryCell.IsEnabled ? null : false
-                    },
-                    Connections = CreateConnections(new ConnectionPoint
-                    {
-                        Green =
-                        [
-                            // Connection to reader input or previous memory sub-cell
-                            new()
-                            {
-                                Entity_id = memoryCellEntityNumber + readerEntityOffset,
-                                Circuit_id = CircuitId.Input
-                            }
-                        ]
-                    })
-                });
+                    }
+                };
+                entities.Add(memoryCellData);
 
-                // Memory cell reader
-                entities.Add(new Entity
+                var memoryCellReader = new Entity
                 {
-                    Entity_number = memoryCellEntityNumber + readerEntityOffset,
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
@@ -155,33 +143,22 @@ public class RomGenerator : IBlueprintGenerator
                                 Copy_count_from_input = true
                             }]
                         }
-                    },
-                    Connections = CreateConnections(new ConnectionPoint
-                    {
-                        // Connection to adjacent reader input (address line)
-                        Red = adjacentMemoryCells.Select(entityNumber => new ConnectionData
-                        {
-                            Entity_id = entityNumber + readerEntityOffset,
-                            Circuit_id = CircuitId.Input
-                        }).ToList(),
-                        Green =
-                        [
-                            // Connection to memory cell
-                            new()
-                            {
-                                Entity_id = memoryCellEntityNumber
-                            }
-                        ]
-                    }, new ConnectionPoint
-                    {
-                        // Connection to adjacent reader output
-                        Green = adjacentMemoryCells.Select(entityNumber => new ConnectionData
-                        {
-                            Entity_id = entityNumber + readerEntityOffset,
-                            Circuit_id = CircuitId.Output
-                        }).ToList()
-                    })
-                });
+                    }
+                };
+                entities.Add(memoryCellReader);
+                memoryCellReaders[row, column] = memoryCellReader;
+
+                // Connection to memory cell
+                wires.Add(new((memoryCellReader, ConnectionType.Green1), (memoryCellData, ConnectionType.Green1)));
+
+                foreach (var adjacentMemoryCell in adjacentMemoryCells)
+                {
+                    // Connection to adjacent reader input (address line)
+                    wires.Add(new((memoryCellReader, ConnectionType.Red1), (adjacentMemoryCell, ConnectionType.Red1)));
+
+                    // Connection to adjacent reader output
+                    wires.Add(new((memoryCellReader, ConnectionType.Green2), (adjacentMemoryCell, ConnectionType.Green2)));
+                }
             }
         }
 
@@ -205,13 +182,16 @@ public class RomGenerator : IBlueprintGenerator
         var substationWidth = (width + 7) / 16 + 1;
         var substationHeight = (gridHeight + 2) / 18 + 1;
 
-        entities.AddRange(CreateSubstations(substationWidth, substationHeight, xOffset, gridHeight % 18 - 4 + yOffset, entities.Count + 1));
+        PowerUtil.AddSubstations(entities, wires, substationWidth, substationHeight, xOffset, gridHeight % 18 - 4 + yOffset);
+
+        BlueprintUtil.PopulateEntityNumbers(entities);
 
         return new Blueprint
         {
             Label = $"{width}x{height} ROM{(programName != null ? $": {programName}": "")}",
             Icons = [.. iconNames.Select(Icon.Create)],
             Entities = entities,
+            Wires = [.. wires.Select(wire => wire.ToArray())],
             SnapToGrid = snapToGrid ? new() { X = (ulong)gridWidth, Y = (ulong)gridHeight } : null,
             AbsoluteSnapping = snapToGrid ? true : null,
             Item = ItemNames.Blueprint,
