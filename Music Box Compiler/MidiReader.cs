@@ -333,7 +333,7 @@ public static class MidiReader
                 var instrumentAndNote = instrument switch
                 {
                     Instrument.Drumkit => isNoteInRange ? Drums[effectiveNoteNumber - 1] : "Unknown",
-                    _ => $"{instrument} {Notes[(notePlayed + unreasonablyHighOctave * Notes.Count) % Notes.Count]}{notePlayed / Notes.Count - 1}"
+                    _ => $"{instrument} {Notes[(notePlayed + unreasonablyHighOctave * Notes.Count) % Notes.Count]}{notePlayed / Notes.Count}"
                 };
 
                 var isInstrumentMapped = instrument != Instrument.Unknown;
@@ -477,7 +477,7 @@ public static class MidiReader
                             var instrumentName = (isPercussion ? GeneralMidi.DrumKitsGM2.ElementAtOrDefault(channel.Program) : GeneralMidi.InstrumentNames.ElementAtOrDefault(channel.Program)) ?? channel.Program.ToString();
                             var noteName = isPercussion
                                 ? DrumNames.TryGetValue(noteNumber, out var drumName) ? drumName : noteNumber.ToString()
-                                : $"{Notes[noteNumber % Notes.Count]}{noteNumber / Notes.Count - 1}";
+                                : $"{Notes[noteNumber % Notes.Count]}{noteNumber / Notes.Count}";
 
                             var relativeNoteNumber = instrument == Instrument.Unknown
                                 ? 0
