@@ -547,10 +547,22 @@ public static class MusicBoxCompiler
 
                     var channelNotes = new int[ChannelCountV2];
 
-                    foreach (var note in noteGroup.Notes)
+                    foreach (var note in noteGroup.Notes.OrderBy(note => note.Instrument).ThenBy(note => note.Number))
                     {
-                        // Find the next available channel
-                        var channelIndex = Array.IndexOf(channelRemainingTimes, 0);
+                        // Find the best available channel by attempting to spread the notes out by pitch
+                        int channelIndex = -1;
+                        var desiredChannel = (note.Number - 1) * ChannelCountV2 / 48;
+
+                        for (var index = 0; index < ChannelCountV2; index++)
+                        {
+                            var offsetIndex = (desiredChannel + index) % ChannelCountV2;
+
+                            if (channelRemainingTimes[offsetIndex] == 0)
+                            {
+                                channelIndex = offsetIndex;
+                                break;
+                            }
+                        }
 
                         // If all channels are busy, give up
                         if (channelIndex == -1)
