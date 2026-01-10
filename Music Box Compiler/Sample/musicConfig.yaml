@@ -171,14 +171,10 @@ playlists:
         displayName: I Want to Hold Your Hand
         artist: The Beatles
         source: Music\BitMidi\i_want_to_hold_your_hand-beatles.mid
-        instrumentVolumes:
-          drumkit: 80
       - name: IveJustSeenAFace
         displayName: I've Just Seen a Face
         artist: The Beatles
         source: Music\BitMidi\The Beatles - I've Just Seen a Face.mid
-        instrumentVolumes:
-          drumkit: 80
       - name: EleonorRigby
         displayName: Eleonor Rigby
         artist: The Beatles
@@ -231,7 +227,6 @@ playlists:
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.OblaDi OblaDa K.mid
         instrumentVolumes:
-          drumkit: 90
           celesta: 90
       - name: Julia
         artist: The Beatles
@@ -287,7 +282,6 @@ playlists:
         source: Music\BeatlesNumber9.com\strawberry.mid
         instrumentVolumes:
           steelDrum: 80
-          drumkit: 80
       - name: DearPrudence
         displayName: Dear Prudence
         artist: The Beatles

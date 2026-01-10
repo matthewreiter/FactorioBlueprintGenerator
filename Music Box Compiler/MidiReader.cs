@@ -112,7 +112,7 @@ public static class MidiReader
     };
     private static readonly Dictionary<Instrument, InstrumentInfo> Instruments = new()
     {
-        [Instrument.Drumkit] = new(0, 17),
+        [Instrument.Drumkit] = new(0, 17, 0.85),
         [Instrument.Piano] = new(-52, 48),
         [Instrument.BassGuitar] = new(-40, 36),
         [Instrument.LeadGuitar] = new(-40, 36),
