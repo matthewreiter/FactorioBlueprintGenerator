@@ -612,14 +612,19 @@ public static class MusicBoxCompiler
                     else
                     {
                         // Create a new memory cell
-                        noteCell = new MemoryCell
-                        {
-                            Address = currentAddress,
-                            Filters = [.. channelNotes.Select((note, channelIndex) => CreateFilter(SpeakerChannelSignals.Signals[channelIndex], note)).Where(filter => filter.Count > 0)]
-                        };
+                        List<Filter> filters = [.. channelNotes.Select((note, channelIndex) => CreateFilter(SpeakerChannelSignals.Signals[channelIndex], note)).Where(filter => filter.Count > 0)];
 
-                        noteTuplesToCells[noteTuple] = noteCell;
-                        songCells.Add(noteCell);
+                        if (filters.Count > 0)
+                        {
+                            noteCell = new MemoryCell
+                            {
+                                Address = currentAddress,
+                                Filters = filters
+                            };
+
+                            noteTuplesToCells[noteTuple] = noteCell;
+                            songCells.Add(noteCell);
+                        }
                     }
 
                     var length = (int)(noteGroup.Length.TotalSeconds * 60) - timeDeficit;

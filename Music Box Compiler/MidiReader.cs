@@ -343,7 +343,7 @@ public static class MidiReader
                 };
 
                 var isInstrumentMapped = instrument != Instrument.Unknown;
-                midiEventWriter.WriteLine($"{lastTime:mm\\:ss\\.fff}: {midiNote.OriginalInstrumentName} {midiNote.OriginalNoteName} velocity {midiNote.Velocity:F2} expression {midiNote.Expression:F2} channel volume {midiNote.ChannelVolume:F2}" +
+                midiEventWriter.WriteLine($"{midiNote.StartTime:mm\\:ss\\.fff}: {midiNote.OriginalInstrumentName} {midiNote.OriginalNoteName} velocity {midiNote.Velocity:F2} expression {midiNote.Expression:F2} channel volume {midiNote.ChannelVolume:F2}" +
                     (!midiNote.IsExpanded && midiNote.EndTime is not null ? $" duration {midiNote.EndTime - midiNote.StartTime}" : "") +
                     (isInstrumentMapped ? $" => {instrumentAndNote} volume {volume:F2}" : "") +
                     (!isNoteInRange ? " (note not in range)" : "") +
