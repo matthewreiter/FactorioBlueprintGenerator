@@ -24,4 +24,14 @@ public class Note
     /// 1 for a whole note, 2 for a half note, 4 for a quarter note, etc.
     /// </summary>
     public double InverseLength { get; set; }
+
+    /// <summary>
+    /// The music box channel on which this note is played.
+    /// </summary>
+    public int? Channel { get; set; }
+
+    /// <summary>
+    /// If not null, represents the previous note change or the parent note if this is the first note change.
+    /// </summary>
+    public Note PreviousNote { get; set; }
 }

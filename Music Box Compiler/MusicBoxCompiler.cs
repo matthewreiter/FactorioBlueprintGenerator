@@ -492,12 +492,16 @@ public static class MusicBoxCompiler
 
         int EncodeDuration(TimeSpan duration) => Math.Max((int)double.Ceiling(duration.TotalSeconds * 60), MinimumNoteDuration);
 
+        int EncodeVolume(double volume) => Math.Min(Math.Max((int)double.Round(volume * 100), 1), 100) - 1;
+
+        int EncodeVolumeChange(Note note) => EncodeVolume(note.Volume) - EncodeVolume(note.PreviousNote.Volume);
+
         int EncodeNote(Note note)
         {
             var encodedDuration = EncodeDuration(note.Duration);
             var encodedInstrument = (int)note.Instrument - 3;
             var encodedPitch = note.Number - 1;
-            var encodedVolume = Math.Min(Math.Max((int)double.Round(note.Volume * 100), 1), 100) - 1;
+            var encodedVolume = EncodeVolume(note.Volume);
 
             return encodedVolume + (encodedPitch + (encodedInstrument + encodedDuration * InstrumentCountV2) * PitchCountV2) * VolumeCountV2;
         }
@@ -549,33 +553,53 @@ public static class MusicBoxCompiler
 
                     foreach (var note in noteGroup.Notes.OrderBy(note => note.Instrument).ThenBy(note => note.Number))
                     {
-                        // Find the best available channel by attempting to spread the notes out by pitch
-                        int channelIndex = -1;
-                        var desiredChannel = (note.Number - 1) * ChannelCountV2 / 48;
+                        var channelIndex = -1;
 
-                        for (var index = 0; index < ChannelCountV2; index++)
+                        if (note.PreviousNote is not null)
                         {
-                            var offsetIndex = (desiredChannel + index) % ChannelCountV2;
-
-                            if (channelRemainingTimes[offsetIndex] == 0)
+                            // Use the same channel as the previous note
+                            var previousChannel = note.PreviousNote.Channel;
+                            if (!previousChannel.HasValue)
                             {
-                                channelIndex = offsetIndex;
-                                break;
+                                continue;
                             }
-                        }
 
-                        // If all channels are busy, give up
-                        if (channelIndex == -1)
+                            channelIndex = previousChannel.Value;
+
+                            // Add the note to the channel
+                            note.Channel = channelIndex;
+                            channelNotes[channelIndex] = EncodeVolumeChange(note);
+                        }
+                        else
                         {
-                            continue;
+                            // Find the best available channel by attempting to spread the notes out by pitch
+                            var desiredChannel = (note.Number - 1) * ChannelCountV2 / 48;
+
+                            for (var index = 0; index < ChannelCountV2; index++)
+                            {
+                                var offsetIndex = (desiredChannel + index) % ChannelCountV2;
+
+                                if (channelRemainingTimes[offsetIndex] == 0)
+                                {
+                                    channelIndex = offsetIndex;
+                                    break;
+                                }
+                            }
+
+                            // If all channels are busy, give up
+                            if (channelIndex == -1)
+                            {
+                                continue;
+                            }
+
+                            // Allocate time on the channel
+                            var noteDuration = EncodeDuration(note.Duration);
+                            channelRemainingTimes[channelIndex] = noteDuration + ChannelCooldownTicks;
+
+                            // Add the note to the channel
+                            note.Channel = channelIndex;
+                            channelNotes[channelIndex] = EncodeNote(note);
                         }
-
-                        // Allocate time on the channel
-                        var noteDuration = EncodeDuration(note.Duration);
-                        channelRemainingTimes[channelIndex] = noteDuration + ChannelCooldownTicks;
-
-                        // Add the note to the channel
-                        channelNotes[channelIndex] = EncodeNote(note);
                     }
 
                     var noteTuple = new NoteTuple(channelNotes);
