@@ -15,6 +15,7 @@ public static class SpreadsheetReader
     private static readonly Regex InstrumentMappingRegex = new Regex(@"^(.+?): (\d+)-(\d+)$");
     private static readonly Regex InstrumentOffsetRegex = new Regex(@"^(.+?): (-?\d+)$");
     private static readonly Regex VolumeLevelRegex = new Regex(@"^(?:(.+?): )?(-?\d+(?:\.\d+)?)$");
+    private const double NoteDurationMultiplier = 0.9;
 
     static SpreadsheetReader()
     {
@@ -261,6 +262,7 @@ public static class SpreadsheetReader
                                 }
                                 else
                                 {
+                                    note.Duration = TimeSpan.FromMinutes(4 / note.InverseLength / beatsPerMinute * NoteDurationMultiplier);
                                     notes.Add(note);
                                 }
                             }
