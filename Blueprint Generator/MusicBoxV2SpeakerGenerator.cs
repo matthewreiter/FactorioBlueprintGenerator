@@ -604,7 +604,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                         [
                             new()
                             {
-                                First_signal = instrumentSignal,
+                                First_signal = durationSignal,
                                 Constant = 0,
                                 Comparator = Comparators.GreaterThan
                             }
