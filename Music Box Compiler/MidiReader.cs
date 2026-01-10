@@ -307,11 +307,12 @@ public static class MidiReader
 
                     foreach (var noteNumber in effectiveNoteNumbers)
                     {
-                        var duplicateNote = currentNotes.Find(note => note.Instrument == instrument && note.Number == noteNumber);
+                        var duration = midiNote.EndTime.HasValue && !midiNote.IsExpanded ? midiNote.EndTime.Value - midiNote.StartTime : TimeSpan.Zero;
+                        var duplicateNote = currentNotes.Find(note => note.Instrument == instrument && note.Number == noteNumber && note.Duration == duration);
 
                         if (duplicateNote is not null)
                         {
-                            duplicateNote.Volume = Math.Max(volume, duplicateNote.Volume);
+                            duplicateNote.Volume += volume;
                         }
                         else
                         {
@@ -320,7 +321,7 @@ public static class MidiReader
                                 Instrument = instrument,
                                 Number = noteNumber,
                                 Volume = volume,
-                                Duration = midiNote.EndTime.HasValue && !midiNote.IsExpanded ? midiNote.EndTime.Value - midiNote.StartTime : TimeSpan.Zero,
+                                Duration = duration,
                             });
                         }
                     }
@@ -420,7 +421,7 @@ public static class MidiReader
         var tempo = MidiMetaType.DefaultTempo;
         var currentTime = TimeSpan.Zero;
         var notes = new List<MidiNote>();
-        var activeNotes = Enumerable.Range(0, machine.Channels.Count).Select(_ => new Dictionary<(byte Program, byte NoteNumber), MidiNote>()).ToArray();
+        var activeNotes = Enumerable.Range(0, machine.Channels.Count).Select(_ => new Dictionary<(byte Program, byte NoteNumber), Queue<MidiNote>>()).ToArray();
         var trackName = new List<string>();
         var text = new List<string>();
         var copyright = new List<string>();
@@ -460,11 +461,6 @@ public static class MidiReader
                         var noteNumber = midiEvent.Msb;
                         var velocity = midiEvent.Lsb;
 
-                        if (currentChannelActiveNotes.Remove((channel.Program, noteNumber), out var previousNote))
-                        {
-                            previousNote.EndTime = currentTime;
-                        }
-
                         if (midiEvent.EventType == MidiEvent.NoteOn && velocity > 0)
                         {
                             var isPercussion = midiEvent.Channel == PercussionMidiChannel;
@@ -501,7 +497,23 @@ public static class MidiReader
                             };
 
                             notes.Add(note);
-                            currentChannelActiveNotes[(channel.Program, noteNumber)] = note;
+
+                            if (!currentChannelActiveNotes.TryGetValue((channel.Program, noteNumber), out var activeNotesForNoteNumber))
+                            {
+                                currentChannelActiveNotes[(channel.Program, noteNumber)] = activeNotesForNoteNumber = [];
+                            }
+
+                            activeNotesForNoteNumber.Enqueue(note);
+                        }
+                        else if (currentChannelActiveNotes.TryGetValue((channel.Program, noteNumber), out var activeNotesForNoteNumber))
+                        {
+                            var previousNote = activeNotesForNoteNumber.Dequeue();
+                            previousNote.EndTime = currentTime;
+
+                            if (activeNotesForNoteNumber.Count == 0)
+                            {
+                                currentChannelActiveNotes.Remove((channel.Program, noteNumber));
+                            }
                         }
                     }
 
@@ -511,52 +523,75 @@ public static class MidiReader
                         var noteNumber = midiEvent.Msb;
                         var pressure = midiEvent.Lsb / 127d;
 
-                        if (currentChannelActiveNotes.TryGetValue((channel.Program, noteNumber), out var activeNote))
+                        if (currentChannelActiveNotes.TryGetValue((channel.Program, noteNumber), out var activeNotesForNoteNumber))
                         {
-                            activeNote.PressuresChanges.Add((currentTime, pressure));
+                            foreach (var note in activeNotesForNoteNumber)
+                            {
+                                note.PressuresChanges.Add((currentTime, pressure));
+                            }
                         }
                     }
 
                     break;
                 case MidiEvent.MidiStop:
-                    foreach (var entry in currentChannelActiveNotes)
                     {
-                        entry.Value.EndTime = currentTime;
+                        foreach (var activeNotesForNoteNumber in currentChannelActiveNotes.Values)
+                        {
+                            foreach (var note in activeNotesForNoteNumber)
+                            {
+                                note.EndTime = currentTime;
+                            }
+                        }
+
+                        currentChannelActiveNotes.Clear();
+
+                        break;
                     }
-
-                    currentChannelActiveNotes.Clear();
-
-                    break;
                 case MidiEvent.CC:
                     switch (midiEvent.Msb)
                     {
                         case MidiCC.AllSoundOff or MidiCC.ResetAllControllers or MidiCC.AllNotesOff or MidiCC.OmniModeOff or MidiCC.OmniModeOn or MidiCC.PolyModeOnOff or MidiCC.PolyModeOn:
-                            foreach (var entry in currentChannelActiveNotes)
                             {
-                                entry.Value.EndTime = currentTime;
+                                foreach (var activeNotesForNoteNumber in currentChannelActiveNotes.Values)
+                                {
+                                    foreach (var note in activeNotesForNoteNumber)
+                                    {
+                                        note.EndTime = currentTime;
+                                    }
+                                }
+
+                                currentChannelActiveNotes.Clear();
+
+                                break;
                             }
-
-                            currentChannelActiveNotes.Clear();
-
-                            break;
                         case MidiCC.Expression:
-                            var expression = midiEvent.Lsb / 127d;
-
-                            foreach (var entry in currentChannelActiveNotes)
                             {
-                                entry.Value.ExpressionChanges.Add((currentTime, expression));
-                            }
+                                var expression = midiEvent.Lsb / 127d;
 
-                            break;
+                                foreach (var activeNotesForNoteNumber in currentChannelActiveNotes.Values)
+                                {
+                                    foreach (var note in activeNotesForNoteNumber)
+                                    {
+                                        note.ExpressionChanges.Add((currentTime, expression));
+                                    }
+                                }
+
+                                break;
+                            }
                         case MidiCC.Volume:
-                            var channelVolume = midiEvent.Lsb / 127d;
-
-                            foreach (var entry in currentChannelActiveNotes)
                             {
-                                entry.Value.VolumeChanges.Add((currentTime, channelVolume));
-                            }
+                                var channelVolume = midiEvent.Lsb / 127d;
 
-                            break;
+                                foreach (var activeNotesForNoteNumber in currentChannelActiveNotes.Values)
+                                {
+                                    foreach (var note in activeNotesForNoteNumber)
+                                    {
+                                        note.VolumeChanges.Add((currentTime, channelVolume));
+                                    }
+                                }
+
+                                break;
+                            }
                     }
 
                     break;
@@ -566,9 +601,12 @@ public static class MidiReader
         // Close out any notes that are still active at the end of the song
         foreach (var channelActiveNotes in activeNotes)
         {
-            foreach (var entry in channelActiveNotes)
+            foreach (var activeNotesForNoteNumber in channelActiveNotes.Values)
             {
-                entry.Value.EndTime = currentTime;
+                foreach (var note in activeNotesForNoteNumber)
+                {
+                    note.EndTime = currentTime;
+                }
             }
         }
 
