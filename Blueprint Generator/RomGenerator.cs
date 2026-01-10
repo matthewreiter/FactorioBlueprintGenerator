@@ -140,7 +140,8 @@ public class RomGenerator : IBlueprintGenerator
                             Outputs = [new()
                             {
                                 Signal = SignalID.CreateVirtual(VirtualSignalNames.Everything),
-                                Copy_count_from_input = true
+                                Copy_count_from_input = true,
+                                Networks = new() { Green = true }
                             }]
                         }
                     }
