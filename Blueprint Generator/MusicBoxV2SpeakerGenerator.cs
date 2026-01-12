@@ -910,7 +910,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                 }
             ],
             Entities = entities,
-            Wires = [.. wires.Select(wire => wire.ToArray())],
+            Wires = wires.ToArrayList(),
             Item = ItemNames.Blueprint,
             Version = BlueprintVersions.CurrentVersion
         };

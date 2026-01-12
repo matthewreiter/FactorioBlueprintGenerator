@@ -192,7 +192,7 @@ public class RomGenerator : IBlueprintGenerator
             Label = $"{width}x{height} ROM{(programName != null ? $": {programName}": "")}",
             Icons = [.. iconNames.Select(Icon.Create)],
             Entities = entities,
-            Wires = [.. wires.Select(wire => wire.ToArray())],
+            Wires = wires.ToArrayList(),
             SnapToGrid = snapToGrid ? new() { X = (ulong)gridWidth, Y = (ulong)gridHeight } : null,
             AbsoluteSnapping = snapToGrid ? true : null,
             Item = ItemNames.Blueprint,

@@ -2,9 +2,9 @@
 using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
 using BlueprintGenerator.Constants;
+using BlueprintGenerator.Models;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
-using static BlueprintGenerator.ConnectionUtil;
 
 namespace BlueprintGenerator
 {
@@ -23,6 +23,7 @@ namespace BlueprintGenerator
             var outputSignal = configuration.OutputSignal ?? VirtualSignalNames.LetterOrDigit('A');
 
             var entities = new List<Entity>();
+            var wires = new List<Wire>();
             var signalFilters = new SignalFilter[signalCount];
 
             for (int index = 0; index < signalCount; index++)
@@ -43,11 +44,23 @@ namespace BlueprintGenerator
                     {
                         Decider_conditions = new DeciderConditions
                         {
-                            First_signal = SignalID.Create(addressSignal),
-                            Constant = index + 1,
-                            Comparator = Comparators.IsEqual,
-                            Output_signal = SignalID.Create(VirtualSignalNames.Dot),
-                            Copy_count_from_input = false
+                            Conditions =
+                            [
+                                new()
+                                {
+                                    First_signal = SignalID.Create(addressSignal),
+                                    Constant = index + 1,
+                                    Comparator = Comparators.IsEqual
+                                }
+                            ],
+                            Outputs =
+                            [
+                                new()
+                                {
+                                    Signal = SignalID.Create(VirtualSignalNames.Dot),
+                                    Copy_count_from_input = false
+                                }
+                            ]
                         }
                     }
                 };
@@ -88,28 +101,30 @@ namespace BlueprintGenerator
             {
                 var signalFilter = signalFilters[index];
 
-                AddConnection(CircuitColor.Red, signalFilter.AddressChecker, CircuitId.Output, signalFilter.SignalRenamer, CircuitId.Input);
+                wires.Add(new((signalFilter.AddressChecker, ConnectionType.Red2), (signalFilter.SignalRenamer, ConnectionType.Red1)));
 
                 if (index > 0)
                 {
                     var adjacentSignalFilterIndex = index / width == 0 ? index - 1 : index - width;
                     var adjacentSignalFilter = signalFilters[adjacentSignalFilterIndex];
 
-                    AddConnection(CircuitColor.Red, signalFilter.AddressChecker, CircuitId.Input, adjacentSignalFilter.AddressChecker, CircuitId.Input);
-                    AddConnection(CircuitColor.Green, signalFilter.SignalRenamer, CircuitId.Input, adjacentSignalFilter.SignalRenamer, CircuitId.Input);
-                    AddConnection(CircuitColor.Red, signalFilter.SignalRenamer, CircuitId.Output, adjacentSignalFilter.SignalRenamer, CircuitId.Output);
+                    wires.Add(new((signalFilter.AddressChecker, ConnectionType.Red1), (adjacentSignalFilter.AddressChecker, ConnectionType.Red1)));
+                    wires.Add(new((signalFilter.SignalRenamer, ConnectionType.Green1), (adjacentSignalFilter.SignalRenamer, ConnectionType.Green1)));
+                    wires.Add(new((signalFilter.SignalRenamer, ConnectionType.Red2), (adjacentSignalFilter.SignalRenamer, ConnectionType.Red2)));
+
                 }
             }
 
             return new Blueprint
             {
-                Label = $"Demultiplexer",
-                Icons = new List<Icon>
-                {
+                Label = "Demultiplexer",
+                Icons =
+                [
                     Icon.Create(ItemNames.DeciderCombinator),
                     Icon.Create(ItemNames.ArithmeticCombinator)
-                },
+                ],
                 Entities = entities,
+                Wires = wires.ToArrayList(),
                 Item = ItemNames.Blueprint,
                 Version = BlueprintVersions.CurrentVersion
             };

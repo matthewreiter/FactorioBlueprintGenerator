@@ -1,4 +1,6 @@
 ﻿using BlueprintCommon.Models;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace BlueprintGenerator.Models;
 
@@ -14,6 +16,11 @@ public record Wire((Entity Entity, ConnectionType Type) Connection1, (Entity Ent
             (int)Connection2.Type
         ];
     }
+}
+
+public static class WireExtensions
+{
+    public static List<int[]> ToArrayList(this List<Wire> wires) => [.. wires.Select(wire => wire.ToArray())];
 }
 
 public enum ConnectionType
