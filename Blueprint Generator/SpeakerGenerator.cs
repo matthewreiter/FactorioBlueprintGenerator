@@ -435,16 +435,8 @@ public class SpeakerGenerator : IBlueprintGenerator
         return new Blueprint
         {
             Label = $"{width}x{height} Speaker",
-            Icons =
-            [
-                new()
-                {
-                    Signal = SignalID.Create(ItemNames.ProgrammableSpeaker)
-                }
-            ],
-            Entities = entities,
-            Item = ItemNames.Blueprint,
-            Version = BlueprintVersions.CurrentVersion
+            Icons = [Icon.Create(ItemNames.ProgrammableSpeaker)],
+            Entities = entities
         };
     }
 }

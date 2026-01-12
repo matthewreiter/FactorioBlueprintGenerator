@@ -417,16 +417,8 @@ namespace BlueprintGenerator
             return new Blueprint
             {
                 Label = $"{registerCount} Registers",
-                Icons = new List<Icon>
-                {
-                    new Icon
-                    {
-                        Signal = SignalID.Create(ItemNames.ProcessingUnit)
-                    }
-                },
-                Entities = entities,
-                Item = ItemNames.Blueprint,
-                Version = BlueprintVersions.CurrentVersion
+                Icons = [Icon.Create(ItemNames.ProcessingUnit)],
+                Entities = entities
             };
         }
     }

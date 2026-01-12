@@ -174,16 +174,14 @@ namespace BlueprintGenerator
             return new Blueprint
             {
                 Label = $"{font.Width}x{font.Height} Font",
-                Icons = new List<Icon>
-                {
+                Icons =
+                [
                     Icon.Create(ItemNames.ConstantCombinator),
                     Icon.Create(VirtualSignalNames.LetterOrDigit('A')),
                     Icon.Create(VirtualSignalNames.LetterOrDigit('B')),
                     Icon.Create(VirtualSignalNames.LetterOrDigit('C'))
-                },
-                Entities = entities,
-                Item = ItemNames.Blueprint,
-                Version = BlueprintVersions.CurrentVersion
+                ],
+                Entities = entities
             };
         }
     }

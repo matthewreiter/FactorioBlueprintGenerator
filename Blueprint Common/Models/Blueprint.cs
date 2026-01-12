@@ -48,7 +48,7 @@ namespace BlueprintCommon.Models
         /// <summary>
         /// The name of the item that was saved ("blueprint" in vanilla).
         /// </summary>
-        public string Item { get; set; }
+        public string Item { get; set; } = ItemNames.Blueprint;
 
         /// <summary>
         /// The tiles included in the blueprint.
@@ -73,7 +73,7 @@ namespace BlueprintCommon.Models
         /// <summary>
         /// The map version of the map the blueprint was created in.
         /// </summary>
-        public long Version { get; set; }
+        public long Version { get; set; } = BlueprintVersions.CurrentVersion;
     }
 
     public class SnapToGrid

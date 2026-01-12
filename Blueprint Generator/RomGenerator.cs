@@ -194,9 +194,7 @@ public class RomGenerator : IBlueprintGenerator
             Entities = entities,
             Wires = wires.ToArrayList(),
             SnapToGrid = snapToGrid ? new() { X = (ulong)gridWidth, Y = (ulong)gridHeight } : null,
-            AbsoluteSnapping = snapToGrid ? true : null,
-            Item = ItemNames.Blueprint,
-            Version = BlueprintVersions.CurrentVersion
+            AbsoluteSnapping = snapToGrid ? true : null
         };
     }
 }

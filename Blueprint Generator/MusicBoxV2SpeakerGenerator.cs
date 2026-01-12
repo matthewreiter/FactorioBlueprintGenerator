@@ -902,17 +902,9 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         return new Blueprint
         {
             Label = $"{width}x{height} Music Box Speaker",
-            Icons =
-            [
-                new()
-                {
-                    Signal = SignalID.Create(ItemNames.ProgrammableSpeaker)
-                }
-            ],
+            Icons = [Icon.Create(ItemNames.ProgrammableSpeaker)],
             Entities = entities,
-            Wires = wires.ToArrayList(),
-            Item = ItemNames.Blueprint,
-            Version = BlueprintVersions.CurrentVersion
+            Wires = wires.ToArrayList()
         };
     }
 }

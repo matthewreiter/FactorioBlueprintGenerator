@@ -252,16 +252,8 @@ namespace BlueprintGenerator
             return new Blueprint
             {
                 Label = $"{width}x{height} RAM",
-                Icons = new List<Icon>
-                {
-                    new Icon
-                    {
-                        Signal = SignalID.Create(ItemNames.AdvancedCircuit)
-                    }
-                },
-                Entities = entities,
-                Item = ItemNames.Blueprint,
-                Version = BlueprintVersions.CurrentVersion
+                Icons = [Icon.Create(ItemNames.AdvancedCircuit)],
+                Entities = entities
             };
         }
     }

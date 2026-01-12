@@ -124,9 +124,7 @@ namespace BlueprintGenerator
                     Icon.Create(ItemNames.ArithmeticCombinator)
                 ],
                 Entities = entities,
-                Wires = wires.ToArrayList(),
-                Item = ItemNames.Blueprint,
-                Version = BlueprintVersions.CurrentVersion
+                Wires = wires.ToArrayList()
             };
         }
 
