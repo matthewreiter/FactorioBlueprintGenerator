@@ -1,5 +1,6 @@
 ﻿using Commons.Music.Midi;
 using MusicBoxCompiler.Models;
+using MusicBoxCompiler.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -485,7 +486,7 @@ public static class MidiReader
     private static MidiData ReadMidiFile(string midiFile)
     {
         using var fileReader = File.OpenRead(midiFile);
-        var music = SmfTrackMerger.Merge(MidiMusic.Read(fileReader));
+        var music = SmfTrackMerger2.Merge(MidiMusic.Read(fileReader));
         var machine = new MidiMachine(); // https://github.com/atsushieno/managed-midi/blob/master/Commons.Music.Midi.Shared/MidiMachine.cs
 
         var tempo = MidiMetaType.DefaultTempo;
@@ -583,6 +584,22 @@ public static class MidiReader
                             if (activeNotesForNoteNumber.Count == 0)
                             {
                                 currentChannelActiveNotes.Remove((channel.Program, noteNumber));
+                            }
+                        }
+                        else
+                        {
+                            // If there is only one active note in the channel with the correct note number, use that even though the instrument doesn't match
+                            var allChannelActiveNotesForNoteNumber = currentChannelActiveNotes.Where(kvp => kvp.Key.NoteNumber == noteNumber).ToList();
+                            if (allChannelActiveNotesForNoteNumber.Count == 1)
+                            {
+                                var activeNote = allChannelActiveNotesForNoteNumber[0];
+                                var previousNote = activeNote.Value.Dequeue();
+                                previousNote.EndTime = currentTime;
+                                currentChannelActiveNotes.Remove(activeNote.Key);
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Warning: NoteOff received for note {noteNumber} on channel {midiEvent.Channel}, but no active note found.");
                             }
                         }
                     }
@@ -689,6 +706,7 @@ public static class MidiReader
             {
                 foreach (var note in activeNotesForNoteNumber)
                 {
+                    Console.WriteLine($"Warning: Note {note.OriginalNoteName} on instrument {note.OriginalInstrumentName} was still active at the end of the song. Closing it out.");
                     note.EndTime = currentTime;
                 }
             }
