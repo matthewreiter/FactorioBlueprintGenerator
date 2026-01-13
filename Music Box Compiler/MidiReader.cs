@@ -339,13 +339,13 @@ public static class MidiReader
                 var instrumentAndNote = instrument switch
                 {
                     Instrument.Drumkit => isNoteInRange ? Drums[effectiveNoteNumber - 1] : "Unknown",
-                    _ => $"{instrument} {Notes[(notePlayed + unreasonablyHighOctave * Notes.Count) % Notes.Count]}{notePlayed / Notes.Count}"
+                    _ => $"{instrument,-14} {Notes[(notePlayed + unreasonablyHighOctave * Notes.Count) % Notes.Count]}{notePlayed / Notes.Count,-3}"
                 };
 
                 var isInstrumentMapped = instrument != Instrument.Unknown;
-                midiEventWriter.WriteLine($"{midiNote.StartTime:mm\\:ss\\.fff}: {midiNote.OriginalInstrumentName} {midiNote.OriginalNoteName} velocity {midiNote.Velocity:F2} expression {midiNote.Expression:F2} channel volume {midiNote.ChannelVolume:F2}" +
+                midiEventWriter.WriteLine($"{midiNote.StartTime:mm\\:ss\\.fff}: {midiNote.OriginalInstrumentName,-20} {midiNote.OriginalNoteName,-3} velocity {midiNote.Velocity:F2} expression {midiNote.Expression:F2} channel volume {midiNote.ChannelVolume:F2}" +
                     (!midiNote.IsExpanded && midiNote.EndTime is not null ? $" duration {midiNote.EndTime - midiNote.StartTime}" : "") +
-                    (isInstrumentMapped ? $" => {instrumentAndNote} volume {volume:F2}" : "") +
+                    (isInstrumentMapped ? $" => {instrumentAndNote,-18} volume {volume:F2}" : "") +
                     (!isNoteInRange ? " (note not in range)" : "") +
                     (!isInstrumentMapped ? " (instrument not mapped)" : "" +
                     (midiNote.IsExpanded ? " (expanded)" : "")));
