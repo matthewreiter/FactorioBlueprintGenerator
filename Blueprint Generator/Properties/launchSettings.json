@@ -48,6 +48,10 @@
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/musicBoxV2Speakers.txt\" --OutputJson=\"$(ProjectDir)/Test/musicBoxV2Speakers.json\" --MemoryType=MusicBoxV2Speaker --InstrumentCount=10 --ChannelCount=48 --IncludePower=true"
     },
+    "MusicBoxV2Demux": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/musicBoxV2Demux.txt\" --OutputJson=\"$(ProjectDir)/Test/musicBoxV2Demux.json\" --MemoryType=MusicBoxV2Demux"
+    },
     "Font": {
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/font.txt\" --OutputJson=\"$(ProjectDir)/Test/font.json\" --FontImage=\"$(ProjectDir)/Fonts/5x7 Font.png\" --MemoryType=Font --Signals=0123456789ABCDEFGHIJKLMNOPQRSTUVWXY"

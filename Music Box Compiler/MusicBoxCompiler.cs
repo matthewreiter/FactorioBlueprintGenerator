@@ -476,7 +476,7 @@ public static class MusicBoxCompiler
 
         var songCells = new List<MemoryCell>();
         var metadataCells = new List<MemoryCell>();
-        var noteTuplesToCells = new Dictionary<NoteTuple, MemoryCell>();
+        var songDataToCells = new Dictionary<MemoryCellData, MemoryCell>();
         var channelRemainingTimes = new int[ChannelCountV2];
         var currentAddress = baseAddress;
         var totalPlayTime = 0;
@@ -537,6 +537,8 @@ public static class MusicBoxCompiler
             {
                 var metadataAddress = baseMetadataAddress + (song.AddressIndex ?? AllocateNextMetadataAddress());
                 var songAddress = currentAddress;
+                List<(int Address, List<(int Channel, int Note)> Notes)> noteGroupGroups = [];
+                List<List<(int Address, List<(int Channel, int Note)> Notes)>> noteGroupGroupGroups = [];
                 var timeDeficit = 0;
 
                 trackNumber++;
@@ -605,26 +607,19 @@ public static class MusicBoxCompiler
 
                     var noteTuple = new NoteTuple(channelNotes);
 
-                    if (noteTuplesToCells.TryGetValue(noteTuple, out var noteCell))
-                    {
-                        // Reuse an existing memory cell
-                        noteCell.AddressRanges.Add((currentAddress, currentAddress));
-                    }
-                    else
-                    {
-                        // Create a new memory cell
-                        List<Filter> filters = [.. channelNotes.Select((note, channelIndex) => CreateFilter(SpeakerChannelSignals.Signals[channelIndex], note)).Where(filter => filter.Count > 0)];
+                    var notes = channelNotes
+                        .Select((note, channelIndex) => (Channel: channelIndex, Note: note))
+                        .Where(note => note.Note != 0)
+                        .ToList();
 
-                        if (filters.Count > 0)
+                    if (notes.Count > 0)
+                    {
+                        noteGroupGroups.Add((currentAddress, notes));
+
+                        if (noteGroupGroups.Count == SpeakerChannelSignals.AllSignalGroups.Count)
                         {
-                            noteCell = new MemoryCell
-                            {
-                                Address = currentAddress,
-                                Filters = filters
-                            };
-
-                            noteTuplesToCells[noteTuple] = noteCell;
-                            songCells.Add(noteCell);
+                            noteGroupGroupGroups.Add(noteGroupGroups);
+                            noteGroupGroups = [];
                         }
                     }
 
@@ -653,6 +648,11 @@ public static class MusicBoxCompiler
                     }
                 }
 
+                if (noteGroupGroups.Count > 0)
+                {
+                    noteGroupGroupGroups.Add(noteGroupGroups);
+                }
+
                 var songLength = currentAddress - songAddress;
                 totalPlayTime += songLength;
 
@@ -662,6 +662,34 @@ public static class MusicBoxCompiler
                     AddressRanges = [(songAddress, currentAddress)], // From the beginning of the song to the jump at the end
                     Filters = [CreateFilter('Y', metadataAddress)]
                 });
+
+                // Add memory cells for the notes in the songs
+                foreach (var currentNoteGroupGroups in noteGroupGroupGroups)
+                {
+                    var address = currentNoteGroupGroups[0].Address;
+                    var memoryCellData = new MemoryCellData([
+                        new(VirtualSignalNames.Wait, currentNoteGroupGroups[^1].Address - address + 1),
+                        .. currentNoteGroupGroups.Skip(1).Select((group, groupIndex) => new KeyValuePair<string, int>(VirtualSignalNames.LetterOrDigit((char)('A' + groupIndex)), group.Address - address + 1)),
+                        .. currentNoteGroupGroups.SelectMany((group, groupIndex) => group.Notes.Select(channelNote => new KeyValuePair<string, int>(SpeakerChannelSignals.AllSignalGroups[groupIndex][channelNote.Channel], channelNote.Note)))
+                    ]);
+
+                    if (songDataToCells.TryGetValue(memoryCellData, out var memoryCell))
+                    {
+                        // Reuse an existing memory cell
+                        memoryCell.AddressRanges.Add((address, address));
+                    }
+                    else
+                    {
+                        // Create a new memory cell
+                        memoryCell = new MemoryCell
+                        {
+                            Address = address,
+                            Filters = memoryCellData.ToFilters()
+                        };
+                        songCells.Add(memoryCell);
+                        songDataToCells[memoryCellData] = memoryCell;
+                    }
+                }
 
                 // Create a jump back to the beginning of the song
                 AddJump(songAddress, isEnabled: song.Loop);
@@ -818,6 +846,33 @@ public static class MusicBoxCompiler
             foreach (var note in notes)
             {
                 hash.Add(note);
+            }
+
+            return hash.ToHashCode();
+        }
+    }
+
+    private class MemoryCellData(List<KeyValuePair<string, int>> signals) : IEnumerable<KeyValuePair<string, int>>
+    {
+        public IEnumerator<KeyValuePair<string, int>> GetEnumerator() => signals.GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => signals.GetEnumerator();
+
+        public List<Filter> ToFilters() => [.. signals.Select(entry => Filter.Create(entry.Key, entry.Value))];
+
+        public override bool Equals(object obj)
+        {
+            return obj is MemoryCellData other && signals.SequenceEqual(other);
+        }
+
+        public override int GetHashCode()
+        {
+            var hash = new HashCode();
+
+            foreach (var entry in signals)
+            {
+                hash.Add(entry.Key);
+                hash.Add(entry.Value);
             }
 
             return hash.ToHashCode();
