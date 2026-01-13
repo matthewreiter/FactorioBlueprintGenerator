@@ -6,6 +6,7 @@ using BlueprintGenerator.Constants;
 using Microsoft.Extensions.Configuration;
 using MusicBoxCompiler.Models;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -799,164 +800,27 @@ public static class MusicBoxCompiler
         public Dictionary<string, int> SongMetadataAddresses { get; } = [];
     }
 
-    private record NoteTuple(
-        int Note0 = 0,
-        int Note1 = 0,
-        int Note2 = 0,
-        int Note3 = 0,
-        int Note4 = 0,
-        int Note5 = 0,
-        int Note6 = 0,
-        int Note7 = 0,
-        int Note8 = 0,
-        int Note9 = 0,
-        int Note10 = 0,
-        int Note11 = 0,
-        int Note12 = 0,
-        int Note13 = 0,
-        int Note14 = 0,
-        int Note15 = 0,
-        int Note16 = 0,
-        int Note17 = 0,
-        int Note18 = 0,
-        int Note19 = 0,
-        int Note20 = 0,
-        int Note21 = 0,
-        int Note22 = 0,
-        int Note23 = 0,
-        int Note24 = 0,
-        int Note25 = 0,
-        int Note26 = 0,
-        int Note27 = 0,
-        int Note28 = 0,
-        int Note29 = 0,
-        int Note30 = 0,
-        int Note31 = 0,
-        int Note32 = 0,
-        int Note33 = 0,
-        int Note34 = 0,
-        int Note35 = 0,
-        int Note36 = 0,
-        int Note37 = 0,
-        int Note38 = 0,
-        int Note39 = 0,
-        int Note40 = 0,
-        int Note41 = 0,
-        int Note42 = 0,
-        int Note43 = 0,
-        int Note44 = 0,
-        int Note45 = 0,
-        int Note46 = 0,
-        int Note47 = 0) : IEnumerable<int>
+    private class NoteTuple(ICollection<int> notes) : IEnumerable<int>
     {
-        public NoteTuple(ICollection<int> notes)
-            : this(
-                notes.ElementAtOrDefault(0),
-                notes.ElementAtOrDefault(1),
-                notes.ElementAtOrDefault(2),
-                notes.ElementAtOrDefault(3),
-                notes.ElementAtOrDefault(4),
-                notes.ElementAtOrDefault(5),
-                notes.ElementAtOrDefault(6),
-                notes.ElementAtOrDefault(7),
-                notes.ElementAtOrDefault(8),
-                notes.ElementAtOrDefault(9),
-                notes.ElementAtOrDefault(10),
-                notes.ElementAtOrDefault(11),
-                notes.ElementAtOrDefault(12),
-                notes.ElementAtOrDefault(13),
-                notes.ElementAtOrDefault(14),
-                notes.ElementAtOrDefault(15),
-                notes.ElementAtOrDefault(16),
-                notes.ElementAtOrDefault(17),
-                notes.ElementAtOrDefault(18),
-                notes.ElementAtOrDefault(19),
-                notes.ElementAtOrDefault(20),
-                notes.ElementAtOrDefault(21),
-                notes.ElementAtOrDefault(22),
-                notes.ElementAtOrDefault(23),
-                notes.ElementAtOrDefault(24),
-                notes.ElementAtOrDefault(25),
-                notes.ElementAtOrDefault(26),
-                notes.ElementAtOrDefault(27),
-                notes.ElementAtOrDefault(28),
-                notes.ElementAtOrDefault(29),
-                notes.ElementAtOrDefault(30),
-                notes.ElementAtOrDefault(31),
-                notes.ElementAtOrDefault(32),
-                notes.ElementAtOrDefault(33),
-                notes.ElementAtOrDefault(34),
-                notes.ElementAtOrDefault(35),
-                notes.ElementAtOrDefault(36),
-                notes.ElementAtOrDefault(37),
-                notes.ElementAtOrDefault(38),
-                notes.ElementAtOrDefault(39),
-                notes.ElementAtOrDefault(40),
-                notes.ElementAtOrDefault(41),
-                notes.ElementAtOrDefault(42),
-                notes.ElementAtOrDefault(43),
-                notes.ElementAtOrDefault(44),
-                notes.ElementAtOrDefault(45),
-                notes.ElementAtOrDefault(46),
-                notes.ElementAtOrDefault(47)
-            )
-        { }
+        public IEnumerator<int> GetEnumerator() => notes.GetEnumerator();
 
-        public IEnumerator<int> GetEnumerator()
+        IEnumerator IEnumerable.GetEnumerator() => notes.GetEnumerator();
+
+        public override bool Equals(object obj)
         {
-            if (Note0 != 0) yield return Note0;
-            if (Note1 != 0) yield return Note1;
-            if (Note2 != 0) yield return Note2;
-            if (Note3 != 0) yield return Note3;
-            if (Note4 != 0) yield return Note4;
-            if (Note5 != 0) yield return Note5;
-            if (Note6 != 0) yield return Note6;
-            if (Note7 != 0) yield return Note7;
-            if (Note8 != 0) yield return Note8;
-            if (Note9 != 0) yield return Note9;
-            if (Note10 != 0) yield return Note10;
-            if (Note11 != 0) yield return Note11;
-            if (Note12 != 0) yield return Note12;
-            if (Note13 != 0) yield return Note13;
-            if (Note14 != 0) yield return Note14;
-            if (Note15 != 0) yield return Note15;
-            if (Note16 != 0) yield return Note16;
-            if (Note17 != 0) yield return Note17;
-            if (Note18 != 0) yield return Note18;
-            if (Note19 != 0) yield return Note19;
-            if (Note20 != 0) yield return Note20;
-            if (Note21 != 0) yield return Note21;
-            if (Note22 != 0) yield return Note22;
-            if (Note23 != 0) yield return Note23;
-            if (Note24 != 0) yield return Note24;
-            if (Note25 != 0) yield return Note25;
-            if (Note26 != 0) yield return Note26;
-            if (Note27 != 0) yield return Note27;
-            if (Note28 != 0) yield return Note28;
-            if (Note29 != 0) yield return Note29;
-            if (Note30 != 0) yield return Note30;
-            if (Note31 != 0) yield return Note31;
-            if (Note32 != 0) yield return Note32;
-            if (Note33 != 0) yield return Note33;
-            if (Note34 != 0) yield return Note34;
-            if (Note35 != 0) yield return Note35;
-            if (Note36 != 0) yield return Note36;
-            if (Note37 != 0) yield return Note37;
-            if (Note38 != 0) yield return Note38;
-            if (Note39 != 0) yield return Note39;
-            if (Note40 != 0) yield return Note40;
-            if (Note41 != 0) yield return Note41;
-            if (Note42 != 0) yield return Note42;
-            if (Note43 != 0) yield return Note43;
-            if (Note44 != 0) yield return Note44;
-            if (Note45 != 0) yield return Note45;
-            if (Note46 != 0) yield return Note46;
-            if (Note47 != 0) yield return Note47;
+            return obj is NoteTuple other && notes.SequenceEqual(other);
         }
 
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        public override int GetHashCode()
         {
-            return GetEnumerator();
+            var hash = new HashCode();
+
+            foreach (var note in notes)
+            {
+                hash.Add(note);
+            }
+
+            return hash.ToHashCode();
         }
     }
 }
