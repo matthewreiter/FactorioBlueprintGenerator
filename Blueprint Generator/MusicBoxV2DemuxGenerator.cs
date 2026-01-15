@@ -26,6 +26,7 @@ public class MusicBoxV2DemuxGenerator : IBlueprintGenerator
         var wires = new List<Wire>();
 
         Entity previousTimeChecker = null;
+        Entity previousTopSignalRenamer = null;
 
         for (int signalGroupIndex = 0; signalGroupIndex < signalGroupCount; signalGroupIndex++)
         {
@@ -117,8 +118,21 @@ public class MusicBoxV2DemuxGenerator : IBlueprintGenerator
                 };
                 entities.Add(signalRenamer);
 
-                wires.Add(new((signalRenamer, ConnectionType.Green1), signalIndex == 0 ? (timeChecker, ConnectionType.Green1) : (previousSignalRenamer, ConnectionType.Green1)));
                 wires.Add(new((signalRenamer, ConnectionType.Red2), signalIndex == 0 ? (timeChecker, ConnectionType.Red1) : (previousSignalRenamer, ConnectionType.Red2)));
+
+                if (signalIndex == 0)
+                {
+                    if (signalGroupIndex > 0)
+                    {
+                        wires.Add(new((signalRenamer, ConnectionType.Green1), (previousTopSignalRenamer, ConnectionType.Green1)));
+                    }
+
+                    previousTopSignalRenamer = signalRenamer;
+                }
+                else
+                {
+                    wires.Add(new((signalRenamer, ConnectionType.Green1), (previousSignalRenamer, ConnectionType.Green1)));
+                }
 
                 previousSignalRenamer = signalRenamer;
             }

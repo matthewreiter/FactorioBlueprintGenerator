@@ -668,8 +668,8 @@ public static class MusicBoxCompiler
                 {
                     var address = currentNoteGroupGroups[0].Address;
                     var memoryCellData = new MemoryCellData([
-                        new(VirtualSignalNames.Wait, currentNoteGroupGroups[^1].Address - address + 1),
-                        .. currentNoteGroupGroups.Skip(1).Select((group, groupIndex) => new KeyValuePair<string, int>(VirtualSignalNames.LetterOrDigit((char)('A' + groupIndex)), group.Address - address + 1)),
+                        new(VirtualSignalNames.Wait, currentNoteGroupGroups[^1].Address - address),
+                        .. currentNoteGroupGroups.Skip(1).Select((group, groupIndex) => new KeyValuePair<string, int>(VirtualSignalNames.LetterOrDigit((char)('A' + groupIndex)), group.Address - address)),
                         .. currentNoteGroupGroups.SelectMany((group, groupIndex) => group.Notes.Select(channelNote => new KeyValuePair<string, int>(SpeakerChannelSignals.AllSignalGroups[groupIndex][channelNote.Channel], channelNote.Note)))
                     ]);
 
