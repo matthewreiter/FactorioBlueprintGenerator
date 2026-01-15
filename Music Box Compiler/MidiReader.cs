@@ -592,14 +592,19 @@ public static class MidiReader
                             var allChannelActiveNotesForNoteNumber = currentChannelActiveNotes.Where(kvp => kvp.Key.NoteNumber == noteNumber).ToList();
                             if (allChannelActiveNotesForNoteNumber.Count == 1)
                             {
+                                Console.WriteLine($"Warning: NoteOff received for note {noteNumber} on channel {midiEvent.Channel}, but only one active note was found for a different instrument; stopping that one instead.");
                                 var activeNote = allChannelActiveNotesForNoteNumber[0];
                                 var previousNote = activeNote.Value.Dequeue();
                                 previousNote.EndTime = currentTime;
                                 currentChannelActiveNotes.Remove(activeNote.Key);
                             }
+                            else if (allChannelActiveNotesForNoteNumber.Count > 1)
+                            {
+                                Console.WriteLine($"Warning: NoteOff received for note {noteNumber} on channel {midiEvent.Channel}, but {allChannelActiveNotesForNoteNumber.Count} active notes were found with different instruments.");
+                            }
                             else
                             {
-                                Console.WriteLine($"Warning: NoteOff received for note {noteNumber} on channel {midiEvent.Channel}, but no active note found.");
+                                Console.WriteLine($"Warning: NoteOff received for note {noteNumber} on channel {midiEvent.Channel}, but no active note were found.");
                             }
                         }
                     }
