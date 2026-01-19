@@ -27,6 +27,7 @@ public static class MusicBoxCompiler
     private const int NoteGroupTimeOffsetBits = 11;
     private const int MetadataAddressBits = 10;
     private const int MinimumNoteDuration = 10;
+    private const int MaximumNoteDuration = 44000;
     private const int ChannelCooldownTicks = 1;
 
     public static void Run(IConfigurationRoot configuration)
@@ -491,7 +492,7 @@ public static class MusicBoxCompiler
             return jumpFilter;
         }
 
-        int EncodeDuration(TimeSpan duration) => Math.Max((int)double.Ceiling(duration.TotalSeconds * 60), MinimumNoteDuration);
+        int EncodeDuration(TimeSpan duration) => Math.Min(Math.Max((int)double.Ceiling(duration.TotalSeconds * 60), MinimumNoteDuration), MaximumNoteDuration);
 
         int EncodeVolume(double volume) => Math.Min(Math.Max((int)double.Round(volume * 100), 1), 100) - 1;
 
