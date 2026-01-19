@@ -3,9 +3,61 @@ using System.Collections.Generic;
 
 namespace BlueprintGenerator.Constants;
 
-public static class SpeakerChannelSignals
+public static class MusicBoxSignals
 {
-    public static readonly List<string> Signals =
+    public static readonly List<string> NoteGroupReferenceSignals =
+    [
+        VirtualSignalNames.NoFuel,
+        VirtualSignalNames.NoEntry,
+        VirtualSignalNames.Heart,
+        VirtualSignalNames.Alert,
+        VirtualSignalNames.Star,
+        VirtualSignalNames.DiagonalCross,
+        VirtualSignalNames.Corner,
+        VirtualSignalNames.Corner2,
+        VirtualSignalNames.Corner3,
+        VirtualSignalNames.Corner4,
+        VirtualSignalNames.TCross,
+        VirtualSignalNames.TCross2,
+        VirtualSignalNames.TCross3,
+        VirtualSignalNames.TCross4,
+        VirtualSignalNames.Circle,
+        VirtualSignalNames.Comma,
+        VirtualSignalNames.Period,
+        VirtualSignalNames.ExclamationMark,
+        VirtualSignalNames.QuestionMark,
+        VirtualSignalNames.Colon,
+        VirtualSignalNames.Slash,
+        VirtualSignalNames.Apostrophe,
+        VirtualSignalNames.QuotationMark,
+        VirtualSignalNames.Ampersand,
+        VirtualSignalNames.Caret,
+        VirtualSignalNames.Pound,
+        VirtualSignalNames.Percent,
+        VirtualSignalNames.Plus,
+        VirtualSignalNames.Minus,
+        VirtualSignalNames.Multiplication,
+        VirtualSignalNames.Division,
+        VirtualSignalNames.Equal,
+        VirtualSignalNames.NotEqual,
+        VirtualSignalNames.LessThan,
+        VirtualSignalNames.GreaterThan,
+        VirtualSignalNames.LessThanOrEqualTo,
+        VirtualSignalNames.GreaterThanOrEqualTo,
+        VirtualSignalNames.LeftParenthesis,
+        VirtualSignalNames.RightParenthesis,
+        VirtualSignalNames.LeftSquareBracket,
+        VirtualSignalNames.RightSquareBracket,
+        VirtualSignalNames.Red,
+        VirtualSignalNames.Green,
+        VirtualSignalNames.Blue,
+        VirtualSignalNames.Yellow,
+        VirtualSignalNames.Pink,
+        VirtualSignalNames.Cyan,
+        VirtualSignalNames.White
+    ];
+
+    public static readonly List<string> SpeakerChannelSignals =
     [
         ItemNames.WoodenChest,
         ItemNames.IronChest,
@@ -57,7 +109,7 @@ public static class SpeakerChannelSignals
         ItemNames.Lamp
     ];
 
-    public static readonly List<List<string>> AdditionalSignalGroups =
+    public static readonly List<List<string>> AdditionalNoteGroupSignals =
     [
         [
             ItemNames.RedWire,
@@ -208,58 +260,8 @@ public static class SpeakerChannelSignals
             VirtualSignalNames.CounterclockwiseCircleArrow,
             VirtualSignalNames.Input,
             VirtualSignalNames.Output
-        ],
-        [
-            VirtualSignalNames.NoFuel,
-            VirtualSignalNames.NoEntry,
-            VirtualSignalNames.Heart,
-            VirtualSignalNames.Alert,
-            VirtualSignalNames.Star,
-            VirtualSignalNames.DiagonalCross,
-            VirtualSignalNames.Corner,
-            VirtualSignalNames.Corner2,
-            VirtualSignalNames.Corner3,
-            VirtualSignalNames.Corner4,
-            VirtualSignalNames.TCross,
-            VirtualSignalNames.TCross2,
-            VirtualSignalNames.TCross3,
-            VirtualSignalNames.TCross4,
-            VirtualSignalNames.Circle,
-            VirtualSignalNames.Comma,
-            VirtualSignalNames.Period,
-            VirtualSignalNames.ExclamationMark,
-            VirtualSignalNames.QuestionMark,
-            VirtualSignalNames.Colon,
-            VirtualSignalNames.Slash,
-            VirtualSignalNames.Apostrophe,
-            VirtualSignalNames.QuotationMark,
-            VirtualSignalNames.Ampersand,
-            VirtualSignalNames.Caret,
-            VirtualSignalNames.Pound,
-            VirtualSignalNames.Percent,
-            VirtualSignalNames.Plus,
-            VirtualSignalNames.Minus,
-            VirtualSignalNames.Multiplication,
-            VirtualSignalNames.Division,
-            VirtualSignalNames.Equal,
-            VirtualSignalNames.NotEqual,
-            VirtualSignalNames.LessThan,
-            VirtualSignalNames.GreaterThan,
-            VirtualSignalNames.LessThanOrEqualTo,
-            VirtualSignalNames.GreaterThanOrEqualTo,
-            VirtualSignalNames.LeftParenthesis,
-            VirtualSignalNames.RightParenthesis,
-            VirtualSignalNames.LeftSquareBracket,
-            VirtualSignalNames.RightSquareBracket,
-            VirtualSignalNames.Red,
-            VirtualSignalNames.Green,
-            VirtualSignalNames.Blue,
-            VirtualSignalNames.Yellow,
-            VirtualSignalNames.Pink,
-            VirtualSignalNames.Cyan,
-            VirtualSignalNames.White
         ]
     ];
 
-    public static readonly List<List<string>> AllSignalGroups = [Signals, .. AdditionalSignalGroups];
+    public static readonly List<List<string>> AllNoteGroupSignals = [SpeakerChannelSignals, .. AdditionalNoteGroupSignals];
 }

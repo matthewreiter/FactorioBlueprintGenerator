@@ -52,6 +52,10 @@
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/musicBoxV2Demux.txt\" --OutputJson=\"$(ProjectDir)/Test/musicBoxV2Demux.json\" --MemoryType=MusicBoxV2Demux"
     },
+    "MusicBoxV2Decoder": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/musicBoxV2Decoder.txt\" --OutputJson=\"$(ProjectDir)/Test/musicBoxV2Decoder.json\" --MemoryType=MusicBoxV2Decoder --NoteGroupReferenceCount=48 --IncludePower=true"
+    },
     "Font": {
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/font.txt\" --OutputJson=\"$(ProjectDir)/Test/font.json\" --FontImage=\"$(ProjectDir)/Fonts/5x7 Font.png\" --MemoryType=Font --Signals=0123456789ABCDEFGHIJKLMNOPQRSTUVWXY"

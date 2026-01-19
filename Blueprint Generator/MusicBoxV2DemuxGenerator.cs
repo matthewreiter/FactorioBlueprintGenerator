@@ -18,8 +18,8 @@ public class MusicBoxV2DemuxGenerator : IBlueprintGenerator
 
     public static Blueprint Generate()
     {
-        var signalCount = SpeakerChannelSignals.Signals.Count;
-        var signalGroupCount = SpeakerChannelSignals.AdditionalSignalGroups.Count;
+        var signalCount = MusicBoxSignals.SpeakerChannelSignals.Count;
+        var signalGroupCount = MusicBoxSignals.AdditionalNoteGroupSignals.Count;
         var elapsedTimeSignal = SignalID.CreateVirtual(VirtualSignalNames.Clock);
 
         var entities = new List<Entity>();
@@ -30,7 +30,7 @@ public class MusicBoxV2DemuxGenerator : IBlueprintGenerator
 
         for (int signalGroupIndex = 0; signalGroupIndex < signalGroupCount; signalGroupIndex++)
         {
-            var signalGroup = SpeakerChannelSignals.AdditionalSignalGroups[signalGroupIndex];
+            var signalGroup = MusicBoxSignals.AdditionalNoteGroupSignals[signalGroupIndex];
             Debug.Assert(signalGroup.Count == signalCount);
 
             var timeSignal = SignalID.CreateLetterOrDigit((char)('A' + signalGroupIndex));
@@ -94,7 +94,7 @@ public class MusicBoxV2DemuxGenerator : IBlueprintGenerator
             for (int signalIndex = 0; signalIndex < signalCount; signalIndex++)
             {
                 var inputSignal = SignalID.Create(signalGroup[signalIndex]);
-                var outputSignal = SignalID.Create(SpeakerChannelSignals.Signals[signalIndex]);
+                var outputSignal = SignalID.Create(MusicBoxSignals.SpeakerChannelSignals[signalIndex]);
 
                 var signalRenamer = new Entity
                 {

@@ -210,7 +210,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         {
             var columnX = column + (includePower ? (column / 16 + 1) * 2 : 0) + xOffset;
             var y = yOffset;
-            var inputSignal = SignalID.Create(SpeakerChannelSignals.Signals[column]);
+            var inputSignal = SignalID.Create(MusicBoxSignals.SpeakerChannelSignals[column]);
             var players = new List<Entity>();
 
             var durationDivider = new Entity

@@ -617,7 +617,7 @@ public static class MusicBoxCompiler
                     {
                         noteGroupGroups.Add((currentAddress, notes));
 
-                        if (noteGroupGroups.Count == SpeakerChannelSignals.AllSignalGroups.Count)
+                        if (noteGroupGroups.Count == MusicBoxSignals.AllNoteGroupSignals.Count)
                         {
                             noteGroupGroupGroups.Add(noteGroupGroups);
                             noteGroupGroups = [];
@@ -671,7 +671,7 @@ public static class MusicBoxCompiler
                     var memoryCellData = new MemoryCellData([
                         new(VirtualSignalNames.Wait, currentNoteGroupGroups[^1].Address - address),
                         .. currentNoteGroupGroups.Skip(1).Select((group, groupIndex) => new KeyValuePair<string, int>(VirtualSignalNames.LetterOrDigit((char)('A' + groupIndex)), group.Address - address)),
-                        .. currentNoteGroupGroups.SelectMany((group, groupIndex) => group.Notes.Select(channelNote => new KeyValuePair<string, int>(SpeakerChannelSignals.AllSignalGroups[groupIndex][channelNote.Channel], channelNote.Note)))
+                        .. currentNoteGroupGroups.SelectMany((group, groupIndex) => group.Notes.Select(channelNote => new KeyValuePair<string, int>(MusicBoxSignals.AllNoteGroupSignals[groupIndex][channelNote.Channel], channelNote.Note)))
                     ]);
 
                     if (songDataToCells.TryGetValue(memoryCellData, out var memoryCell))
