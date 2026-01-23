@@ -6,7 +6,6 @@ using BlueprintGenerator.Models;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using static BlueprintGenerator.PowerUtil;
 
 namespace BlueprintGenerator;
@@ -28,9 +27,12 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
         const int noteGroupSubAddressBits = 32 - noteGroupAddressBits - noteGroupTimeOffsetBits;
 
         var width = noteGroupReferenceCount;
+        var mainHeight = 22;
+
+        var noteGroupDecoderHeight = 8;
 
         var gridWidth = width + (includePower ? ((width + 7) / 16 + 1) * 2 : 0);
-        var gridHeight = 22;
+        var gridHeight = mainHeight + noteGroupDecoderHeight;
         var xOffset = -gridWidth / 2;
         var yOffset = -gridHeight / 2;
 
@@ -44,12 +46,13 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
         Entity previousSignalPropagator = null;
         Entity previousAddressExtractor = null;
         Entity previousNoteGroupUpdater = null;
-        Entity previousNoteGroupSender = null;
+        List<Entity> noteGroupSenders = [];
+        var y = 0;
 
         for (int column = 0; column < width; column++)
         {
             var columnX = column + (includePower ? (column / 16 + 1) * 2 : 0) + xOffset;
-            var y = yOffset;
+            y = yOffset;
             var noteGroupReferenceSignal = SignalID.Create(MusicBoxSignals.NoteGroupReferenceSignals[column]);
 
             var addressSuppressor = new Entity
@@ -310,6 +313,7 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
             entities.Add(subAddressExtractor);
 
             wires.Add(new((subAddressExtractor, ConnectionType.Red1), (subAddressShifter, ConnectionType.Red2)));
+            wires.Add(new((subAddressExtractor, ConnectionType.Green2), (noteGroupTimeOffsetExtractor, ConnectionType.Green2)));
 
             var addressChecker = new Entity
             {
@@ -387,6 +391,7 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
             entities.Add(noteGroupUpdater);
 
             wires.Add(new((noteGroupUpdater, ConnectionType.Red1), (addressChecker, ConnectionType.Red2)));
+            wires.Add(new((noteGroupUpdater, ConnectionType.Green2), (subAddressExtractor, ConnectionType.Green2)));
 
             if (column > 0)
             {
@@ -478,23 +483,206 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
 
             if (column > 0)
             {
-                wires.Add(new((noteGroupSender, ConnectionType.Red1), (previousNoteGroupSender, ConnectionType.Red1)));
-                wires.Add(new((noteGroupSender, ConnectionType.Green2), (previousNoteGroupSender, ConnectionType.Green2)));
+                wires.Add(new((noteGroupSender, ConnectionType.Red1), (noteGroupSenders[^1], ConnectionType.Red1)));
+                wires.Add(new((noteGroupSender, ConnectionType.Green2), (noteGroupSenders[^1], ConnectionType.Green2)));
             }
 
             previousAddressSuppressor = addressSuppressor;
             previousSignalPropagator = signalPropagator;
             previousAddressExtractor = addressExtractor;
             previousNoteGroupUpdater = noteGroupUpdater;
-            previousNoteGroupSender = noteGroupSender;
+            noteGroupSenders.Add(noteGroupSender);
 
-            Debug.Assert(y == yOffset + gridHeight);
+            Debug.Assert(y == yOffset + mainHeight);
+        }
+
+        var channelCount = MusicBoxSignals.SpeakerChannelSignals.Count;
+        var noteGroupCount = MusicBoxSignals.AdditionalNoteGroupSignals.Count;
+
+        int GetColumnX(int currentColumn) => currentColumn + (includePower ? (currentColumn / 16 + 1) * 2 : 0) + xOffset;
+
+        var column2 = 0;
+        y = yOffset + mainHeight + 2;
+
+        var allNoteSelector = new Entity
+        {
+            Player_description = "All note selector",
+            Name = ItemNames.DeciderCombinator,
+            Position = new Position
+            {
+                X = GetColumnX(column2++),
+                Y = y + 0.5
+            },
+            Direction = Direction.Up,
+            Control_behavior = new ControlBehavior
+            {
+                Decider_conditions = new DeciderConditions
+                {
+                    Conditions =
+                    [
+                        new DeciderCondition
+                        {
+                            First_signal = noteGroupSubAddressSignal,
+                            Constant = 0,
+                            Comparator = Comparators.IsEqual
+                        }
+                    ],
+                    Outputs =
+                    [
+                        new DeciderOutput
+                        {
+                            Signal = SignalID.CreateVirtual(VirtualSignalNames.Everything),
+                            Copy_count_from_input = true
+                        }
+                    ]
+                }
+            }
+        };
+        entities.Add(allNoteSelector);
+
+        var allNoteBuffer = new Entity
+        {
+            Player_description = "All note buffer",
+            Name = ItemNames.ArithmeticCombinator,
+            Position = new Position
+            {
+                X = GetColumnX(column2++),
+                Y = y + 0.5
+            },
+            Direction = Direction.Down,
+            Control_behavior = new ControlBehavior
+            {
+                Arithmetic_conditions = new ArithmeticConditions
+                {
+                    First_signal = SignalID.CreateVirtual(VirtualSignalNames.Each),
+                    Second_constant = 1,
+                    Operation = ArithmeticOperations.Multiplication,
+                    Output_signal = SignalID.CreateVirtual(VirtualSignalNames.Each)
+                }
+            }
+        };
+        entities.Add(allNoteBuffer);
+
+        wires.Add(new((allNoteBuffer, ConnectionType.Green1), (noteGroupSenders[column2], ConnectionType.Green2)));
+        wires.Add(new((allNoteBuffer, ConnectionType.Red2), (allNoteSelector, ConnectionType.Red1)));
+
+        for (int noteGroupIndex = 0; noteGroupIndex < noteGroupCount; noteGroupIndex++)
+        {
+            var noteGroupSignals = MusicBoxSignals.AdditionalNoteGroupSignals[noteGroupIndex];
+            var noteCount = noteGroupSignals.Count;
+            Debug.Assert(noteCount <= channelCount);
+
+            if (column2 + noteCount + 2 >= width)
+            {
+                column2 = 0;
+                y += 2;
+            }
+
+            var noteGroupSelector = new Entity
+            {
+                Player_description = $"Note group selector {noteGroupIndex + 1}",
+                Name = ItemNames.DeciderCombinator,
+                Position = new Position
+                {
+                    X = GetColumnX(column2++),
+                    Y = y + 0.5
+                },
+                Direction = Direction.Up,
+                Control_behavior = new ControlBehavior
+                {
+                    Decider_conditions = new DeciderConditions
+                    {
+                        Conditions =
+                        [
+                            new DeciderCondition
+                            {
+                                First_signal = noteGroupSubAddressSignal,
+                                Constant = noteGroupIndex + 1,
+                                Comparator = Comparators.IsEqual
+                            }
+                        ],
+                        Outputs =
+                        [
+                            new DeciderOutput
+                            {
+                                Signal = SignalID.CreateVirtual(VirtualSignalNames.Everything),
+                                Copy_count_from_input = true
+                            }
+                        ]
+                    }
+                }
+            };
+            entities.Add(noteGroupSelector);
+
+            var subAddressBuffer = new Entity
+            {
+                Player_description = $"Sub-address buffer {noteGroupIndex + 1}",
+                Name = ItemNames.ArithmeticCombinator,
+                Position = new Position
+                {
+                    X = GetColumnX(column2++),
+                    Y = y + 0.5
+                },
+                Direction = Direction.Down,
+                Control_behavior = new ControlBehavior
+                {
+                    Arithmetic_conditions = new ArithmeticConditions
+                    {
+                        First_signal = noteGroupSubAddressSignal,
+                        Second_constant = 1,
+                        Operation = ArithmeticOperations.Multiplication,
+                        Output_signal = noteGroupSubAddressSignal
+                    }
+                }
+            };
+            entities.Add(subAddressBuffer);
+
+            wires.Add(new((subAddressBuffer, ConnectionType.Green1), (noteGroupSenders[column2], ConnectionType.Green2)));
+            wires.Add(new((subAddressBuffer, ConnectionType.Red2), (noteGroupSelector, ConnectionType.Red1)));
+
+            Entity previousSignalRenamer = null;
+
+            for (int signalIndex = 0; signalIndex < noteCount; signalIndex++)
+            {
+                var inputSignal = SignalID.Create(noteGroupSignals[signalIndex]);
+                var outputSignal = SignalID.Create(MusicBoxSignals.SpeakerChannelSignals[signalIndex]);
+
+                var signalRenamer = new Entity
+                {
+                    Player_description = $"Signal renamer {noteGroupIndex + 1}-{signalIndex + 1}",
+                    Name = ItemNames.ArithmeticCombinator,
+                    Position = new Position
+                    {
+                        X = GetColumnX(column2++),
+                        Y = y + 0.5
+                    },
+                    Direction = Direction.Down,
+                    Control_behavior = new ControlBehavior
+                    {
+                        Arithmetic_conditions = new ArithmeticConditions
+                        {
+                            First_signal = inputSignal,
+                            Second_constant = 1,
+                            Operation = ArithmeticOperations.Multiplication,
+                            Output_signal = outputSignal
+                        }
+                    }
+                };
+                entities.Add(signalRenamer);
+
+                wires.Add(new((signalRenamer, ConnectionType.Green1), signalIndex == 0 ? (subAddressBuffer, ConnectionType.Green1) : (previousSignalRenamer, ConnectionType.Green1)));
+                wires.Add(new((signalRenamer, ConnectionType.Red2), signalIndex == 0? (subAddressBuffer, ConnectionType.Red2) : (previousSignalRenamer, ConnectionType.Red2)));
+
+                previousSignalRenamer = signalRenamer;
+            }
+
+            column2++; // Spacer
         }
 
         if (includePower)
         {
             var substationWidth = (width + 7) / 16 + 1;
-            var substationHeight = (gridHeight - 1) / 18 + 1;
+            var substationHeight = (gridHeight + 7) / 18 + 1;
 
             AddSubstations(entities, wires, substationWidth, substationHeight, xOffset, yOffset);
         }
