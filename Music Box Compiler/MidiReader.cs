@@ -127,6 +127,7 @@ public static class MidiReader
     private const Instrument LowFallbackInstrument = Instrument.LeadGuitar;
     private const Instrument HighFallbackInstrument = Instrument.Celesta;
     private static readonly TimeSpan TickDuration = TimeSpan.FromMilliseconds(1000d / 60); // 1000ms / 60fps (approximately 17 ms per tick)
+    private const double PressureExponent = 2;
 
     private static Dictionary<int, Instrument> CreateInstrumentMap(params InstrumentMapping[] mappings)
     {
@@ -410,7 +411,7 @@ public static class MidiReader
             yield return note with
             {
                 StartTime = time,
-                Velocity = note.Velocity * (pressure + 1) * 0.25,
+                Velocity = note.Velocity * (Math.Pow(pressure, PressureExponent) + 1) * 0.25,
                 Expression = expression,
                 ChannelVolume = volume,
                 IsExpanded = true,
@@ -470,7 +471,7 @@ public static class MidiReader
                 currentNote = note with
                 {
                     StartTime = time,
-                    Velocity = note.Velocity * (pressure + 1),
+                    Velocity = note.Velocity * (Math.Pow(pressure, PressureExponent) + 1),
                     Expression = expression,
                     ChannelVolume = volume,
                     IsExpanded = true,
