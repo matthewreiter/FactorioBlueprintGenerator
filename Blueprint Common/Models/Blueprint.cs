@@ -605,8 +605,33 @@ namespace BlueprintCommon.Models
 
         public CircuitParameters Circuit_parameters { get; set; }
 
+        public bool? Circuit_enabled { get; set; }
+
         public bool? Is_on { get; set; }
+
         public bool? Use_colors { get; set; }
+
+        public ColorMode? Color_mode { get; set; }
+
+        /// <summary>
+        /// Used for lamps when <see cref="Color_mode"/> is <see cref="ColorMode.ColorComponents"/>.
+        /// </summary>
+        public SignalID Red_signal { get; set; }
+
+        /// <summary>
+        /// Used for lamps when <see cref="Color_mode"/> is <see cref="ColorMode.ColorComponents"/>.
+        /// </summary>
+        public SignalID Green_signal { get; set; }
+
+        /// <summary>
+        /// Used for lamps when <see cref="Color_mode"/> is <see cref="ColorMode.ColorComponents"/>.
+        /// </summary>
+        public SignalID Blue_signal { get; set; }
+
+        /// <summary>
+        /// Used for lamps when <see cref="Color_mode"/> is <see cref="ColorMode.PackedRgb"/>.
+        /// </summary>
+        public SignalID Rgb_signal { get; set; }
     }
 
     public class Sections

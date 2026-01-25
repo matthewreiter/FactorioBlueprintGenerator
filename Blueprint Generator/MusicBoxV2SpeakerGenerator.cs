@@ -1,5 +1,6 @@
 ﻿using BlueprintCommon;
 using BlueprintCommon.Constants;
+using BlueprintCommon.Constants.Mods;
 using BlueprintCommon.Models;
 using BlueprintGenerator.Constants;
 using BlueprintGenerator.Models;
@@ -23,6 +24,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         var instrumentCount = configuration.InstrumentCount ?? 10;
         var channelCount = configuration.ChannelCount ?? 10;
         var includePower = configuration.IncludePower ?? true;
+        var isForPyanodons = configuration.IsForPyanodons ?? false;
 
         const int maxInstruments = 10;
         const int maxPitches = 48;
@@ -37,7 +39,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         const int cellHeight = 3;
 
         var gridWidth = width + (includePower ? ((width + 7) / 16 + 1) * 2 : 0);
-        var gridHeight = headerHeight + height * cellHeight;
+        var gridHeight = headerHeight + height * cellHeight + (isForPyanodons ? 3 : 0);
         var xOffset = -gridWidth / 2;
         var yOffset = -gridHeight / 2;
 
@@ -798,8 +800,36 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             Debug.Assert(y == yOffset + headerHeight);
 
+            if (isForPyanodons)
+            {
+                Entity previousNexelitPowerPole = null;
+
+                for (int row = 0; row < 3; row++)
+                {
+                    var nexelitPowerPole = new Entity
+                    {
+                        Name = PyAlternativeEnergyItemNames.NexelitPowerPole,
+                        Position = new Position
+                        {
+                            X = columnX,
+                            Y = y + row * 16
+                        }
+                    };
+                    entities.Add(nexelitPowerPole);
+
+                    wires.Add(new((nexelitPowerPole, ConnectionType.Green1), row == 0 ? (volumeAdjustmentPickers[^1], ConnectionType.Green1) : (previousNexelitPowerPole, ConnectionType.Green1)));
+
+                    previousNexelitPowerPole = nexelitPowerPole;
+                }
+            }
+
             for (int row = 0; row < height; row++)
             {
+                if (isForPyanodons && row is 0 or 5)
+                {
+                    y++;
+                }
+
                 var speakerController = new Entity
                 {
                     Player_description = $"Speaker controller for instrument {row}",
@@ -914,4 +944,5 @@ public class MusicBoxV2SpeakerConfiguration
     public int? InstrumentCount { get; set; }
     public int? ChannelCount { get; set; }
     public bool? IncludePower { get; set; }
+    public bool? IsForPyanodons { get; set; }
 }

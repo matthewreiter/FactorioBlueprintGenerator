@@ -46,11 +46,15 @@
     },
     "MusicBoxV2Speakers": {
       "commandName": "Project",
-      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/musicBoxV2Speakers.txt\" --OutputJson=\"$(ProjectDir)/Test/musicBoxV2Speakers.json\" --MemoryType=MusicBoxV2Speaker --InstrumentCount=10 --ChannelCount=56 --IncludePower=true"
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/musicBoxV2Speakers.txt\" --OutputJson=\"$(ProjectDir)/Test/musicBoxV2Speakers.json\" --MemoryType=MusicBoxV2Speaker --InstrumentCount=10 --ChannelCount=56 --IncludePower=true --IsForPyanodons=true"
     },
     "MusicBoxV2Decoder": {
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/musicBoxV2Decoder.txt\" --OutputJson=\"$(ProjectDir)/Test/musicBoxV2Decoder.json\" --MemoryType=MusicBoxV2Decoder --NoteGroupReferenceCount=64 --IncludePower=true"
+    },
+    "NoteDisplay": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/noteDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/noteDisplay.json\" --MemoryType=NoteDisplay --Height=56"
     },
     "Font": {
       "commandName": "Project",
