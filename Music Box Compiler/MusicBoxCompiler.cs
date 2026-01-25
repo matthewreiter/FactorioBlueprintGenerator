@@ -358,7 +358,7 @@ public static class MusicBoxCompiler
                         }
                     }
 
-                    var length = (int)(noteGroupLength.TotalSeconds * 60) - timeDeficit;
+                    var length = (int)Math.Round(noteGroupLength.TotalSeconds * 60) - timeDeficit;
 
                     // We can't have multiple note groups play too close to each other.
                     // However, to avoid delaying future notes we capture the amount that the length is adjusted
@@ -519,6 +519,17 @@ public static class MusicBoxCompiler
             return encodedVolume + (encodedPitch + (encodedInstrument + encodedDuration * InstrumentCountV2) * PitchCountV2) * VolumeCountV2;
         }
 
+        int EncodeNoteGroupReference(int noteGroupAddress, int subAddress, int timeOffset)
+        {
+            Debug.Assert(noteGroupAddress >= baseAddress + 4 && noteGroupAddress < baseNoteAddress, "Note group address out of range");
+            Debug.Assert(subAddress >= 0 && subAddress < MusicBoxSignals.AllNoteGroupSignals.Count, "Sub-address out of range");
+            Debug.Assert(timeOffset >= 0, "Time offset cannot be negative");
+
+            var encodedTimeOffset = Math.Min(timeOffset, (1 << NoteGroupTimeOffsetBits) - 1);
+
+            return noteGroupAddress + (encodedTimeOffset << NoteGroupAddressBits) + (subAddress << (NoteGroupAddressBits + NoteGroupTimeOffsetBits));
+        }
+
         var allSongs = playlists.SelectMany(playlist => playlist.Songs).ToList();
 
         var currentMetadataAddressIndex = 0;
@@ -566,6 +577,22 @@ public static class MusicBoxCompiler
                     if (song.Gapless && noteGroup.Notes.Count == 0)
                     {
                         continue;
+                    }
+
+                    var noteGroupLength = (int)Math.Round(noteGroup.Length.TotalSeconds * 60) - timeDeficit;
+
+                    // We can't have multiple note groups play too close to each other.
+                    // However, to avoid delaying future notes we capture the amount that the length is adjusted
+                    // as the time deficit and apply that to the next note.
+                    const int minimumLength = 1;
+                    if (noteGroupLength < minimumLength)
+                    {
+                        timeDeficit = minimumLength - noteGroupLength;
+                        noteGroupLength = minimumLength;
+                    }
+                    else
+                    {
+                        timeDeficit = 0;
                     }
 
                     var channelNotes = new int[ChannelCountV2];
@@ -642,13 +669,16 @@ public static class MusicBoxCompiler
 
                         if (noteGroups.Count >= MusicBoxSignals.NoteGroupReferenceSignals.Count)
                         {
+                            Debug.Assert(noteGroups.Count == MusicBoxSignals.NoteGroupReferenceSignals.Count);
+
                             var minimumCellLength = MusicBoxSignals.NoteGroupReferenceSignals.Count + 1; // The number of cycles required to finish loading all of the note groups
-                            var cellLength = currentAddress - noteGroups[0].Address;
+                            var cellLength = currentAddress + noteGroupLength - noteGroups[0].Address;
 
                             if (cellLength < minimumCellLength)
                             {
-                                timeDeficit += minimumCellLength - cellLength;
-                                cellLength = minimumCellLength;
+                                var extension = minimumCellLength - cellLength;
+                                noteGroupLength += extension;
+                                timeDeficit += extension;
                             }
 
                             noteGroupGroups.Add(noteGroups);
@@ -656,28 +686,12 @@ public static class MusicBoxCompiler
                         }
                     }
 
-                    var length = (int)(noteGroup.Length.TotalSeconds * 60) - timeDeficit;
-
-                    // We can't have multiple note groups play too close to each other.
-                    // However, to avoid delaying future notes we capture the amount that the length is adjusted
-                    // as the time deficit and apply that to the next note.
-                    const int minimumLength = 1;
-                    if (length < minimumLength)
-                    {
-                        timeDeficit = minimumLength - length;
-                        length = minimumLength;
-                    }
-                    else
-                    {
-                        timeDeficit = 0;
-                    }
-
-                    currentAddress += length;
+                    currentAddress += noteGroupLength;
 
                     // Reduce channel remaining times
                     for (var channel = 0; channel < ChannelCountV2; channel++)
                     {
-                        channelRemainingTimes[channel] = Math.Max(0, channelRemainingTimes[channel] - length);
+                        channelRemainingTimes[channel] = Math.Max(0, channelRemainingTimes[channel] - noteGroupLength);
                     }
                 }
 
@@ -696,14 +710,14 @@ public static class MusicBoxCompiler
                     Filters = [CreateFilter('Y', metadataAddress)]
                 });
 
-                // Add memory cells for the notes in the songs
+                // Add memory cells for the note group groups in the songs
                 foreach (var currentNoteGroupGroup in noteGroupGroups)
                 {
                     var address = currentNoteGroupGroup[0].Address;
                     var memoryCellData = new MemoryCellData([
                         .. currentNoteGroupGroup.Select((noteGroup, index) => new KeyValuePair<string, int>(
                             MusicBoxSignals.NoteGroupReferenceSignals[index],
-                            noteGroup.NoteGroupAddress + (Math.Min(noteGroup.Address - address - index + 1, (1 << NoteGroupTimeOffsetBits) - 1) << NoteGroupAddressBits) + (noteGroup.SubAddress << (NoteGroupAddressBits + NoteGroupTimeOffsetBits))))
+                            EncodeNoteGroupReference(noteGroup.NoteGroupAddress, noteGroup.SubAddress, noteGroup.Address - address - index + 1)))
                     ]);
 
                     if (songDataToCells.TryGetValue(memoryCellData, out var memoryCell))
