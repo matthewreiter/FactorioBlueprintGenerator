@@ -474,7 +474,7 @@ public static class MusicBoxCompiler
     private static Blueprint CreateBlueprintFromPlaylistsV2(List<Playlist> playlists, MusicBoxConfiguration configuration, out Addresses addresses)
     {
         var baseAddress = configuration.BaseAddress ?? 1;
-        var baseNoteAddress = configuration.BaseNoteAddress ?? 1 << NoteGroupAddressBits;
+        var baseNoteAddress = configuration.BaseNoteAddress ?? 1 << MusicBoxV2DecoderGenerator.NoteGroupAddressBits;
         var baseMetadataAddress = configuration.BaseMetadataAddress ?? 1;
         var nextAddress = configuration.NextAddress ?? baseAddress;
         var snapToGrid = configuration.SnapToGrid;
@@ -521,13 +521,11 @@ public static class MusicBoxCompiler
 
         int EncodeNoteGroupReference(int noteGroupAddress, int subAddress, int timeOffset)
         {
-            Debug.Assert(noteGroupAddress >= baseAddress + 4 && noteGroupAddress < baseNoteAddress, "Note group address out of range");
+            Debug.Assert(noteGroupAddress >= baseAddress + 4 && noteGroupAddress < baseNoteAddress || noteGroupAddress == 1, "Note group address out of range");
             Debug.Assert(subAddress >= 0 && subAddress < MusicBoxSignals.AllNoteGroupSignals.Count, "Sub-address out of range");
-            Debug.Assert(timeOffset >= 0, "Time offset cannot be negative");
+            Debug.Assert(timeOffset is >= 0 and < (1 << MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits), "Time offset out of range");
 
-            var encodedTimeOffset = Math.Min(timeOffset, (1 << NoteGroupTimeOffsetBits) - 1);
-
-            return noteGroupAddress + (encodedTimeOffset << NoteGroupAddressBits) + (subAddress << (NoteGroupAddressBits + NoteGroupTimeOffsetBits));
+            return noteGroupAddress + (timeOffset << MusicBoxV2DecoderGenerator.NoteGroupAddressBits) + (subAddress << (MusicBoxV2DecoderGenerator.NoteGroupAddressBits + MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits));
         }
 
         var allSongs = playlists.SelectMany(playlist => playlist.Songs).ToList();
@@ -567,6 +565,12 @@ public static class MusicBoxCompiler
                 List<(int Address, int NoteGroupAddress, int SubAddress, List<(int Channel, int Note)> Notes)> noteGroups = [];
                 List<List<(int Address, int NoteGroupAddress, int SubAddress, List<(int Channel, int Note)> Notes)>> noteGroupGroups = [];
                 var timeDeficit = 0;
+
+                void StartNewNoteGroupGroup()
+                {
+                    noteGroupGroups.Add(noteGroups);
+                    noteGroups = [];
+                }
 
                 trackNumber++;
 
@@ -665,12 +669,24 @@ public static class MusicBoxCompiler
                             }
                         }
 
+                        // Start a new note group group if the time offset gets too big to encode
+                        if (noteGroups.Count > 0 && currentAddress - noteGroups[0].Address - noteGroups.Count + 1 >= (1 << MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits))
+                        {
+                            // Fill up the current note group group to ensure that all registers in the decoder get loaded instead of being left with the previous values
+                            for (var index = noteGroups.Count; index < MusicBoxSignals.NoteGroupReferenceSignals.Count; index++)
+                            {
+                                noteGroups.Add((noteGroups[0].Address + noteGroups.Count - 2 + (1 << MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits), 1, 0, []));
+                            }
+
+                            StartNewNoteGroupGroup();
+                        }
+
                         noteGroups.Add((currentAddress, noteGroupAddress.Address, noteGroupAddress.SubAddress, notes));
 
-                        if (noteGroups.Count >= MusicBoxSignals.NoteGroupReferenceSignals.Count)
-                        {
-                            Debug.Assert(noteGroups.Count == MusicBoxSignals.NoteGroupReferenceSignals.Count);
+                        Debug.Assert(noteGroups.Count <= MusicBoxSignals.NoteGroupReferenceSignals.Count);
 
+                        if (noteGroups.Count == MusicBoxSignals.NoteGroupReferenceSignals.Count)
+                        {
                             var minimumCellLength = MusicBoxSignals.NoteGroupReferenceSignals.Count + 1; // The number of cycles required to finish loading all of the note groups
                             var cellLength = currentAddress + noteGroupLength - noteGroups[0].Address;
 
@@ -681,8 +697,7 @@ public static class MusicBoxCompiler
                                 timeDeficit += extension;
                             }
 
-                            noteGroupGroups.Add(noteGroups);
-                            noteGroups = [];
+                            StartNewNoteGroupGroup();
                         }
                     }
 
@@ -697,7 +712,7 @@ public static class MusicBoxCompiler
 
                 if (noteGroups.Count > 0)
                 {
-                    noteGroupGroups.Add(noteGroups);
+                    StartNewNoteGroupGroup();
                 }
 
                 var songLength = currentAddress - songAddress;

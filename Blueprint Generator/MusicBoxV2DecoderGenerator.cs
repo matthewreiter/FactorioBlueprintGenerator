@@ -12,6 +12,10 @@ namespace BlueprintGenerator;
 
 public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
 {
+    public const int NoteGroupAddressBits = 16;
+    public const int NoteGroupTimeOffsetBits = 11;
+    public const int NoteGroupSubAddressBits = 32 - NoteGroupAddressBits - NoteGroupTimeOffsetBits;
+
     public Blueprint Generate(IConfigurationRoot configuration)
     {
         return Generate(configuration.Get<MusicBoxV2DecoderConfiguration>());
@@ -21,10 +25,6 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
     {
         var noteGroupReferenceCount = configuration.NoteGroupReferenceCount ?? 10;
         var includePower = configuration.IncludePower ?? true;
-
-        const int noteGroupAddressBits = 16;
-        const int noteGroupTimeOffsetBits = 11;
-        const int noteGroupSubAddressBits = 32 - noteGroupAddressBits - noteGroupTimeOffsetBits;
 
         var width = noteGroupReferenceCount;
         var mainHeight = 22;
@@ -229,7 +229,7 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
                     Arithmetic_conditions = new ArithmeticConditions
                     {
                         First_signal = noteGroupReferenceSignal,
-                        Second_constant = noteGroupAddressBits,
+                        Second_constant = NoteGroupAddressBits,
                         Operation = ArithmeticOperations.RightShift,
                         Output_signal = SignalID.CreateVirtual(VirtualSignalNames.Dot)
                     }
@@ -254,7 +254,7 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
                     Arithmetic_conditions = new ArithmeticConditions
                     {
                         First_signal = SignalID.CreateVirtual(VirtualSignalNames.Dot),
-                        Second_constant = (1 << noteGroupTimeOffsetBits) - 1,
+                        Second_constant = (1 << NoteGroupTimeOffsetBits) - 1,
                         Operation = ArithmeticOperations.And,
                         Output_signal = noteGroupTimeOffsetSignal
                     }
@@ -279,7 +279,7 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
                     Arithmetic_conditions = new ArithmeticConditions
                     {
                         First_signal = noteGroupReferenceSignal,
-                        Second_constant = noteGroupAddressBits + noteGroupTimeOffsetBits,
+                        Second_constant = NoteGroupAddressBits + NoteGroupTimeOffsetBits,
                         Operation = ArithmeticOperations.RightShift,
                         Output_signal = SignalID.CreateVirtual(VirtualSignalNames.Dot)
                     }
@@ -304,7 +304,7 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
                     Arithmetic_conditions = new ArithmeticConditions
                     {
                         First_signal = SignalID.CreateVirtual(VirtualSignalNames.Dot),
-                        Second_constant = (1 << noteGroupSubAddressBits) - 1,
+                        Second_constant = (1 << NoteGroupSubAddressBits) - 1,
                         Operation = ArithmeticOperations.And,
                         Output_signal = noteGroupSubAddressSignal
                     }
