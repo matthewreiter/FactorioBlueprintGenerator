@@ -1,0 +1,7 @@
+﻿playlists:
+  - name: Default
+    loop: true
+    songs:
+      - name: Test
+        source: Music\Kunstderfuge.com\Beethoven\symphony_9_4_(c)cvikl.mid
+        volume: 100

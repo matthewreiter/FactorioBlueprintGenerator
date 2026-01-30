@@ -1,20 +1,28 @@
 {
   "profiles": {
-    "Music Box Compiler": {
+    "Songs": {
       "commandName": "Project",
       "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/musicConfig.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputConstants=\"$(ProjectDir)/Test/MusicConstants.cs\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=128 --SnapToGrid=true --X=-32 --Y=39 --BaseAddress=3 --BaseMetadataAddress=1"
+    },
+    "Songs V2": {
+      "commandName": "Project",
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/musicConfig.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputConstants=\"$(ProjectDir)/Test/MusicConstants.cs\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Version=2 --Width=192 --Height=76 --BaseAddress=3 --BaseMetadataAddress=1"
     },
     "Classical": {
       "commandName": "Project",
       "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/classical.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputConstants=\"$(ProjectDir)/Test/ClassicalMusicConstants.cs\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=128 --SnapToGrid=true --X=55 --Y=113 --BaseAddress=8192 --BaseNoteAddress=4194304 --BaseMetadataAddress=129"
     },
-    "Classical 2": {
+    "Classical V2": {
       "commandName": "Project",
-      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/classical.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=128 --BaseAddress=3 --BaseMetadataAddress=1"
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/classical.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Version=2 --Width=192 --Height=76 --BaseAddress=3 --BaseMetadataAddress=1"
     },
     "Single": {
       "commandName": "Project",
       "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/single.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=128 --SnapToGrid=true --X=-32 --Y=39 --BaseAddress=3 --BaseMetadataAddress=1"
+    },
+    "Single V2": {
+      "commandName": "Project",
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/single2.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Version=2 --Width=192 --Height=10 --BaseAddress=3 --BaseMetadataAddress=1"
     },
     "Ode to Joy": {
       "commandName": "Project",
@@ -39,6 +47,14 @@
     "PyGamePart2": {
       "commandName": "Project",
       "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/pyGamePart2.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Width=128 --Height=128 --SnapToGrid=true --X=-57 --Y=115 --BaseAddress=8192 --BaseNoteAddress=4194304 --BaseMetadataAddress=129 --NextAddress=3"
+    },
+    "SuperPyGame": {
+      "commandName": "Project",
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/superPyGame.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Version=2 --Width=192 --Height=110 --BaseAddress=3 --BaseMetadataAddress=1"
+    },
+    "SuperPyGameBlank": {
+      "commandName": "Project",
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/superPyGameBlank.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Version=2 --Width=192 --Height=110 --BaseAddress=3 --BaseMetadataAddress=1"
     }
   }
 }
