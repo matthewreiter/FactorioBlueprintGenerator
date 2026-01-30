@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace MusicBoxCompiler.Models;
 
@@ -34,6 +35,7 @@ public record SongConfig
     public Dictionary<Instrument, int> InstrumentOffsets { get; set; }
     public Dictionary<Instrument, double> InstrumentVolumes { get; set; }
     public double? Volume { get; set; }
+    public FadeConfig Fade { get; set; }
     public bool SuppressInstrumentFallback { get; set; }
     /// <summary>
     /// Whether to expand sustained notes into series of repeated notes.
@@ -45,4 +47,17 @@ public record SongConfig
     /// </summary>
     public bool Gapless { get; set; }
     public bool Disabled { get; set; }
+}
+
+public record FadeConfig
+{
+    /// <summary>
+    /// When to start fading. Positive numbers are relative to the beginning of the song and negative numbers are relative to the end of the song.
+    /// </summary>
+    public TimeSpan Start { get; set; }
+
+    /// <summary>
+    /// The time required to complete the fade.
+    /// </summary>
+    public TimeSpan Duration { get; set; }
 }
