@@ -76,11 +76,12 @@ public class SmfTrackMerger2
     {
         return message.Event.EventType switch
         {
-            MidiEvent.Program => 0,
-            MidiEvent.CC => 1,
-            MidiEvent.NoteOn => 2,
-            MidiEvent.NoteOff => 3,
-            _ => 4,
+            MidiEvent.Meta => 0,
+            MidiEvent.Program => 1,
+            MidiEvent.CC => 2,
+            MidiEvent.NoteOn => 3,
+            MidiEvent.NoteOff => 4,
+            _ => 5,
         };
     }
 }
