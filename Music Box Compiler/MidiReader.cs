@@ -106,10 +106,11 @@ public static class MidiReader
         [PercussionsGM2.Shaker] = Drum.Shaker,
         [PercussionsGM2.JingleBell] = Drum.Shaker,
         [PercussionsGM2.Belltree] = Drum.Cowbell,
-        [87] = Drum.Percussion1,
-        [88] = Drum.Percussion1,
-        [89] = Drum.Percussion1,
-        [91] = Drum.Percussion1,
+        // Higher numbers are apparently for sound effects, based on https://www.karma-lab.com/karmasoft/kmo/files/PerformanceNotes/Documentation/KARMAMotifDrumMap.html
+        [87] = Drum.Fx,
+        [88] = Drum.Fx,
+        [89] = Drum.Fx,
+        [91] = Drum.Fx,
     };
     private static readonly Dictionary<Instrument, InstrumentInfo> Instruments = new()
     {
