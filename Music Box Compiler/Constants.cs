@@ -30,7 +30,7 @@ public static class Constants
     /// </summary>
     public static class PercussionsGM2
     {
-        // https://www.musicrepo.com/wp-content/uploads/GM2-Drum-Map.txt (subtract 1 since documentation is 1-based but the actual wire protocol is 0-based)
+        // https://web.archive.org/web/20210515163601/https://www.musicrepo.com/wp-content/uploads/GM2-Drum-Map.txt (subtract 1 since documentation is 1-based but the actual wire protocol is 0-based)
         public const byte HighQ = 26;
         public const byte Slap = 27;
         public const byte ScratchPush = 28;
