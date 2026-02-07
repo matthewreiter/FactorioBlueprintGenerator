@@ -16,6 +16,11 @@ namespace MusicBoxCompiler;
 public static class MidiReader
 {
     // https://web.archive.org/web/20250511231913/http://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html
+    // https://midi.org
+    // Midi 1.0 spec: https://drive.google.com/file/d/1ewRrvMEFRPlKon6nfSCxqnTMEu70sz0c/view
+    // General MIDI 1 spec: https://drive.google.com/file/d/1TTM2HI2JAp_XiTJYEJ8gPNvuJpIjJiTP/view
+    // General MIDI 2 spec: https://drive.google.com/file/d/1OzXk-AshTcb1xyIEHBTA3HcUb-KnLNIR/view
+
     private const int PercussionMidiChannel = 9;
     private static readonly List<string> Notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
     private static readonly Dictionary<byte, string> DrumNames =
@@ -499,6 +504,13 @@ public static class MidiReader
         var text = new List<string>();
         var copyright = new List<string>();
 
+        // Initialize channel controls to their default values according to the GM2 spec
+        foreach (var channel in machine.Channels)
+        {
+            channel.Controls[MidiCC.Volume] = 127;
+            channel.Controls[MidiCC.Expression] = 127;
+        }
+
         foreach (var midiMessage in music.Tracks[0].Messages)
         {
             var midiEvent = midiMessage.Event;
@@ -564,8 +576,8 @@ public static class MidiReader
                                 Instrument = instrument,
                                 RelativeNoteNumber = relativeNoteNumber,
                                 Velocity = velocity / 127d,
-                                Expression = expression > 0 ? expression / 127d : 1,
-                                ChannelVolume = channelVolume > 0 ? channelVolume / 127d : 1,
+                                Expression = expression / 127d,
+                                ChannelVolume = channelVolume / 127d,
                                 StartTime = currentTime
                             };
 
@@ -594,12 +606,15 @@ public static class MidiReader
                             var allChannelActiveNotesForNoteNumber = currentChannelActiveNotes.Where(kvp => kvp.Key.NoteNumber == noteNumber).ToList();
                             if (allChannelActiveNotesForNoteNumber.Count == 1)
                             {
+#if NOTE_OFF_WARNINGS
                                 Console.WriteLine($"Warning: NoteOff received for note {noteNumber} on channel {midiEvent.Channel}, but only one active note was found for a different instrument; stopping that one instead.");
+#endif
                                 var activeNote = allChannelActiveNotesForNoteNumber[0];
                                 var previousNote = activeNote.Value.Dequeue();
                                 previousNote.EndTime = currentTime;
                                 currentChannelActiveNotes.Remove(activeNote.Key);
                             }
+#if NOTE_OFF_WARNINGS
                             else if (allChannelActiveNotesForNoteNumber.Count > 1)
                             {
                                 Console.WriteLine($"Warning: NoteOff received for note {noteNumber} on channel {midiEvent.Channel}, but {allChannelActiveNotesForNoteNumber.Count} active notes were found with different instruments.");
@@ -608,6 +623,7 @@ public static class MidiReader
                             {
                                 Console.WriteLine($"Warning: NoteOff received for note {noteNumber} on channel {midiEvent.Channel}, but no active note were found.");
                             }
+#endif
                         }
                     }
 
@@ -627,37 +643,14 @@ public static class MidiReader
                     }
 
                     break;
-                case MidiEvent.MidiStop:
-                    {
-                        foreach (var activeNotesForNoteNumber in currentChannelActiveNotes.Values)
-                        {
-                            foreach (var note in activeNotesForNoteNumber)
-                            {
-                                note.EndTime = currentTime;
-                            }
-                        }
-
-                        currentChannelActiveNotes.Clear();
-
-                        break;
-                    }
                 case MidiEvent.CC:
                     switch (midiEvent.Msb)
                     {
-                        case MidiCC.AllSoundOff or MidiCC.ResetAllControllers or MidiCC.AllNotesOff or MidiCC.OmniModeOff or MidiCC.OmniModeOn or MidiCC.PolyModeOnOff or MidiCC.PolyModeOn:
-                            {
-                                foreach (var activeNotesForNoteNumber in currentChannelActiveNotes.Values)
-                                {
-                                    foreach (var note in activeNotesForNoteNumber)
-                                    {
-                                        note.EndTime = currentTime;
-                                    }
-                                }
+                        case MidiCC.ResetAllControllers:
+                            // Reset channel controls according to GM2 section 3.5.2
+                            channel.Controls[MidiCC.Expression] = 127;
 
-                                currentChannelActiveNotes.Clear();
-
-                                break;
-                            }
+                            break;
                         case MidiCC.Expression:
                             {
                                 var expression = midiEvent.Lsb / 127d;
