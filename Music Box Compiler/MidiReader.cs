@@ -233,7 +233,7 @@ public static class MidiReader
                 currentTime = midiNote.StartTime;
             }
 
-            var canDeduplicate = expandNotes || (midiNote.PreviousMidiNote is null && midiNote.PressuresChanges.Count == 0 && midiNote.ExpressionChanges.Count == 0 && midiNote.VolumeChanges.Count == 0);
+            var canDeduplicate = expandNotes || (midiNote.PreviousMidiNote is null && !midiNote.Pressure.HasChanges && !midiNote.Expression.HasChanges && !midiNote.ChannelVolume.HasChanges);
             var duration = midiNote.EndTime - midiNote.StartTime ?? TimeSpan.Zero;
             var duplicateNote = canDeduplicate ? currentNotes.Find(note => note.CanDeduplicate && note.Instrument == instrument && note.Number == noteNumber && note.Duration == duration) : null;
 
@@ -346,7 +346,8 @@ public static class MidiReader
 
             var effectiveNoteNumber = midiNote.RelativeNoteNumber + noteOffset;
             var isNoteInRange = effectiveNoteNumber > (instrument == Instrument.Drumkit ? 0 : -12) && effectiveNoteNumber <= instrumentInfo.NoteCount;
-            var volume = Math.Min(midiNote.Velocity * midiNote.Expression * midiNote.ChannelVolume * instrumentInfo.BaseVolume * instrumentVolume * masterVolume, 1);
+            var pressure = Math.Pow(midiNote.Pressure.Value, PressureExponent) + 1;
+            var volume = Math.Min(midiNote.Velocity * pressure * midiNote.Expression.Value * midiNote.ChannelVolume.Value * instrumentInfo.BaseVolume * instrumentVolume * masterVolume, 1);
 
             if (!isNoteInRange && instrument != Instrument.Drumkit)
             {
@@ -419,41 +420,23 @@ public static class MidiReader
             yield break;
         }
 
-        var pressureIndex = 0;
-        var pressure = 0d;
-
-        var expressionIndex = 0;
+        var pressure = note.Pressure;
         var expression = note.Expression;
-
-        var volumeIndex = 0;
         var volume = note.ChannelVolume;
 
         var step = TickDuration * 4;
         for (var time = note.StartTime + step; time < note.EndTime; time += step)
         {
-            while (pressureIndex < note.PressuresChanges.Count && note.PressuresChanges[pressureIndex].Time <= time)
-            {
-                pressure = note.PressuresChanges[pressureIndex].Pressure;
-                pressureIndex++;
-            }
-
-            while (expressionIndex < note.ExpressionChanges.Count && note.ExpressionChanges[expressionIndex].Time <= time)
-            {
-                expression = note.ExpressionChanges[expressionIndex].Expression;
-                expressionIndex++;
-            }
-
-            while (volumeIndex < note.VolumeChanges.Count && note.VolumeChanges[volumeIndex].Time <= time)
-            {
-                volume = note.VolumeChanges[volumeIndex].Volume;
-                volumeIndex++;
-            }
+            pressure.Advance(time, out pressure);
+            expression.Advance(time, out expression);
+            volume.Advance(time, out volume);
 
             yield return note with
             {
                 StartTime = time,
                 EndTime = null,
-                Velocity = note.Velocity * (Math.Pow(pressure, PressureExponent) + 1) * 0.25,
+                Velocity = note.Velocity * 0.25,
+                Pressure = pressure,
                 Expression = expression,
                 ChannelVolume = volume,
                 IsExpanded = true
@@ -470,13 +453,8 @@ public static class MidiReader
             yield break;
         }
 
-        var pressureIndex = 0;
-        var pressure = 0d;
-
-        var expressionIndex = 0;
+        var pressure = note.Pressure;
         var expression = note.Expression;
-
-        var volumeIndex = 0;
         var volume = note.ChannelVolume;
 
         var currentNote = note;
@@ -484,28 +462,7 @@ public static class MidiReader
         var step = TickDuration;
         for (var time = note.StartTime + step; time < note.EndTime; time += step)
         {
-            var hasChanges = false;
-
-            while (pressureIndex < note.PressuresChanges.Count && note.PressuresChanges[pressureIndex].Time <= time)
-            {
-                pressure = note.PressuresChanges[pressureIndex].Pressure;
-                pressureIndex++;
-                hasChanges = true;
-            }
-
-            while (expressionIndex < note.ExpressionChanges.Count && note.ExpressionChanges[expressionIndex].Time <= time)
-            {
-                expression = note.ExpressionChanges[expressionIndex].Expression;
-                expressionIndex++;
-                hasChanges = true;
-            }
-
-            while (volumeIndex < note.VolumeChanges.Count && note.VolumeChanges[volumeIndex].Time <= time)
-            {
-                volume = note.VolumeChanges[volumeIndex].Volume;
-                volumeIndex++;
-                hasChanges = true;
-            }
+            var hasChanges = pressure.Advance(time, out pressure) | expression.Advance(time, out expression) | volume.Advance(time, out volume);
 
             if (hasChanges)
             {
@@ -513,7 +470,8 @@ public static class MidiReader
                 {
                     StartTime = time,
                     EndTime = null,
-                    Velocity = note.Velocity * (Math.Pow(pressure, PressureExponent) + 1),
+                    Velocity = note.Velocity,
+                    Pressure = pressure,
                     Expression = expression,
                     ChannelVolume = volume,
                     IsExpanded = true,
@@ -538,6 +496,23 @@ public static class MidiReader
         var trackName = new List<string>();
         var text = new List<string>();
         var copyright = new List<string>();
+
+        void UpdateValue(IEnumerable<MidiNote> notesToUpdate, Func<MidiNote, ChangeableValue> getChangeableValue, double newValue)
+        {
+            foreach (var note in notesToUpdate)
+            {
+                var changeableValue = getChangeableValue(note);
+
+                if (currentTime == note.StartTime)
+                {
+                    changeableValue.Value = newValue;
+                }
+                else
+                {
+                    changeableValue.ValueChanges.Add((currentTime, newValue));
+                }
+            }
+        }
 
         // Initialize channel controls to their default values according to the GM2 spec
         foreach (var channel in machine.Channels)
@@ -611,8 +586,9 @@ public static class MidiReader
                                 Instrument = instrument,
                                 RelativeNoteNumber = relativeNoteNumber,
                                 Velocity = velocity / 127d,
-                                Expression = expression / 127d,
-                                ChannelVolume = channelVolume / 127d,
+                                Pressure = new(0),
+                                Expression = new(expression / 127d),
+                                ChannelVolume = new(channelVolume / 127d),
                                 StartTime = currentTime
                             };
 
@@ -663,6 +639,17 @@ public static class MidiReader
                     }
 
                     break;
+                case MidiEvent.CAf: // Channel pressure (aftertouch)
+                    {
+                        var pressure = midiEvent.Msb / 127d;
+
+                        foreach (var activeNotesForNoteNumber in currentChannelActiveNotes.Values)
+                        {
+                            UpdateValue(activeNotesForNoteNumber, note => note.Pressure, pressure);
+                        }
+
+                        break;
+                    }
                 case MidiEvent.PAf: // Polyphonic aftertouch
                     {
                         var noteNumber = midiEvent.Msb;
@@ -670,10 +657,7 @@ public static class MidiReader
 
                         if (currentChannelActiveNotes.TryGetValue((channel.Program, noteNumber), out var activeNotesForNoteNumber))
                         {
-                            foreach (var note in activeNotesForNoteNumber)
-                            {
-                                note.PressuresChanges.Add((currentTime, pressure));
-                            }
+                            UpdateValue(activeNotesForNoteNumber, note => note.Pressure, pressure);
                         }
                     }
 
@@ -692,17 +676,7 @@ public static class MidiReader
 
                                 foreach (var activeNotesForNoteNumber in currentChannelActiveNotes.Values)
                                 {
-                                    foreach (var note in activeNotesForNoteNumber)
-                                    {
-                                        if (currentTime == note.StartTime)
-                                        {
-                                            note.Expression = expression;
-                                        }
-                                        else
-                                        {
-                                            note.ExpressionChanges.Add((currentTime, expression));
-                                        }
-                                    }
+                                    UpdateValue(activeNotesForNoteNumber, note => note.Expression, expression);
                                 }
 
                                 break;
@@ -713,17 +687,7 @@ public static class MidiReader
 
                                 foreach (var activeNotesForNoteNumber in currentChannelActiveNotes.Values)
                                 {
-                                    foreach (var note in activeNotesForNoteNumber)
-                                    {
-                                        if (currentTime == note.StartTime)
-                                        {
-                                            note.ChannelVolume = channelVolume;
-                                        }
-                                        else
-                                        {
-                                            note.VolumeChanges.Add((currentTime, channelVolume));
-                                        }
-                                    }
+                                    UpdateValue(activeNotesForNoteNumber, note => note.ChannelVolume, channelVolume);
                                 }
 
                                 break;
@@ -784,17 +748,45 @@ public static class MidiReader
         public Instrument Instrument { get; init; }
         public int RelativeNoteNumber { get; init; }
         public double Velocity { get; init; }
-        public double Expression { get; set; }
-        public double ChannelVolume { get; set; }
+        public ChangeableValue Pressure { get; init; }
+        public ChangeableValue Expression { get; init; }
+        public ChangeableValue ChannelVolume { get; init; }
         public TimeSpan StartTime { get; init; }
         public TimeSpan? EndTime { get; set; }
-        public List<(TimeSpan Time, double Pressure)> PressuresChanges { get; } = [];
-        public List<(TimeSpan Time, double Expression)> ExpressionChanges { get; } = [];
-        public List<(TimeSpan Time, double Volume)> VolumeChanges { get; } = [];
         public int EffectiveNoteNumber { get; init; }
         public double EffectiveVolume { get; init; }
         public bool IsExpanded { get; init; }
         public MidiNote PreviousMidiNote { get; init; }
         public Note Note { get; set; }
+    }
+
+    private record ChangeableValue
+    {
+        public ChangeableValue(double value)
+        {
+            Value = value;
+        }
+
+        public double Value { get; set; }
+        public List<(TimeSpan Time, double Value)> ValueChanges { get; } = [];
+        public bool HasChanges => ValueChanges.Count > 0;
+        public int ChangeIndex { get; set; }
+
+        public bool Advance(TimeSpan time, out ChangeableValue result)
+        {
+            var nextValue = Value;
+            var nextChangeIndex = ChangeIndex;
+            var hasChanges = false;
+
+            while (nextChangeIndex < ValueChanges.Count && ValueChanges[nextChangeIndex].Time <= time)
+            {
+                nextValue = ValueChanges[nextChangeIndex].Value;
+                nextChangeIndex++;
+                hasChanges = true;
+            }
+            
+            result = hasChanges ? this with { Value = nextValue, ChangeIndex = nextChangeIndex } : this;
+            return hasChanges;
+        }
     }
 }
