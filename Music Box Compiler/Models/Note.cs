@@ -34,4 +34,9 @@ public class Note
     /// If not null, represents the previous note change or the parent note if this is the first note change.
     /// </summary>
     public Note PreviousNote { get; set; }
+
+    /// <summary>
+    /// Whether this note can participate in deduplication.
+    /// </summary>
+    public bool CanDeduplicate { get; set; }
 }

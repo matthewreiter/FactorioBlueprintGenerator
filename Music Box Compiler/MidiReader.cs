@@ -3,6 +3,7 @@ using MusicBoxCompiler.Models;
 using MusicBoxCompiler.Utils;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -134,6 +135,8 @@ public static class MidiReader
     private const Instrument HighFallbackInstrument = Instrument.Celesta;
     private static readonly TimeSpan TickDuration = TimeSpan.FromMilliseconds(1000d / 60); // 1000ms / 60fps (approximately 17 ms per tick)
     private const double PressureExponent = 2;
+    private static readonly int[] HarmonicOffsets = [12, 19, 24];
+    private const int UnreasonablyHighOctave = 12; // This is to ensure that we don't have a negative number before calculating the octave, which would throw off the result
 
     private static Dictionary<int, Instrument> CreateInstrumentMap(params InstrumentMapping[] mappings)
     {
@@ -144,8 +147,6 @@ public static class MidiReader
 
     public static Song ReadSong(string midiFile, bool debug, Dictionary<Instrument, int> instrumentOffsets, double masterVolume, Dictionary<Instrument, double> instrumentVolumes, bool allowInstrumentFallback, bool expandNotes, int? channelCount)
     {
-        const int unreasonablyHighOctave = 12; // This is to ensure that we don't have a negative number before calculating the octave, which would throw off the result
-
         var midiEventStream = debug ? new MemoryStream() : null;
         var midiEventWriter = debug ? new StreamWriter(midiEventStream) : null;
 
@@ -180,47 +181,7 @@ public static class MidiReader
 
         if (instrumentOffsets == null)
         {
-            instrumentOffsets = midiNotes
-                .Where(note => note.Instrument is not Instrument.Unknown and not Instrument.Drumkit)
-                .GroupBy(note => note.Instrument, note => note.RelativeNoteNumber, (instrument, noteNumbers) =>
-                {
-                    var octaves = noteNumbers.GroupBy(relativeNoteNumber => (relativeNoteNumber - 1 + unreasonablyHighOctave * 12) / 12 - unreasonablyHighOctave, (octaveNumber, groupedNoteNumbers) => (OctaveNumber: octaveNumber, NoteCount: groupedNoteNumbers.Count()));
-                    var totalNotes = octaves.Sum(octave => octave.NoteCount);
-                    var minOctave = octaves.Min(octave => octave.OctaveNumber);
-                    var maxOctave = octaves.Max(octave => octave.OctaveNumber);
-                    var minOctaveShift = Math.Min(minOctave, 0);
-                    var maxOctaveShift = Math.Max(maxOctave - 3, 0);
-                    var maxAllowedOctave = Instruments[instrument].NoteCount / 12 - 1;
-
-                    const double newNotesOutOfRangePenalty = 4;
-                    const double octaveShiftPenaltyBase = 0.05;
-                    const double octaveShiftPenaltyGrowth = 2;
-
-                    return (
-                        Instrument: instrument,
-                        NoteShift: minOctaveShift < 0 || maxOctaveShift > 0
-                            ? Enumerable.Range(minOctaveShift, maxOctaveShift - minOctaveShift + 1)
-                                .Select(octavesOutOfRange =>
-                                {
-                                    bool IsOutOfRange(int octaveNumber) => octaveNumber < -1 || octaveNumber > maxAllowedOctave;
-
-                                    var octavesThatAreOutOfRange = octaves.Where(octave => IsOutOfRange(octave.OctaveNumber - octavesOutOfRange));
-
-                                    return (
-                                        OctaveShift: -octavesOutOfRange,
-                                        NotesStillOutOfRange: octavesThatAreOutOfRange.Where(octave => IsOutOfRange(octave.OctaveNumber)).Sum(octave => octave.NoteCount),
-                                        NewNotesOutOfRange: octavesThatAreOutOfRange.Where(octave => !IsOutOfRange(octave.OctaveNumber)).Sum(octave => octave.NoteCount)
-                                    );
-                                })
-                                // Order by the number of notes still out of range, imposing a penalty for each octave we shift to favor shifting less even if a few notes are left behind
-                                .OrderBy(tuple => (tuple.NotesStillOutOfRange + tuple.NewNotesOutOfRange * newNotesOutOfRangePenalty) / totalNotes + (tuple.OctaveShift != 0 ? octaveShiftPenaltyBase * Math.Pow(octaveShiftPenaltyGrowth, Math.Abs(tuple.OctaveShift) - 1) : 0))
-                                .First()
-                                .OctaveShift * 12
-                            : 0
-                    );
-                })
-                .ToDictionary(tuple => tuple.Instrument, tuple => tuple.NoteShift);
-
+            instrumentOffsets = CalculateInstrumentOffsets(midiNotes);
             midiEventWriter?.WriteLine($"Calculated instrument offsets: {string.Join(", ", instrumentOffsets.OrderBy(entry => entry.Key).Select(entry => $"{entry.Key}: {entry.Value}"))}");
         }
 
@@ -245,109 +206,64 @@ public static class MidiReader
             }
         }
 
-        IEnumerable<MidiNote> expandedMidiNotes = expandNotes
-            ? midiNotes.SelectMany(ExpandNote).OrderBy(midiNote => midiNote.StartTime)
-            : midiNotes.SelectMany(ApplyNoteChanges).OrderBy(midiNote => midiNote.StartTime);
+        var midiNotesWithEffectiveValues = midiNotes.SelectMany(midiNote => PopulateEffectiveNoteValues(midiNote, instrumentOffsets, masterVolume, instrumentVolumes, allowInstrumentFallback));
+        var midiNotesWithHarmonics = midiNotesWithEffectiveValues.SelectMany(ExpandHarmonics);
+
+        var expandedMidiNotes = expandNotes
+            ? midiNotesWithHarmonics.SelectMany(ExpandNote)
+            : midiNotesWithHarmonics.SelectMany(ExpandNoteChanges);
 
         var lastTime = TimeSpan.Zero;
         var currentTime = TimeSpan.Zero;
         var currentNotes = new List<Note>();
         var noteGroups = new List<NoteGroup>();
 
-        foreach (var midiNote in expandedMidiNotes)
+        foreach (var midiNote in expandedMidiNotes.OrderBy(midiNote => midiNote.StartTime))
         {
             var instrument = midiNote.Instrument;
             var isNoteInRange = true;
-            var effectiveNoteNumber = 0;
-            var volume = 0d;
+            var noteNumber = midiNote.EffectiveNoteNumber;
+            var volume = midiNote.EffectiveVolume;
 
-            if (Instruments.TryGetValue(instrument, out var instrumentInfo))
+            if (midiNote.StartTime - currentTime >= TickDuration || channelCount is not null && currentNotes.Count >= channelCount)
             {
-                var noteOffset = instrumentOffsets != null && instrumentOffsets.TryGetValue(instrument, out var offsetValue) ? offsetValue : 0;
-                var instrumentVolume = instrumentVolumes != null && instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
+                noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = midiNote.StartTime - currentTime });
+                currentNotes = [];
+                lastTime = currentTime;
+                currentTime = midiNote.StartTime;
+            }
 
-                effectiveNoteNumber = midiNote.RelativeNoteNumber + noteOffset;
-                isNoteInRange = effectiveNoteNumber > (instrument == Instrument.Drumkit ? 0 : -12) && effectiveNoteNumber <= instrumentInfo.NoteCount;
-                volume = Math.Min(midiNote.Velocity * midiNote.Expression * midiNote.ChannelVolume * instrumentInfo.BaseVolume * instrumentVolume * masterVolume, 1);
+            var canDeduplicate = expandNotes || (midiNote.PreviousMidiNote is null && midiNote.PressuresChanges.Count == 0 && midiNote.ExpressionChanges.Count == 0 && midiNote.VolumeChanges.Count == 0);
+            var duration = midiNote.EndTime - midiNote.StartTime ?? TimeSpan.Zero;
+            var duplicateNote = canDeduplicate ? currentNotes.Find(note => note.CanDeduplicate && note.Instrument == instrument && note.Number == noteNumber && note.Duration == duration) : null;
 
-                if (!isNoteInRange && instrument != Instrument.Drumkit)
+            if (duplicateNote is not null)
+            {
+                duplicateNote.Volume += volume;
+            }
+            else
+            {
+                var note = new Note
                 {
-                    if (allowInstrumentFallback)
-                    {
-                        var originalBaseNoteOffset = instrumentInfo.BaseNoteOffset;
+                    Instrument = instrument,
+                    Number = noteNumber,
+                    Volume = volume,
+                    Duration = duration,                                
+                    PreviousNote = midiNote.PreviousMidiNote?.Note,
+                    CanDeduplicate = canDeduplicate
+                };
 
-                        instrument = effectiveNoteNumber <= 0 ? LowFallbackInstrument : HighFallbackInstrument;
-                        instrumentInfo = Instruments[instrument];
-                        effectiveNoteNumber += instrumentInfo.BaseNoteOffset - originalBaseNoteOffset;
-                        isNoteInRange = effectiveNoteNumber > -12 && effectiveNoteNumber <= instrumentInfo.NoteCount;
-                    }
-
-                    // As a last resort, force notes into range by adjusting their octave up or down
-                    if (!isNoteInRange)
-                    {
-                        if (effectiveNoteNumber < 0)
-                        {
-                            effectiveNoteNumber %= 12;
-                        }
-                        else
-                        {
-                            effectiveNoteNumber = instrumentInfo.NoteCount + effectiveNoteNumber % 12 - 12;
-                        }
-
-                        isNoteInRange = true;
-                    }
-                }
-
-                if (isNoteInRange)
-                {
-                    // Replace a note that is up to an octave too low with its second through fourth harmonic, which sound close enough to the original note
-                    List<int> effectiveNoteNumbers = effectiveNoteNumber > 0
-                        ? [effectiveNoteNumber]
-                        : [effectiveNoteNumber + 12, effectiveNoteNumber + 19, effectiveNoteNumber + 24];
-
-                    if (midiNote.StartTime - currentTime >= TickDuration || channelCount is not null && currentNotes.Count + effectiveNoteNumbers.Count > channelCount)
-                    {
-                        noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = midiNote.StartTime - currentTime });
-                        currentNotes = [];
-                        lastTime = currentTime;
-                        currentTime = midiNote.StartTime;
-                    }
-
-                    foreach (var noteNumber in effectiveNoteNumbers)
-                    {
-                        var duration = midiNote.EndTime.HasValue && !midiNote.IsExpanded ? midiNote.EndTime.Value - midiNote.StartTime : TimeSpan.Zero;
-                        var duplicateNote = currentNotes.Find(note => note.Instrument == instrument && note.Number == noteNumber && note.Duration == duration);
-
-                        if (duplicateNote is not null)
-                        {
-                            duplicateNote.Volume = volume + (midiNote.PreviousMidiNote is null ? duplicateNote.Volume : 0);
-                            midiNote.Notes.Add(duplicateNote);
-                        }
-                        else
-                        {
-                            var note = new Note
-                            {
-                                Instrument = instrument,
-                                Number = noteNumber,
-                                Volume = volume,
-                                Duration = duration,                                
-                                PreviousNote = midiNote.PreviousMidiNote?.Notes.First(n => n.Number == noteNumber)
-                            };
-
-                            currentNotes.Add(note);
-                            midiNote.Notes.Add(note);
-                        }
-                    }
-                }
+                currentNotes.Add(note);
+                midiNote.Note = note;
             }
 
             if (midiEventWriter != null)
             {
-                var notePlayed = effectiveNoteNumber - instrumentInfo.BaseNoteOffset;
+                var notePlayed = noteNumber - Instruments[midiNote.Instrument].BaseNoteOffset;
                 var instrumentAndNote = instrument switch
                 {
-                    Instrument.Drumkit => isNoteInRange ? Drums[effectiveNoteNumber - 1] : "Unknown",
-                    _ => $"{instrument,-14} {Notes[(notePlayed + unreasonablyHighOctave * Notes.Count) % Notes.Count]}{notePlayed / Notes.Count,-3}"
+                    Instrument.Drumkit => isNoteInRange ? Drums[noteNumber - 1] : "Unknown",
+                    _ => $"{instrument,-14} {Notes[(notePlayed + UnreasonablyHighOctave * Notes.Count) % Notes.Count]}{notePlayed / Notes.Count,-3}"
                 };
 
                 var isInstrumentMapped = instrument != Instrument.Unknown;
@@ -373,6 +289,125 @@ public static class MidiReader
             NoteGroups = noteGroups,
             DebugStream = midiEventStream
         };
+    }
+
+    private static Dictionary<Instrument, int> CalculateInstrumentOffsets(List<MidiNote> midiNotes)
+    {
+        return midiNotes
+            .Where(note => note.Instrument is not Instrument.Unknown and not Instrument.Drumkit)
+            .GroupBy(note => note.Instrument, note => note.RelativeNoteNumber, (instrument, noteNumbers) =>
+            {
+                var octaves = noteNumbers.GroupBy(relativeNoteNumber => (relativeNoteNumber - 1 + UnreasonablyHighOctave * 12) / 12 - UnreasonablyHighOctave, (octaveNumber, groupedNoteNumbers) => (OctaveNumber: octaveNumber, NoteCount: groupedNoteNumbers.Count()));
+                var totalNotes = octaves.Sum(octave => octave.NoteCount);
+                var minOctave = octaves.Min(octave => octave.OctaveNumber);
+                var maxOctave = octaves.Max(octave => octave.OctaveNumber);
+                var minOctaveShift = Math.Min(minOctave, 0);
+                var maxOctaveShift = Math.Max(maxOctave - 3, 0);
+                var maxAllowedOctave = Instruments[instrument].NoteCount / 12 - 1;
+
+                const double newNotesOutOfRangePenalty = 4;
+                const double octaveShiftPenaltyBase = 0.05;
+                const double octaveShiftPenaltyGrowth = 2;
+
+                return (
+                    Instrument: instrument,
+                    NoteShift: minOctaveShift < 0 || maxOctaveShift > 0
+                        ? Enumerable.Range(minOctaveShift, maxOctaveShift - minOctaveShift + 1)
+                            .Select(octavesOutOfRange =>
+                            {
+                                bool IsOutOfRange(int octaveNumber) => octaveNumber < -1 || octaveNumber > maxAllowedOctave;
+
+                                var octavesThatAreOutOfRange = octaves.Where(octave => IsOutOfRange(octave.OctaveNumber - octavesOutOfRange));
+
+                                return (
+                                    OctaveShift: -octavesOutOfRange,
+                                    NotesStillOutOfRange: octavesThatAreOutOfRange.Where(octave => IsOutOfRange(octave.OctaveNumber)).Sum(octave => octave.NoteCount),
+                                    NewNotesOutOfRange: octavesThatAreOutOfRange.Where(octave => !IsOutOfRange(octave.OctaveNumber)).Sum(octave => octave.NoteCount)
+                                );
+                            })
+                            // Order by the number of notes still out of range, imposing a penalty for each octave we shift to favor shifting less even if a few notes are left behind
+                            .OrderBy(tuple => (tuple.NotesStillOutOfRange + tuple.NewNotesOutOfRange * newNotesOutOfRangePenalty) / totalNotes + (tuple.OctaveShift != 0 ? octaveShiftPenaltyBase * Math.Pow(octaveShiftPenaltyGrowth, Math.Abs(tuple.OctaveShift) - 1) : 0))
+                            .First()
+                            .OctaveShift * 12
+                        : 0
+                );
+            })
+            .ToDictionary(tuple => tuple.Instrument, tuple => tuple.NoteShift);
+    }
+
+    private static IEnumerable<MidiNote> PopulateEffectiveNoteValues(MidiNote midiNote, Dictionary<Instrument, int> instrumentOffsets, double masterVolume, Dictionary<Instrument, double> instrumentVolumes, bool allowInstrumentFallback)
+    {
+        var instrument = midiNote.Instrument;
+
+        if (Instruments.TryGetValue(instrument, out var instrumentInfo))
+        {
+            var noteOffset = instrumentOffsets != null && instrumentOffsets.TryGetValue(instrument, out var offsetValue) ? offsetValue : 0;
+            var instrumentVolume = instrumentVolumes != null && instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
+
+            var effectiveNoteNumber = midiNote.RelativeNoteNumber + noteOffset;
+            var isNoteInRange = effectiveNoteNumber > (instrument == Instrument.Drumkit ? 0 : -12) && effectiveNoteNumber <= instrumentInfo.NoteCount;
+            var volume = Math.Min(midiNote.Velocity * midiNote.Expression * midiNote.ChannelVolume * instrumentInfo.BaseVolume * instrumentVolume * masterVolume, 1);
+
+            if (!isNoteInRange && instrument != Instrument.Drumkit)
+            {
+                if (allowInstrumentFallback)
+                {
+                    var originalBaseNoteOffset = instrumentInfo.BaseNoteOffset;
+
+                    instrument = effectiveNoteNumber <= 0 ? LowFallbackInstrument : HighFallbackInstrument;
+                    instrumentInfo = Instruments[instrument];
+                    effectiveNoteNumber += instrumentInfo.BaseNoteOffset - originalBaseNoteOffset;
+                    isNoteInRange = effectiveNoteNumber > -12 && effectiveNoteNumber <= instrumentInfo.NoteCount;
+                }
+
+                // As a last resort, force notes into range by adjusting their octave up or down
+                if (!isNoteInRange)
+                {
+                    if (effectiveNoteNumber < 0)
+                    {
+                        effectiveNoteNumber %= 12;
+                    }
+                    else
+                    {
+                        effectiveNoteNumber = instrumentInfo.NoteCount + effectiveNoteNumber % 12 - 12;
+                    }
+
+                    isNoteInRange = true;
+                }
+            }
+
+            if (isNoteInRange)
+            {
+                yield return midiNote with
+                {
+                    EffectiveNoteNumber = effectiveNoteNumber,
+                    EffectiveVolume = volume
+                };
+            }
+        }
+    }
+
+    private static IEnumerable<MidiNote> ExpandHarmonics(MidiNote note)
+    {
+        var effectiveNoteNumber = note.EffectiveNoteNumber;
+
+        Debug.Assert(effectiveNoteNumber is > -12 and <= 48);
+
+        if (effectiveNoteNumber > 0)
+        {
+            yield return note;
+        }
+        else
+        {
+            // Replace a note that is up to an octave too low with its second through fourth harmonic, which sound close enough to the original note
+            foreach (var offset in HarmonicOffsets)
+            {
+                yield return note with
+                {
+                    EffectiveNoteNumber = effectiveNoteNumber + offset
+                };
+            }
+        }
     }
 
     private static IEnumerable<MidiNote> ExpandNote(MidiNote note)
@@ -417,16 +452,16 @@ public static class MidiReader
             yield return note with
             {
                 StartTime = time,
+                EndTime = null,
                 Velocity = note.Velocity * (Math.Pow(pressure, PressureExponent) + 1) * 0.25,
                 Expression = expression,
                 ChannelVolume = volume,
-                IsExpanded = true,
-                Notes = []
+                IsExpanded = true
             };
         }
     }
 
-    private static IEnumerable<MidiNote> ApplyNoteChanges(MidiNote note)
+    private static IEnumerable<MidiNote> ExpandNoteChanges(MidiNote note)
     {
         yield return note;
 
@@ -477,12 +512,12 @@ public static class MidiReader
                 currentNote = note with
                 {
                     StartTime = time,
+                    EndTime = null,
                     Velocity = note.Velocity * (Math.Pow(pressure, PressureExponent) + 1),
                     Expression = expression,
                     ChannelVolume = volume,
                     IsExpanded = true,
-                    PreviousMidiNote = currentNote,
-                    Notes = []
+                    PreviousMidiNote = currentNote
                 };
 
                 yield return currentNote;
@@ -756,8 +791,10 @@ public static class MidiReader
         public List<(TimeSpan Time, double Pressure)> PressuresChanges { get; } = [];
         public List<(TimeSpan Time, double Expression)> ExpressionChanges { get; } = [];
         public List<(TimeSpan Time, double Volume)> VolumeChanges { get; } = [];
+        public int EffectiveNoteNumber { get; init; }
+        public double EffectiveVolume { get; init; }
         public bool IsExpanded { get; init; }
         public MidiNote PreviousMidiNote { get; init; }
-        public List<Note> Notes { get; init; } = [];
+        public Note Note { get; set; }
     }
 }
