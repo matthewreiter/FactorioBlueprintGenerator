@@ -613,11 +613,9 @@ public static class MusicBoxCompiler
                                 continue;
                             }
 
-                            var channelIndex = previousChannel.Value;
-
-                            // Add the note to the channel
-                            note.Channel = channelIndex;
-                            channelNotes[channelIndex] = EncodeVolumeChange(note);
+                            // Add the volume change to the channel
+                            note.Channel = previousChannel;
+                            channelNotes[previousChannel.Value] += EncodeVolumeChange(note);
                         }
                         else
                         {
