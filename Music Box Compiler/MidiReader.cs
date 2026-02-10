@@ -137,6 +137,7 @@ public static class MidiReader
     private const double PressureExponent = 2;
     private static readonly int[] HarmonicOffsets = [12, 19, 24];
     private const int UnreasonablyHighOctave = 12; // This is to ensure that we don't have a negative number before calculating the octave, which would throw off the result
+    private const double MinimumVolume = 0.01;
 
     private static Dictionary<int, Instrument> CreateInstrumentMap(params InstrumentMapping[] mappings)
     {
@@ -145,7 +146,7 @@ public static class MidiReader
             .ToDictionary(entry => entry.channel, entry => entry.Instrument);
     }
 
-    public static Song ReadSong(string midiFile, bool debug, Dictionary<Instrument, int> instrumentOffsets, double masterVolume, Dictionary<Instrument, double> instrumentVolumes, bool allowInstrumentFallback, bool expandNotes, int? channelCount)
+    public static Song ReadSong(string midiFile, bool debug, Dictionary<Instrument, int> instrumentOffsets, double masterVolume, Dictionary<Instrument, double> instrumentVolumes, bool allowInstrumentFallback, bool expandNotes, int? channelCount, FadeConfig fade)
     {
         var midiEventStream = debug ? new MemoryStream() : null;
         var midiEventWriter = debug ? new StreamWriter(midiEventStream) : null;
@@ -206,14 +207,25 @@ public static class MidiReader
             }
         }
 
-        var midiNotesWithEffectiveValues = midiNotes.SelectMany(midiNote => PopulateEffectiveNoteValues(midiNote, instrumentOffsets, masterVolume, instrumentVolumes, allowInstrumentFallback));
-        var midiNotesWithHarmonics = midiNotesWithEffectiveValues.SelectMany(ExpandHarmonics);
+        if (fade is not null)
+        {
+            var fadeStart = fade.Start ?? midiNotes.LastOrDefault()?.StartTime;
+            var fadeDuration = fade.Duration ?? totalPlayTime - fadeStart;
+
+            fade = fade with
+            {
+                Start = fadeStart,
+                Duration = fadeDuration
+            };
+        }
+
+        var midiNotesWithInstrumentOffsets = midiNotes.SelectMany(midiNote => ApplyInstrumentOffsets(midiNote, instrumentOffsets, allowInstrumentFallback));
+        var midiNotesWithHarmonics = midiNotesWithInstrumentOffsets.SelectMany(ExpandHarmonics);
 
         var expandedMidiNotes = expandNotes
-            ? midiNotesWithHarmonics.SelectMany(ExpandNote)
-            : midiNotesWithHarmonics.SelectMany(ExpandNoteChanges);
+            ? midiNotesWithHarmonics.SelectMany(midiNote => ExpandNote(midiNote, fade))
+            : midiNotesWithHarmonics.SelectMany(midiNote => ExpandNoteChanges(midiNote, fade));
 
-        var lastTime = TimeSpan.Zero;
         var currentTime = TimeSpan.Zero;
         var currentNotes = new List<Note>();
         var noteGroups = new List<NoteGroup>();
@@ -221,33 +233,47 @@ public static class MidiReader
         foreach (var midiNote in expandedMidiNotes.OrderBy(midiNote => midiNote.StartTime))
         {
             var instrument = midiNote.Instrument;
-            var isNoteInRange = true;
             var noteNumber = midiNote.EffectiveNoteNumber;
-            var volume = midiNote.EffectiveVolume;
+            var instrumentInfo = Instruments[instrument];
 
             if (midiNote.StartTime - currentTime >= TickDuration || channelCount is not null && currentNotes.Count >= channelCount)
             {
-                noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = midiNote.StartTime - currentTime });
-                currentNotes = [];
-                lastTime = currentTime;
+                var length = midiNote.StartTime - currentTime;
+
+                if (currentNotes.Count > 0 || noteGroups.Count == 0)
+                {
+                    noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = length });
+                    currentNotes = [];
+                }
+                else
+                {
+                    noteGroups[^1].Length += length;
+                }
+
                 currentTime = midiNote.StartTime;
             }
+
+            var instrumentVolume = instrumentVolumes != null && instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
+            var pressure = Math.Pow(midiNote.Pressure.Value, PressureExponent) + 1;
+            var volume = Math.Min(midiNote.Velocity * pressure * midiNote.Expression.Value * midiNote.ChannelVolume.Value * midiNote.FadeMultiplier * instrumentInfo.BaseVolume * instrumentVolume * masterVolume, 1);
 
             var canDeduplicate = expandNotes || (midiNote.PreviousMidiNote is null && !midiNote.Pressure.HasChanges && !midiNote.Expression.HasChanges && !midiNote.ChannelVolume.HasChanges);
             var duration = midiNote.EndTime - midiNote.StartTime ?? TimeSpan.Zero;
             var duplicateNote = canDeduplicate ? currentNotes.Find(note => note.CanDeduplicate && note.Instrument == instrument && note.Number == noteNumber && note.Duration == duration) : null;
+            var excluded = false;
 
             if (duplicateNote is not null)
             {
                 duplicateNote.Volume += volume;
             }
-            else
+            else if (volume >= MinimumVolume)
             {
                 var note = new Note
                 {
                     Instrument = instrument,
                     Number = noteNumber,
                     Volume = volume,
+                    StartTime = currentTime,
                     Duration = duration,                                
                     PreviousNote = midiNote.PreviousMidiNote?.Note,
                     CanDeduplicate = canDeduplicate
@@ -256,29 +282,46 @@ public static class MidiReader
                 currentNotes.Add(note);
                 midiNote.Note = note;
             }
+            else
+            {
+                excluded = true;
+            }
 
             if (midiEventWriter != null)
             {
-                var notePlayed = noteNumber - Instruments[midiNote.Instrument].BaseNoteOffset;
+                var notePlayed = noteNumber - instrumentInfo.BaseNoteOffset;
                 var instrumentAndNote = instrument switch
                 {
-                    Instrument.Drumkit => isNoteInRange ? Drums[noteNumber - 1] : "Unknown",
+                    Instrument.Drumkit => Drums[noteNumber - 1],
                     _ => $"{instrument,-14} {Notes[(notePlayed + UnreasonablyHighOctave * Notes.Count) % Notes.Count]}{notePlayed / Notes.Count,-3}"
                 };
 
                 var isInstrumentMapped = instrument != Instrument.Unknown;
-                midiEventWriter.WriteLine($"{midiNote.StartTime:mm\\:ss\\.fff}: {midiNote.OriginalInstrumentName,-20} {midiNote.OriginalNoteName,-3} velocity {midiNote.Velocity:F2} expression {midiNote.Expression:F2} channel volume {midiNote.ChannelVolume:F2}" +
+                midiEventWriter.WriteLine($"{midiNote.StartTime:mm\\:ss\\.fff}: {midiNote.OriginalInstrumentName,-20} {midiNote.OriginalNoteName,-3} velocity {midiNote.Velocity:F2} expression {midiNote.Expression} channel volume {midiNote.ChannelVolume}" +
+                    (midiNote.FadeMultiplier < 1 ? $" fade {midiNote.FadeMultiplier:F2}" : "") +
                     (!midiNote.IsExpanded && midiNote.EndTime is not null ? $" duration {midiNote.EndTime - midiNote.StartTime}" : "") +
-                    (isInstrumentMapped ? $" => {instrumentAndNote,-18} volume {volume:F2}" : "") +
-                    (!isNoteInRange ? " (note not in range)" : "") +
-                    (!isInstrumentMapped ? " (instrument not mapped)" : "" +
-                    (midiNote.IsExpanded ? " (expanded)" : "")));
+                    $" => {instrumentAndNote,-18} volume {volume:F2}" +
+                    (midiNote.IsExpanded ? " (expanded)" : "") +
+                    (excluded ? " (excluded)" : ""));
             }
         }
 
         if (currentNotes.Count > 0)
         {
-            noteGroups.Add(new() { Notes = currentNotes, Length = totalPlayTime - currentTime });
+            noteGroups.Add(new() { Notes = currentNotes });
+        }
+
+        if (noteGroups.Count > 0)
+        {
+            var endTime = noteGroups
+                .SelectMany(noteGroup => noteGroup.Notes)
+                .Concat(currentNotes)
+                .Max(note => note.StartTime + note.Duration);
+            var finalPlayTime = endTime + TimeSpan.FromMilliseconds(200); // Ensure that the last note has time to finish
+
+            noteGroups[^1].Length = finalPlayTime - currentTime;
+
+            midiEventWriter?.WriteLine($"Final play time: {finalPlayTime}");
         }
 
         midiEventWriter?.WriteLine();
@@ -335,19 +378,15 @@ public static class MidiReader
             .ToDictionary(tuple => tuple.Instrument, tuple => tuple.NoteShift);
     }
 
-    private static IEnumerable<MidiNote> PopulateEffectiveNoteValues(MidiNote midiNote, Dictionary<Instrument, int> instrumentOffsets, double masterVolume, Dictionary<Instrument, double> instrumentVolumes, bool allowInstrumentFallback)
+    private static IEnumerable<MidiNote> ApplyInstrumentOffsets(MidiNote midiNote, Dictionary<Instrument, int> instrumentOffsets, bool allowInstrumentFallback)
     {
         var instrument = midiNote.Instrument;
 
         if (Instruments.TryGetValue(instrument, out var instrumentInfo))
         {
-            var noteOffset = instrumentOffsets != null && instrumentOffsets.TryGetValue(instrument, out var offsetValue) ? offsetValue : 0;
-            var instrumentVolume = instrumentVolumes != null && instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
-
+            var noteOffset = instrumentOffsets is not null && instrumentOffsets.TryGetValue(instrument, out var offsetValue) ? offsetValue : 0;
             var effectiveNoteNumber = midiNote.RelativeNoteNumber + noteOffset;
             var isNoteInRange = effectiveNoteNumber > (instrument == Instrument.Drumkit ? 0 : -12) && effectiveNoteNumber <= instrumentInfo.NoteCount;
-            var pressure = Math.Pow(midiNote.Pressure.Value, PressureExponent) + 1;
-            var volume = Math.Min(midiNote.Velocity * pressure * midiNote.Expression.Value * midiNote.ChannelVolume.Value * instrumentInfo.BaseVolume * instrumentVolume * masterVolume, 1);
 
             if (!isNoteInRange && instrument != Instrument.Drumkit)
             {
@@ -379,11 +418,8 @@ public static class MidiReader
 
             if (isNoteInRange)
             {
-                yield return midiNote with
-                {
-                    EffectiveNoteNumber = effectiveNoteNumber,
-                    EffectiveVolume = volume
-                };
+                midiNote.EffectiveNoteNumber = effectiveNoteNumber;
+                yield return midiNote;
             }
         }
     }
@@ -411,8 +447,14 @@ public static class MidiReader
         }
     }
 
-    private static IEnumerable<MidiNote> ExpandNote(MidiNote note)
+    private static IEnumerable<MidiNote> ExpandNote(MidiNote note, FadeConfig fade)
     {
+        if (fade is not null && note.EndTime > fade.Start + fade.Duration)
+        {
+            note.EndTime = fade.Start + fade.Duration;
+        }
+
+        note.FadeMultiplier = GetFadeMultiplier(note.StartTime, fade);
         yield return note;
 
         if (note.EndTime is null)
@@ -439,13 +481,22 @@ public static class MidiReader
                 Pressure = pressure,
                 Expression = expression,
                 ChannelVolume = volume,
+                FadeMultiplier = GetFadeMultiplier(time, fade),
                 IsExpanded = true
             };
         }
     }
 
-    private static IEnumerable<MidiNote> ExpandNoteChanges(MidiNote note)
+    private static IEnumerable<MidiNote> ExpandNoteChanges(MidiNote note, FadeConfig fade)
     {
+        if (fade is not null && note.EndTime > fade.Start + fade.Duration)
+        {
+            note.EndTime = fade.Start + fade.Duration;
+        }
+
+        var fadeMultiplier = GetFadeMultiplier(note.StartTime, fade);
+
+        note.FadeMultiplier = fadeMultiplier;
         yield return note;
 
         if (note.EndTime is null)
@@ -462,10 +513,19 @@ public static class MidiReader
         var step = TickDuration;
         for (var time = note.StartTime + step; time < note.EndTime; time += step)
         {
-            var hasChanges = pressure.Advance(time, out pressure) | expression.Advance(time, out expression) | volume.Advance(time, out volume);
+            var currentFadeMultiplier = GetFadeMultiplier(time, fade);
+            const double minimumFadeDelta = 0.1;
+
+            var hasChanges =
+                (pressure.Advance(time, out pressure) |
+                expression.Advance(time, out expression) |
+                volume.Advance(time, out volume)) ||
+                Math.Abs(currentFadeMultiplier - fadeMultiplier) > minimumFadeDelta;
 
             if (hasChanges)
             {
+                fadeMultiplier = currentFadeMultiplier;
+
                 currentNote = note with
                 {
                     StartTime = time,
@@ -474,12 +534,40 @@ public static class MidiReader
                     Pressure = pressure,
                     Expression = expression,
                     ChannelVolume = volume,
+                    FadeMultiplier = fadeMultiplier,
                     IsExpanded = true,
                     PreviousMidiNote = currentNote
                 };
 
                 yield return currentNote;
             }
+        }
+    }
+
+    private static double GetFadeMultiplier(TimeSpan currentTime, FadeConfig fade)
+    {
+        if (fade is null)
+        {
+            return 1;
+        }
+
+        var fadeStart = fade.Start.Value;
+        var fadeDuration = fade.Duration.Value;
+
+        if (currentTime <= fadeStart)
+        {
+            return 1;
+        }
+        else if (currentTime >= fadeStart + fadeDuration)
+        {
+            return 0;
+        }
+        else
+        {
+            // Apply an S-curve for a more natural fade
+            var t = (currentTime - fadeStart) / fadeDuration;
+            var smoothT = t * t * (3 - 2 * t);
+            return 1 - smoothT;
         }
     }
 
@@ -714,10 +802,7 @@ public static class MidiReader
         // Remove zero-length notes
         notes = [.. notes.Where(note => note.EndTime != note.StartTime)];
 
-        // Truncate the song if the end is more than 3 seconds after the last note
-        var lastNoteEndTime = notes.Max(note => note.EndTime) ?? TimeSpan.Zero;
-        var maxEndTime = lastNoteEndTime + TimeSpan.FromSeconds(3);
-        var totalPlayTime = currentTime < maxEndTime ? currentTime : maxEndTime;
+        var totalPlayTime = notes.Max(note => note.EndTime) ?? TimeSpan.Zero;
 
         return new MidiData
         {
@@ -751,10 +836,10 @@ public static class MidiReader
         public ChangeableValue Pressure { get; init; }
         public ChangeableValue Expression { get; init; }
         public ChangeableValue ChannelVolume { get; init; }
+        public double FadeMultiplier { get; set; } = 1;
         public TimeSpan StartTime { get; init; }
         public TimeSpan? EndTime { get; set; }
-        public int EffectiveNoteNumber { get; init; }
-        public double EffectiveVolume { get; init; }
+        public int EffectiveNoteNumber { get; set; }
         public bool IsExpanded { get; init; }
         public MidiNote PreviousMidiNote { get; init; }
         public Note Note { get; set; }
@@ -787,6 +872,11 @@ public static class MidiReader
             
             result = hasChanges ? this with { Value = nextValue, ChangeIndex = nextChangeIndex } : this;
             return hasChanges;
+        }
+
+        public override string ToString()
+        {
+            return $"{Value:F2}";
         }
     }
 }

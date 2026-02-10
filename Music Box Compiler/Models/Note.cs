@@ -11,9 +11,20 @@ public class Note
     /// </summary>
     public int Number { get; set; }
 
+    /// <summary>
+    /// The name of the note. Spreadsheets also support the special value "Tempo".
+    /// </summary>
     public string Name { get; set; }
 
+    /// <summary>
+    /// The volume of the note, from 0.0 to 1.0.
+    /// </summary>
     public double Volume { get; set; }
+
+    /// <summary>
+    /// When the note starts relative to the beginning of the song.
+    /// </summary>
+    public TimeSpan StartTime { get; set; }
 
     /// <summary>
     /// The duration of the note from key press to release.

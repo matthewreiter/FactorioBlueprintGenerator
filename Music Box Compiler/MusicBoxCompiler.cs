@@ -106,7 +106,8 @@ public static class MusicBoxCompiler
                                     ProcessInstrumentVolumes(songConfig.InstrumentVolumes),
                                     !songConfig.SuppressInstrumentFallback,
                                     songConfig.ExpandNotes && version == 1,
-                                    version == 1 ? ChannelCount : null),
+                                    version == 1 ? ChannelCount : null,
+                                    songConfig.Fade),
                                 _ => throw new Exception($"Unsupported source file extension for {songConfig.Source}")
                             } with { Name = songConfig.Name, DisplayName = songConfig.DisplayName, Artist = songConfig.Artist, Loop = songConfig.Loop, Gapless = songConfig.Gapless, AddressIndex = songConfig.AddressIndex }
                         )

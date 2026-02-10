@@ -52,12 +52,12 @@ public record SongConfig
 public record FadeConfig
 {
     /// <summary>
-    /// When to start fading. Positive numbers are relative to the beginning of the song and negative numbers are relative to the end of the song.
+    /// When to start fading. Positive numbers are relative to the beginning of the song and negative numbers are relative to the end of the song. Null means to start from the last note of the song.
     /// </summary>
-    public TimeSpan Start { get; set; }
+    public TimeSpan? Start { get; set; }
 
     /// <summary>
-    /// The time required to complete the fade.
+    /// The time required to complete the fade. Null means to continue until the end of the song.
     /// </summary>
-    public TimeSpan Duration { get; set; }
+    public TimeSpan? Duration { get; set; }
 }
