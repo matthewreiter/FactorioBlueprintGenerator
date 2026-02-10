@@ -297,7 +297,7 @@ public static class MidiReader
                 };
 
                 var isInstrumentMapped = instrument != Instrument.Unknown;
-                midiEventWriter.WriteLine($"{midiNote.StartTime:mm\\:ss\\.fff}: {midiNote.OriginalInstrumentName,-20} {midiNote.OriginalNoteName,-3} velocity {midiNote.Velocity:F2} expression {midiNote.Expression} channel volume {midiNote.ChannelVolume}" +
+                midiEventWriter.WriteLine($"{midiNote.StartTime:mm\\:ss\\.fff}: {midiNote.OriginalInstrumentName,-20} {midiNote.OriginalNoteName,-3} velocity {midiNote.Velocity:F2} pressure {midiNote.Pressure:F2} expression {midiNote.Expression} channel volume {midiNote.ChannelVolume}" +
                     (midiNote.FadeMultiplier < 1 ? $" fade {midiNote.FadeMultiplier:F2}" : "") +
                     (!midiNote.IsExpanded && midiNote.EndTime is not null ? $" duration {midiNote.EndTime - midiNote.StartTime}" : "") +
                     $" => {instrumentAndNote,-18} volume {volume:F2}" +
@@ -871,7 +871,7 @@ public static class MidiReader
             }
             
             result = hasChanges ? this with { Value = nextValue, ChangeIndex = nextChangeIndex } : this;
-            return hasChanges;
+            return nextValue != Value;
         }
 
         public override string ToString()
