@@ -50,11 +50,11 @@
     },
     "SuperPyGame": {
       "commandName": "Project",
-      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/superPyGame.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Version=2 --Width=192 --Height=110 --BaseAddress=3 --BaseMetadataAddress=1"
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/superPyGame.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Version=2 --Width=192 --Height=128 --BaseAddress=3 --BaseMetadataAddress=1"
     },
     "SuperPyGameBlank": {
       "commandName": "Project",
-      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/superPyGameBlank.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Version=2 --Width=192 --Height=110 --BaseAddress=3 --BaseMetadataAddress=1"
+      "commandLineArgs": "--ConfigFile=\"$(ProjectDir)/Sample/superPyGameBlank.yaml\" --OutputBlueprint=\"$(ProjectDir)/Test/songs.txt\" --OutputJson=\"$(ProjectDir)/Test/songs.json\" --OutputMidiEvents=\"$(ProjectDir)/Test/midiEvents.txt\" --Version=2 --Width=192 --Height=128 --BaseAddress=3 --BaseMetadataAddress=1"
     }
   }
 }
