@@ -331,6 +331,10 @@ playlists:
         displayName: Never Gonna Give You Up
         artist: Rick Astley
         source: Music\BitMidi\Never-Gonna-Give-You-Up-2.mid
+      - name: Sandstorm
+        displayName: Sandstorm
+        artist: Darude
+        source: Music\BitMidi\darude-sandstorm.mid
 
       # End with Closing Time
       - name: ClosingTime
