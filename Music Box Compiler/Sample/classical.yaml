@@ -12,6 +12,8 @@
         artist: Beethoven
         source: Music\BitMidi\Beethoven-Opus-57.mid
         volume: 140
+        fade:
+          duration: 0:00:15
       - name: Beethoven1stSymphony
         displayName: 1st Symphony
         artist: Beethoven
