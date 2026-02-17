@@ -825,6 +825,8 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             for (int row = 0; row < height; row++)
             {
+                var instrument = (Instrument)(row + 3);
+
                 if (isForPyanodons && row is 0 or 5)
                 {
                     y++;
@@ -832,7 +834,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
                 var speakerController = new Entity
                 {
-                    Player_description = $"Speaker controller for instrument {row}",
+                    Player_description = $"Speaker controller for {instrument}",
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
@@ -898,7 +900,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                         Circuit_parameters = new CircuitParameters
                         {
                             Signal_value_is_pitch = true,
-                            Instrument_id = row + 2
+                            Instrument_id = (int)instrument - 1
                         }
                     },
                     Parameters = new SpeakerParameter

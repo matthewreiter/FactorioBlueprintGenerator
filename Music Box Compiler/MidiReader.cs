@@ -1,4 +1,5 @@
-﻿using Commons.Music.Midi;
+﻿using BlueprintGenerator.Constants;
+using Commons.Music.Midi;
 using MusicBoxCompiler.Models;
 using MusicBoxCompiler.Utils;
 using System;
@@ -274,7 +275,7 @@ public static class MidiReader
                     Number = noteNumber,
                     Volume = volume,
                     StartTime = currentTime,
-                    Duration = duration,                                
+                    Duration = duration,
                     PreviousNote = midiNote.PreviousMidiNote?.Note,
                     CanDeduplicate = canDeduplicate
                 };

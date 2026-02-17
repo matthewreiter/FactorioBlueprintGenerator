@@ -1,4 +1,6 @@
-﻿namespace MusicBoxCompiler.Models;
+﻿using BlueprintGenerator.Constants;
+
+namespace MusicBoxCompiler.Models;
 
 public class InstrumentMapping
 {
