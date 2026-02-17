@@ -335,6 +335,9 @@ playlists:
         displayName: Sandstorm
         artist: Darude
         source: Music\BitMidi\darude-sandstorm.mid
+      - name: The Trees
+        artist: Rush
+        source: Music\BitMidi\The-Trees.mid
 
       # End with Closing Time
       - name: ClosingTime
