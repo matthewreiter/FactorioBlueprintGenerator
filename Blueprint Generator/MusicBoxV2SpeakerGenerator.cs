@@ -29,7 +29,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         const int maxInstruments = 10;
         const int maxPitches = 48;
         const int maxVolumes = 100;
-        const int ticksPerCycle = 4;
+        const int ticksPerCycle = 3;
         const int trailOffTicks = 10;
 
         var width = channelCount;
@@ -87,23 +87,16 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                     Compare_type = CompareTypes.And
                 }
             ]),
-            (30, 5, "Sustained note outer volume adjustment",
+            (30, 5, "Sustained note volume adjustment",
             [
                 new()
                 {
                     First_signal = elapsedTimeSignal,
                     Constant = 9,
                     Comparator = Comparators.GreaterThanOrEqualTo
-                },
-                new()
-                {
-                    First_signal = modularTimeSignal,
-                    Constant = 1,
-                    Comparator = Comparators.LessThanOrEqualTo,
-                    Compare_type = CompareTypes.And
                 }
             ]),
-            (25, 7, "Sustained note inner volume adjustment",
+            (0, 7, "Disabled",
             [
                 new()
                 {
@@ -114,7 +107,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                 new()
                 {
                     First_signal = modularTimeSignal,
-                    Constant = 2,
+                    Constant = 100,
                     Comparator = Comparators.GreaterThanOrEqualTo,
                     Compare_type = CompareTypes.And
                 }
