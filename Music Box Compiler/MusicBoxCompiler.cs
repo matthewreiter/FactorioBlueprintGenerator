@@ -76,7 +76,11 @@ public static class MusicBoxCompiler
                                 var fileName = Path.GetFileName(songConfig.Source);
                                 var files = Directory.GetFiles(directoryName, fileName);
 
-                                if (files.Length > 1)
+                                if (files.Length == 1)
+                                {
+                                    return [songConfig with { Source = files[0] }];
+                                }
+                                else if (files.Length > 1)
                                 {
                                     return files.OrderBy(file => file)
                                         .Select((source, index) => songConfig with
