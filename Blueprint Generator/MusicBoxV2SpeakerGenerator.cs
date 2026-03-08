@@ -31,7 +31,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         const int maxInstruments = 10;
         const int maxPitches = 48;
         const int maxVolumes = 100;
-        const int ticksPerCycle = 4;
+        const int ticksPerCycle = 3;
         const int trailOffTicks = 10;
 
         var width = channelCount;
@@ -53,6 +53,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         var pitchSignal = SignalID.CreateVirtual(VirtualSignalNames.Explosion);
         var volumeSignal = SignalID.CreateVirtual(VirtualSignalNames.Alarm);
         var volumeAdjustmentSignal = SignalID.CreateVirtual(VirtualSignalNames.Moon);
+        var masterVolumeSignal = SignalID.CreateVirtual(VirtualSignalNames.Sun);
         var resetSignal = SignalID.CreateVirtual(VirtualSignalNames.Deny);
 
         (int VolumeAdjustment, int Offset, string Description, List<DeciderCondition> Conditions)[] volumeAdjustments =
@@ -89,36 +90,13 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                     Compare_type = CompareTypes.And
                 }
             ]),
-            (30, 5, "Sustained note outer volume adjustment",
+            (30, 4, "Sustained note volume adjustment",
             [
                 new()
                 {
                     First_signal = elapsedTimeSignal,
                     Constant = 9,
                     Comparator = Comparators.GreaterThanOrEqualTo
-                },
-                new()
-                {
-                    First_signal = modularTimeSignal,
-                    Constant = 1,
-                    Comparator = Comparators.LessThanOrEqualTo,
-                    Compare_type = CompareTypes.And
-                }
-            ]),
-            (25, 7, "Sustained note inner volume adjustment",
-            [
-                new()
-                {
-                    First_signal = elapsedTimeSignal,
-                    Constant = 9,
-                    Comparator = Comparators.GreaterThanOrEqualTo
-                },
-                new()
-                {
-                    First_signal = modularTimeSignal,
-                    Constant = 2,
-                    Comparator = Comparators.GreaterThanOrEqualTo,
-                    Compare_type = CompareTypes.And
                 }
             ])
         ];
@@ -129,6 +107,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         Entity previousInstrumentDivider = null;
         Entity previousCurrentNoteMemory = null;
         List<Entity> previousVolumeAdjustmentPickers = null;
+        Entity previousMasterVolumeMultiplier = null;
 
         var inputBuffer = new Entity
         {
@@ -209,6 +188,23 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             entities.Add(volumeAdjustmentProvider);
             volumeAdjustmentProviders.Add(volumeAdjustmentProvider);
         }
+
+        var masterVolumeProvider = new Entity
+        {
+            Player_description = "Master volume provider",
+            Name = ItemNames.ConstantCombinator,
+            Position = new Position
+            {
+                X = (includePower ? 2 : 0) + xOffset - 1,
+                Y = yOffset + 27 + volumeAdjustments.Length * 2
+            },
+            Direction = Direction.Down,
+            Control_behavior = new ControlBehavior
+            {
+                Sections = Sections.Create([Filter.Create(masterVolumeSignal, 100)])
+            }
+        };
+        entities.Add(masterVolumeProvider);
 
         for (int column = 0; column < width; column++)
         {
@@ -622,11 +618,6 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                             },
                             new()
                             {
-                                Signal = volumeSignal,
-                                Copy_count_from_input = true
-                            },
-                            new()
-                            {
                                 Signal = durationSignal,
                                 Copy_count_from_input = true
                             }
@@ -639,19 +630,18 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             wires.Add(new((signalPropagator1, ConnectionType.Green1), (timeGate, ConnectionType.Green1)));
             wires.Add(new((signalPropagator1, ConnectionType.Red2), (timeGate, ConnectionType.Red2)));
 
-            var rangeExtender = new Entity
+            var bridge = new Entity
             {
                 Name = ItemNames.MediumElectricPole,
                 Position = new Position
                 {
                     X = columnX,
-                    Y = y + 4
+                    Y = y + 6
                 }
             };
-            entities.Add(rangeExtender);
+            entities.Add(bridge);
 
-            wires.Add(new((rangeExtender, ConnectionType.Green1), (signalPropagator1, ConnectionType.Green1)));
-            wires.Add(new((rangeExtender, ConnectionType.Red1), (signalPropagator1, ConnectionType.Red2)));
+            wires.Add(new((bridge, ConnectionType.Red1), (signalPropagator1, ConnectionType.Red2)));
 
             List<Entity> volumeAdjustmentPickers = [];
 
@@ -700,9 +690,9 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             y += volumeAdjustments.Length * 2 + 1;
 
-            var volumeLevelMultiplier = new Entity
+            var masterVolumeMultiplier = new Entity
             {
-                Player_description = "Volume level multiplier",
+                Player_description = "Master volume multiplier",
                 Name = ItemNames.ArithmeticCombinator,
                 Position = new Position
                 {
@@ -715,16 +705,48 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                     Arithmetic_conditions = new ArithmeticConditions
                     {
                         First_signal = volumeSignal,
-                        Second_signal = volumeAdjustmentSignal,
+                        First_signal_networks = new() { Green = true },
+                        Second_signal = masterVolumeSignal,
+                        Second_signal_networks = new() { Red = true },
                         Operation = ArithmeticOperations.Multiplication,
                         Output_signal = SignalID.CreateVirtual(VirtualSignalNames.Dot)
                     }
                 }
             };
-            entities.Add(volumeLevelMultiplier);
+            entities.Add(masterVolumeMultiplier);
 
-            wires.Add(new((volumeLevelMultiplier, ConnectionType.Green1), (rangeExtender, ConnectionType.Green1)));
-            wires.Add(new((volumeLevelMultiplier, ConnectionType.Red1), (volumeAdjustmentPickers[^1], ConnectionType.Red2)));
+            wires.Add(new((masterVolumeMultiplier, ConnectionType.Green1), (volumeAdjustmentPickers[^1], ConnectionType.Green1)));
+            wires.Add(new((masterVolumeMultiplier, ConnectionType.Red1), column == 0 ? (masterVolumeProvider, ConnectionType.Red1) : (previousMasterVolumeMultiplier, ConnectionType.Red1)));
+
+            previousMasterVolumeMultiplier = masterVolumeMultiplier;
+
+            var volumeAdjustmentMultiplier = new Entity
+            {
+                Player_description = "Volume adjustment multiplier",
+                Name = ItemNames.ArithmeticCombinator,
+                Position = new Position
+                {
+                    X = columnX,
+                    Y = (y += 2) - 1.5
+                },
+                Direction = Direction.Down,
+                Control_behavior = new ControlBehavior
+                {
+                    Arithmetic_conditions = new ArithmeticConditions
+                    {
+                        First_signal = SignalID.CreateVirtual(VirtualSignalNames.Dot),
+                        First_signal_networks = new() { Green = true },
+                        Second_signal = volumeAdjustmentSignal,
+                        Second_signal_networks = new() { Red = true },
+                        Operation = ArithmeticOperations.Multiplication,
+                        Output_signal = SignalID.CreateVirtual(VirtualSignalNames.Dot)
+                    }
+                }
+            };
+            entities.Add(volumeAdjustmentMultiplier);
+
+            wires.Add(new((volumeAdjustmentMultiplier, ConnectionType.Green1), (masterVolumeMultiplier, ConnectionType.Green2)));
+            wires.Add(new((volumeAdjustmentMultiplier, ConnectionType.Red1), (volumeAdjustmentPickers[^1], ConnectionType.Red2)));
 
             var volumeLevelDivider = new Entity
             {
@@ -741,7 +763,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                     Arithmetic_conditions = new ArithmeticConditions
                     {
                         First_signal = SignalID.CreateVirtual(VirtualSignalNames.Dot),
-                        Second_constant = 100,
+                        Second_constant = 10000,
                         Operation = ArithmeticOperations.Division,
                         Output_signal = volumeSignal
                     }
@@ -749,7 +771,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             };
             entities.Add(volumeLevelDivider);
 
-            wires.Add(new((volumeLevelDivider, ConnectionType.Green1), (volumeLevelMultiplier, ConnectionType.Green2)));
+            wires.Add(new((volumeLevelDivider, ConnectionType.Green1), (volumeAdjustmentMultiplier, ConnectionType.Green2)));
 
             var signalPropagator2 = new Entity
             {
@@ -798,7 +820,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             entities.Add(signalPropagator2);
 
             wires.Add(new((signalPropagator2, ConnectionType.Green2), (volumeLevelDivider, ConnectionType.Green2)));
-            wires.Add(new((signalPropagator2, ConnectionType.Red1), (rangeExtender, ConnectionType.Red1)));
+            wires.Add(new((signalPropagator2, ConnectionType.Red1), (bridge, ConnectionType.Red1)));
 
             Debug.Assert(y == yOffset + headerHeight);
 
@@ -819,7 +841,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                     };
                     entities.Add(nexelitPowerPole);
 
-                    wires.Add(new((nexelitPowerPole, ConnectionType.Green1), row == 0 ? (volumeAdjustmentPickers[^1], ConnectionType.Green1) : (previousNexelitPowerPole, ConnectionType.Green1)));
+                    wires.Add(new((nexelitPowerPole, ConnectionType.Green1), row == 0 ? (masterVolumeMultiplier, ConnectionType.Green1) : (previousNexelitPowerPole, ConnectionType.Green1)));
 
                     previousNexelitPowerPole = nexelitPowerPole;
                 }
