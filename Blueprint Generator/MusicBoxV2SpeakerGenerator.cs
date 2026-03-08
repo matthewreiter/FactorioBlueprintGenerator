@@ -5,6 +5,7 @@ using BlueprintCommon.Models;
 using BlueprintGenerator.Constants;
 using BlueprintGenerator.Models;
 using Microsoft.Extensions.Configuration;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -24,6 +25,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         var instrumentCount = configuration.InstrumentCount ?? 10;
         var channelCount = configuration.ChannelCount ?? 10;
         var includePower = configuration.IncludePower ?? true;
+        var isHorizontal = configuration.IsHorizontal ?? false;
         var isForPyanodons = configuration.IsForPyanodons ?? false;
 
         const int maxInstruments = 10;
@@ -931,6 +933,26 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
         BlueprintUtil.PopulateEntityNumbers(entities);
 
+        if (isHorizontal)
+        {
+            (width,  height) = (height, width);
+
+            foreach (var entity in entities)
+            {
+                (entity.Position.Y, entity.Position.X) = (entity.Position.X, entity.Position.Y);
+
+                entity.Direction = entity.Direction switch
+                {
+                    Direction.Up => Direction.Left,
+                    Direction.Left => Direction.Up,
+                    Direction.Down => Direction.Right,
+                    Direction.Right => Direction.Down,
+                    null => null,
+                    _ => throw new InvalidOperationException($"Unexpected direction {entity.Direction}")
+                };
+            }
+        }
+
         return new Blueprint
         {
             Label = $"{width}x{height} Music Box Speaker",
@@ -946,5 +968,6 @@ public class MusicBoxV2SpeakerConfiguration
     public int? InstrumentCount { get; set; }
     public int? ChannelCount { get; set; }
     public bool? IncludePower { get; set; }
+    public bool? IsHorizontal { get; set; }
     public bool? IsForPyanodons { get; set; }
 }
