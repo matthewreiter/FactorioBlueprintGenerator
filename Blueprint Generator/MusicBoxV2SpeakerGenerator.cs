@@ -73,7 +73,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                     Compare_type = CompareTypes.And
                 }
             ]),
-            (80, "Second repetition, volume adjustment",
+            (80, "Second repetition volume adjustment",
             [
                 new()
                 {
@@ -214,7 +214,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var durationDivider = new Entity
             {
-                Player_description = "Duration divider",
+                Player_description = $"Duration divider for voice {column + 1}",
                 Name = ItemNames.ArithmeticCombinator,
                 Position = new Position
                 {
@@ -241,7 +241,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var instrumentDivider = new Entity
             {
-                Player_description = "Instrument divider",
+                Player_description = $"Instrument divider for voice {column + 1}",
                 Name = ItemNames.ArithmeticCombinator,
                 Position = new Position
                 {
@@ -268,7 +268,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var instrumentExtractor = new Entity
             {
-                Player_description = "Instrument extractor",
+                Player_description = $"Instrument extractor for voice {column + 1}",
                 Name = ItemNames.ArithmeticCombinator,
                 Position = new Position
                 {
@@ -294,7 +294,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var pitchDivider = new Entity
             {
-                Player_description = "Pitch divider",
+                Player_description = $"Pitch divider for voice {column + 1}",
                 Name = ItemNames.ArithmeticCombinator,
                 Position = new Position
                 {
@@ -319,7 +319,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var pitchExtractor = new Entity
             {
-                Player_description = "Pitch extractor",
+                Player_description = $"Pitch extractor for voice {column + 1}",
                 Name = ItemNames.ArithmeticCombinator,
                 Position = new Position
                 {
@@ -345,7 +345,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var volumeExtractor = new Entity
             {
-                Player_description = "Volume extractor",
+                Player_description = $"Volume extractor for voice {column + 1}",
                 Name = ItemNames.ArithmeticCombinator,
                 Position = new Position
                 {
@@ -371,7 +371,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var elapsedTimeIncrementer = new Entity
             {
-                Player_description = "Elapsed time incrementer",
+                Player_description = $"Elapsed time incrementer for voice {column + 1}",
                 Name = ItemNames.ConstantCombinator,
                 Position = new Position
                 {
@@ -390,7 +390,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var currentNoteMemory = new Entity
             {
-                Player_description = "Current note memory",
+                Player_description = $"Current note memory for voice {column + 1}",
                 Name = ItemNames.DeciderCombinator,
                 Position = new Position
                 {
@@ -439,7 +439,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var timeDivider = new Entity
             {
-                Player_description = "Time divider",
+                Player_description = $"Time divider for voice {column + 1}",
                 Name = ItemNames.ArithmeticCombinator,
                 Position = new Position
                 {
@@ -465,7 +465,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var remainingTimeCalculator = new Entity
             {
-                Player_description = "Remaining time calculator",
+                Player_description = $"Remaining time calculator for voice {column + 1}",
                 Name = ItemNames.ArithmeticCombinator,
                 Position = new Position
                 {
@@ -491,7 +491,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var offsetter = new Entity
             {
-                Player_description = "Offsetter",
+                Player_description = $"Offsetter for voice {column + 1}",
                 Name = ItemNames.ConstantCombinator,
                 Position = new Position
                 {
@@ -510,7 +510,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var signalBuffer = new Entity
             {
-                Player_description = "Signal buffer",
+                Player_description = $"Signal buffer for voice {column + 1}",
                 Name = ItemNames.ArithmeticCombinator,
                 Position = new Position
                 {
@@ -535,7 +535,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var pitchRenamer = new Entity
             {
-                Player_description = "Pitch renamer",
+                Player_description = $"Pitch renamer for voice {column + 1}",
                 Name = ItemNames.ArithmeticCombinator,
                 Position = new Position
                 {
@@ -560,7 +560,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var timeGate = new Entity
             {
-                Player_description = "Time gate",
+                Player_description = $"Time gate for voice {column + 1}",
                 Name = ItemNames.DeciderCombinator,
                 Position = new Position
                 {
@@ -617,7 +617,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var signalPropagator1 = new Entity
             {
-                Player_description = "Signal propagator 1",
+                Player_description = $"Signal propagator 1 for voice {column + 1}",
                 Name = ItemNames.DeciderCombinator,
                 Position = new Position
                 {
@@ -670,7 +670,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             {
                 var volumeAdjustmentPicker = new Entity
                 {
-                    Player_description = "Volume adjustment picker",
+                    Player_description = $"Volume adjustment picker for voice {column + 1}",
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
@@ -711,7 +711,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var signalPropagator2 = new Entity
             {
-                Player_description = "Signal propagator 2",
+                Player_description = $"Signal propagator 2 for voice {column + 1}",
                 Name = ItemNames.DeciderCombinator,
                 Position = new Position
                 {
@@ -764,7 +764,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var masterVolumeMultiplier = new Entity
             {
-                Player_description = "Master volume multiplier",
+                Player_description = $"Master volume multiplier for voice {column + 1}",
                 Name = ItemNames.ArithmeticCombinator,
                 Position = new Position
                 {
@@ -794,7 +794,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var volumeAdjustmentMultiplier = new Entity
             {
-                Player_description = "Volume adjustment multiplier",
+                Player_description = $"Volume adjustment multiplier for voice {column + 1}",
                 Name = ItemNames.ArithmeticCombinator,
                 Position = new Position
                 {
@@ -822,7 +822,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             var volumeLevelDivider = new Entity
             {
-                Player_description = "Volume level divider",
+                Player_description = $"Volume level divider for voice {column + 1}",
                 Name = ItemNames.ArithmeticCombinator,
                 Position = new Position
                 {
@@ -854,7 +854,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
                 var speakerController = new Entity
                 {
-                    Player_description = $"Speaker controller for {instrument}",
+                    Player_description = $"Speaker controller for {instrument} on voice {column + 1}",
                     Name = ItemNames.DeciderCombinator,
                     Position = new Position
                     {
