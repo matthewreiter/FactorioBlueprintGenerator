@@ -4,7 +4,7 @@
     disabled: false
     songs:
       - name: ToccataAndFugueInDMinor
-        displayName: "Toccata and Fugue in D-minor"
+        displayName: Toccata and Fugue in D-minor
         artist: Bach
         source: Music\BitMidi\Toccata and Fugue in D Minor.mid
         fade: {}
@@ -52,6 +52,38 @@
         artist: Mozart
         source: Music\Kunstderfuge.com\Mozart\symphony_41_551_*_(c)cvikl.mid
       - name: MozartClarinetConcerto
-        displayName: "Clarinet Concerto"
+        displayName: Clarinet Concerto
         artist: Mozart
         source: Music\Kunstderfuge.com\Mozart\clarinet_concerto_622_*_(c)bakels.mid
+      - name: NutcrackerSuiteOverture
+        displayName: Nutcracker Suite Overture
+        artist: Tchaikovsky
+        source: Music\Kunstderfuge.com\Tchaikovsky\tchaikovsky_nutcracker_suite_overture_71a_1_(c)kirschbaum.mid
+      - name: VivaldiTrioSonataLaFollia
+        displayName: Trio Sonata La Follia
+        artist: Vivaldi
+        source: Music\Kunstderfuge.com\Vivaldi\vivaldi_trio_sonata_la_follia_(c)icking-archive.mid
+      - name: VivaldiConcertoInCMajor
+        displayName: Concerto in C-Major
+        artist: Vivaldi
+        source: Music\Kunstderfuge.com\Vivaldi\vivaldi_concerto_in_c_major_*_(c)icking-archive.mid
+      - name: VivaldiQuattoStagioniPrimavera
+        displayName: Le Quatto Stagioni, La Primavera
+        artist: Vivaldi
+        source: Music\Kunstderfuge.com\Vivaldi\vivaldi_4_stagioni_primavera_*_(c)pollen.mid
+      - name: VivaldiQuattoStagioniEstate
+        displayName: Le Quatto Stagioni, L'Estate
+        artist: Vivaldi
+        source: Music\Kunstderfuge.com\Vivaldi\vivaldi_4_stagioni_estate_*_(c)pollen.mid
+      - name: VivaldiQuattoStagioniAutunno
+        displayName: Le Quatto Stagioni, L'Autunno
+        artist: Vivaldi
+        source: Music\Kunstderfuge.com\Vivaldi\vivaldi_4_stagioni_autunno_*_(c)pollen.mid
+      - name: VivaldiQuattoStagioniInverno
+        displayName: Le Quatto Stagioni, L'Inverno
+        artist: Vivaldi
+        source: Music\Kunstderfuge.com\Vivaldi\vivaldi_4_stagioni_inverno_*_(c)pollen.mid
+      # - name: ChopinPianoConcertoNo1InEMinor
+      #   displayName: Piano Concerto No. 1 in E Minor, Op. 11
+      #   artist: Chopin
+      #   source: Music\Kunstderfuge.com\Chopin\concerto_11_*_(c)oguri.mid
