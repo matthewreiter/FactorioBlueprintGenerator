@@ -21,6 +21,7 @@ playlists:
           piano: 12
         suppressInstrumentFallback: true
         volume: 200
+        fade: {}
       - name: Yesterday
         artist: The Beatles
         source: Music\BitMidi\beatles-yesterday.mid
@@ -167,6 +168,7 @@ playlists:
         artist: Journey
         source: Music\BitMidi\Journey - Don't Stop Believin.mid
         volume: 80
+        fade: {}
       - name: IWantToHoldYourHand
         displayName: I Want to Hold Your Hand
         artist: The Beatles
@@ -192,6 +194,7 @@ playlists:
         displayName: The Night Before
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.The night before K.mid
+        fade: {}
       - name: IFeelFine
         displayName: I Feel Fine
         artist: The Beatles
