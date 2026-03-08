@@ -16,7 +16,7 @@ public class NoteDisplayGenerator : IBlueprintGenerator
 
     public static Blueprint Generate(NoteDisplayConfiguration configuration)
     {
-        var width = 84;
+        var width = 72;
         var height = configuration.Height ?? 1;
 
         var gridWidth = width;
