@@ -16,11 +16,11 @@ public class NoteDisplayGenerator : IBlueprintGenerator
 
     public static Blueprint Generate(NoteDisplayConfiguration configuration)
     {
-        var width = 72;
-        var height = configuration.Height ?? 1;
+        var noteCount = 72;
+        var voiceCount = configuration.VoiceCount ?? 1;
 
-        var gridWidth = width;
-        var gridHeight = height + ((height + 7) / 16 + 1) * 2;
+        var gridWidth = noteCount;
+        var gridHeight = voiceCount + ((voiceCount + 7) / 16 + 1) * 2;
         var xOffset = -gridWidth / 2;
         var yOffset = -gridHeight / 2;
 
@@ -30,20 +30,20 @@ public class NoteDisplayGenerator : IBlueprintGenerator
         var entities = new List<Entity>();
         var wires = new List<Wire>();
 
-        for (int row = 0; row < height; row++)
+        for (int voiceIndex = 0; voiceIndex < voiceCount; voiceIndex++)
         {
-            var rowY = row + (row / 16 + 1) * 2 + yOffset;
+            var rowY = voiceIndex + (voiceIndex / 16 + 1) * 2 + yOffset;
 
             Entity previousLamp = null;
 
-            for (int column = 0; column < width; column++)
+            for (int noteIndex = 0; noteIndex < noteCount; noteIndex++)
             {
                 var lamp = new Entity
                 {
                     Name = ItemNames.Lamp,
                     Position = new Position
                     {
-                        X = column + xOffset,
+                        X = noteIndex + xOffset,
                         Y = rowY
                     },
                     Control_behavior = new ControlBehavior
@@ -52,7 +52,7 @@ public class NoteDisplayGenerator : IBlueprintGenerator
                         Circuit_condition = new CircuitCondition
                         {
                             First_signal = pitchSignal,
-                            Constant = column + 1,
+                            Constant = noteIndex + 1,
                             Comparator = Comparators.IsEqual
                         },
                         Use_colors = true,
@@ -62,7 +62,7 @@ public class NoteDisplayGenerator : IBlueprintGenerator
                 };
                 entities.Add(lamp);
 
-                if (column > 0)
+                if (noteIndex > 0)
                 {
                     wires.Add(new((lamp, ConnectionType.Green1), (previousLamp, ConnectionType.Green1)));
                 }
@@ -75,7 +75,7 @@ public class NoteDisplayGenerator : IBlueprintGenerator
 
         return new Blueprint
         {
-            Label = $"{height}x Note Display",
+            Label = $"{voiceCount}x Note Display",
             Icons = [Icon.Create(ItemNames.Lamp)],
             Entities = entities,
             Wires = wires.ToArrayList()
@@ -85,5 +85,5 @@ public class NoteDisplayGenerator : IBlueprintGenerator
 
 public class NoteDisplayConfiguration
 {
-    public int? Height { get; set; }
+    public int? VoiceCount { get; set; }
 }

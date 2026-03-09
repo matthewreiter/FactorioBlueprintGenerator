@@ -1,5 +1,6 @@
 ﻿using BlueprintCommon.Constants;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace BlueprintGenerator.Constants;
 
@@ -287,8 +288,26 @@ public static class MusicBoxSignals
         ],
         [
             VirtualSignalNames.LetterOrDigit('G'),
-        ]
+        ],
     ];
 
     public static readonly List<List<string>> AllNoteGroupSignals = [SpeakerChannelSignals, .. AdditionalNoteGroupSignals];
+
+    public static readonly List<string> NoteDisplaySignals =
+    [
+        .. Enumerable.Range('0', 10).Concat(Enumerable.Range('A', 26))
+            .Select(letterOrDigit => VirtualSignalNames.LetterOrDigit((char)letterOrDigit)),
+        VirtualSignalNames.Comma,
+        VirtualSignalNames.Period,
+        VirtualSignalNames.ExclamationMark,
+        VirtualSignalNames.QuestionMark,
+        VirtualSignalNames.Colon,
+        VirtualSignalNames.Slash,
+        VirtualSignalNames.Apostrophe,
+        VirtualSignalNames.QuotationMark,
+        VirtualSignalNames.Ampersand,
+        VirtualSignalNames.Caret,
+        VirtualSignalNames.Pound,
+        VirtualSignalNames.Percent,
+    ];
 }

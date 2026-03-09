@@ -54,7 +54,11 @@
     },
     "NoteDisplay": {
       "commandName": "Project",
-      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/noteDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/noteDisplay.json\" --MemoryType=NoteDisplay --Height=56"
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/noteDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/noteDisplay.json\" --MemoryType=NoteDisplay --VoiceCount=56"
+    },
+    "NoteDisplayByInstrument": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/noteDisplayByInstrument.txt\" --OutputJson=\"$(ProjectDir)/Test/noteDisplayByInstrument.json\" --MemoryType=NoteDisplayByInstrument"
     },
     "Font": {
       "commandName": "Project",
