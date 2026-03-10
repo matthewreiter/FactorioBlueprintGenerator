@@ -34,17 +34,16 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         const int pitchesPerGroup = 6; // 2 groups per octave for a total of 12 groups
         const int octaveCount = 6;
         const int notesPerOctave = 12;
+
         const int pitchGroupCount = octaveCount * notesPerOctave / pitchesPerGroup;
 
-        var width = channelCount;
-        var height = instrumentCount;
-
         const int headerHeight = 42;
-        const int cellHeight = 3;
-        const int footerHeight = 18;
+        const int speakerCellHeight = 3;
+        const int footerHeight = 16;
+        const int displayCellHeight = 4;
 
-        var gridWidth = width + (includePower ? ((width + 7) / 16 + 1) * 2 : 0);
-        var gridHeight = headerHeight + height * cellHeight + footerHeight;
+        var gridWidth = channelCount + (includePower ? ((channelCount + 7) / 16 + 1) * 2 : 0);
+        var gridHeight = headerHeight + instrumentCount * (speakerCellHeight + displayCellHeight) + footerHeight;
         var xOffset = -gridWidth / 2;
         var yOffset = -gridHeight / 2;
 
@@ -122,8 +121,10 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         Entity previousMasterVolumeMultiplier = null;
         Entity previousPitchGrouper = null;
         List<Entity> previousInstrumentOffsetPickers = null;
-        Entity previousPitchGroupPicker = null;
+        Entity previousPitchGroupMapper = null;
         Entity previousGroupVolumeMultiplier = null;
+        Entity previousFirstPitchMapper = null;
+        List<Entity> previousDisplayVolumeMultipliers = null;
 
         var inputBuffer = new Entity
         {
@@ -229,7 +230,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             Position = new Position
             {
                 X = (includePower ? 2 : 0) + xOffset - 1,
-                Y = yOffset + headerHeight + height * cellHeight + 4
+                Y = yOffset + headerHeight + instrumentCount * speakerCellHeight + 1
             },
             Direction = Direction.Down,
             Control_behavior = new ControlBehavior
@@ -249,7 +250,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                 Position = new Position
                 {
                     X = (includePower ? 2 : 0) + xOffset - 1,
-                    Y = yOffset + headerHeight + height * cellHeight + 6 + instrumentOffsetIndex * 2
+                    Y = yOffset + headerHeight + instrumentCount * speakerCellHeight + 4 + instrumentOffsetIndex * 2
                 },
                 Direction = Direction.Down,
                 Control_behavior = new ControlBehavior
@@ -268,7 +269,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             Position = new Position
             {
                 X = (includePower ? 2 : 0) + xOffset - 1,
-                Y = yOffset + headerHeight + height * cellHeight + 6 + instrumentOffsets.Length * 2
+                Y = yOffset + headerHeight + instrumentCount * speakerCellHeight + 6 + instrumentOffsets.Length * 2
             },
             Direction = Direction.Down,
             Control_behavior = new ControlBehavior
@@ -277,6 +278,23 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             }
         };
         entities.Add(pitchGroupMappingProvider);
+
+        var pitchMappingProvider = new Entity
+        {
+            Player_description = "Pitch mapping provider",
+            Name = ItemNames.ConstantCombinator,
+            Position = new Position
+            {
+                X = (includePower ? 2 : 0) + xOffset - 1,
+                Y = yOffset + headerHeight + instrumentCount * speakerCellHeight + 10 + instrumentOffsets.Length * 2
+            },
+            Direction = Direction.Down,
+            Control_behavior = new ControlBehavior
+            {
+                Sections = Sections.Create([.. MusicBoxSignals.NoteDisplaySignals.Select((signalName, index) => Filter.Create(signalName, index + 1))])
+            }
+        };
+        entities.Add(pitchMappingProvider);
 
         for (int voiceIndex = 0; voiceIndex < channelCount; voiceIndex++)
         {
@@ -921,9 +939,9 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             Debug.Assert(y == yOffset + headerHeight);
 
-            for (int speakerIndex = 0; speakerIndex < instrumentCount; speakerIndex++)
+            for (int instrumentIndex = 0; instrumentIndex < instrumentCount; instrumentIndex++)
             {
-                var instrument = (Instrument)(speakerIndex + 3);
+                var instrument = (Instrument)(instrumentIndex + 3);
 
                 var speakerController = new Entity
                 {
@@ -944,7 +962,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                                 new()
                                 {
                                     First_signal = instrumentSignal,
-                                    Constant = speakerIndex + 1,
+                                    Constant = instrumentIndex + 1,
                                     Comparator = Comparators.IsEqual,
                                 },
                                 new()
@@ -974,7 +992,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                 entities.Add(speakerController);
                 players.Add(speakerController);
 
-                wires.Add(new((speakerController, ConnectionType.Green1), speakerIndex == 0 ? (volumeLevelDivider, ConnectionType.Green2) : (players[speakerIndex - 1], ConnectionType.Green1)));
+                wires.Add(new((speakerController, ConnectionType.Green1), instrumentIndex == 0 ? (volumeLevelDivider, ConnectionType.Green2) : (players[instrumentIndex - 1], ConnectionType.Green1)));
 
                 var speaker = new Entity
                 {
@@ -1013,34 +1031,9 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                 wires.Add(new((speaker, ConnectionType.Red1), (speakerController, ConnectionType.Red2)));
             }
 
-            var outputSignalBuffer = new Entity
+            var outputVolumeBuffer = new Entity
             {
-                Player_description = $"Output signal buffer for voice {voiceIndex + 1}",
-                Name = ItemNames.ArithmeticCombinator,
-                Position = new Position
-                {
-                    X = columnX,
-                    Y = (y += 2) - 1.5
-                },
-                Direction = Direction.Down,
-                Control_behavior = new ControlBehavior
-                {
-                    Arithmetic_conditions = new ArithmeticConditions
-                    {
-                        First_signal = SignalID.CreateVirtual(VirtualSignalNames.Each),
-                        Second_constant = 1,
-                        Operation = ArithmeticOperations.Multiplication,
-                        Output_signal = SignalID.CreateVirtual(VirtualSignalNames.Each)
-                    }
-                }
-            };
-            entities.Add(outputSignalBuffer);
-
-            wires.Add(new((outputSignalBuffer, ConnectionType.Green1), (players[^1], ConnectionType.Green1)));
-
-            var outputVolumeMultiplier = new Entity
-            {
-                Player_description = $"Output volume multiplier for voice {voiceIndex + 1}",
+                Player_description = $"Output volume buffer for voice {voiceIndex + 1}",
                 Name = ItemNames.ArithmeticCombinator,
                 Position = new Position
                 {
@@ -1053,16 +1046,15 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                     Arithmetic_conditions = new ArithmeticConditions
                     {
                         First_signal = volumeSignal,
-                        Second_constant = 2,
+                        Second_constant = 1,
                         Operation = ArithmeticOperations.Multiplication,
-                        Output_signal = SignalID.CreateVirtual(VirtualSignalNames.Blue)
+                        Output_signal = volumeSignal
                     }
                 }
             };
-            entities.Add(outputVolumeMultiplier);
+            entities.Add(outputVolumeBuffer);
 
-            wires.Add(new((outputVolumeMultiplier, ConnectionType.Green1), (outputSignalBuffer, ConnectionType.Green1)));
-            wires.Add(new((outputVolumeMultiplier, ConnectionType.Green2), (outputSignalBuffer, ConnectionType.Green2)));
+            wires.Add(new((outputVolumeBuffer, ConnectionType.Green1), (players[^1], ConnectionType.Green1)));
 
             var pitchGrouper = new Entity
             {
@@ -1087,8 +1079,8 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             };
             entities.Add(pitchGrouper);
 
-            wires.Add(new((pitchGrouper, ConnectionType.Green1), (outputVolumeMultiplier, ConnectionType.Green1)));
-            wires.Add(new((pitchGrouper, ConnectionType.Green2), (outputVolumeMultiplier, ConnectionType.Green2)));
+            wires.Add(new((pitchGrouper, ConnectionType.Green1), (outputVolumeBuffer, ConnectionType.Green1)));
+            wires.Add(new((pitchGrouper, ConnectionType.Green2), (outputVolumeBuffer, ConnectionType.Green2)));
             wires.Add(new((pitchGrouper, ConnectionType.Red1), voiceIndex == 0 ? (pitchOffsetProvider, ConnectionType.Red1) : (previousPitchGrouper, ConnectionType.Red1)));
 
             previousPitchGrouper = pitchGrouper;
@@ -1140,6 +1132,31 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             previousInstrumentOffsetPickers = instrumentOffsetPickers;
 
+            var groupVolumeBuffer = new Entity
+            {
+                Player_description = $"Group volume buffer for voice {voiceIndex + 1}",
+                Name = ItemNames.ArithmeticCombinator,
+                Position = new Position
+                {
+                    X = columnX,
+                    Y = (y += 2) - 1.5
+                },
+                Direction = Direction.Down,
+                Control_behavior = new ControlBehavior
+                {
+                    Arithmetic_conditions = new ArithmeticConditions
+                    {
+                        First_signal = volumeSignal,
+                        Second_constant = 1,
+                        Operation = ArithmeticOperations.Multiplication,
+                        Output_signal = volumeSignal
+                    }
+                }
+            };
+            entities.Add(groupVolumeBuffer);
+
+            wires.Add(new((groupVolumeBuffer, ConnectionType.Green1), (instrumentOffsetPickers[^1], ConnectionType.Green2)));
+
             var pitchGroupMapper = new Entity
             {
                 Player_description = $"Pitch group mapper for voice {voiceIndex + 1}",
@@ -1178,35 +1195,10 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             };
             entities.Add(pitchGroupMapper);
 
-            wires.Add(new((pitchGroupMapper, ConnectionType.Green1), (instrumentOffsetPickers[^1], ConnectionType.Green2)));
-            wires.Add(new((pitchGroupMapper, ConnectionType.Red1), voiceIndex == 0 ? (pitchGroupMappingProvider, ConnectionType.Red1) : (previousPitchGroupPicker, ConnectionType.Red1)));
+            wires.Add(new((pitchGroupMapper, ConnectionType.Green1), (groupVolumeBuffer, ConnectionType.Green1)));
+            wires.Add(new((pitchGroupMapper, ConnectionType.Red1), voiceIndex == 0 ? (pitchGroupMappingProvider, ConnectionType.Red1) : (previousPitchGroupMapper, ConnectionType.Red1)));
 
-            previousPitchGroupPicker = pitchGroupMapper;
-
-            var outputVolumeBuffer = new Entity
-            {
-                Player_description = $"Output volume buffer for voice {voiceIndex + 1}",
-                Name = ItemNames.ArithmeticCombinator,
-                Position = new Position
-                {
-                    X = columnX,
-                    Y = (y += 2) - 1.5
-                },
-                Direction = Direction.Down,
-                Control_behavior = new ControlBehavior
-                {
-                    Arithmetic_conditions = new ArithmeticConditions
-                    {
-                        First_signal = volumeSignal,
-                        Second_constant = 1,
-                        Operation = ArithmeticOperations.Multiplication,
-                        Output_signal = volumeSignal
-                    }
-                }
-            };
-            entities.Add(outputVolumeBuffer);
-
-            wires.Add(new((outputVolumeBuffer, ConnectionType.Green1), (pitchGroupMapper, ConnectionType.Green1)));
+            previousPitchGroupMapper = pitchGroupMapper;
 
             var groupVolumeMultiplier = new Entity
             {
@@ -1233,7 +1225,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             };
             entities.Add(groupVolumeMultiplier);
 
-            wires.Add(new((groupVolumeMultiplier, ConnectionType.Green1), (outputVolumeBuffer, ConnectionType.Green2)));
+            wires.Add(new((groupVolumeMultiplier, ConnectionType.Green1), (groupVolumeBuffer, ConnectionType.Green2)));
             wires.Add(new((groupVolumeMultiplier, ConnectionType.Red1), (pitchGroupMapper, ConnectionType.Red2)));
 
             if (voiceIndex > 0)
@@ -1243,12 +1235,116 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             previousGroupVolumeMultiplier = groupVolumeMultiplier;
 
-            Debug.Assert(y == yOffset + headerHeight + height * cellHeight + footerHeight);
+            Debug.Assert(y == yOffset + headerHeight + instrumentCount * speakerCellHeight + footerHeight);
+
+            Entity previousPitchMapper = null;
+            List<Entity> displayVolumeMultipliers = [];
+
+            for (int instrumentIndex = 0; instrumentIndex < instrumentCount; instrumentIndex++)
+            {
+                var instrument = (Instrument)(instrumentIndex + 3);
+
+                var pitchMapper = new Entity
+                {
+                    Player_description = $"Pitch mapper for instrument {instrument} on voice {voiceIndex + 1}",
+                    Name = ItemNames.DeciderCombinator,
+                    Position = new Position
+                    {
+                        X = columnX,
+                        Y = (y += 2) - 1.5
+                    },
+                    Direction = Direction.Down,
+                    Control_behavior = new ControlBehavior
+                    {
+                        Decider_conditions = new DeciderConditions
+                        {
+                            Conditions =
+                            [
+                                new()
+                                {
+                                    First_signal = SignalID.CreateVirtual(VirtualSignalNames.Each),
+                                    First_signal_networks = new() { Red = true },
+                                    Second_signal = pitchSignal,
+                                    Second_signal_networks = new() { Green = true },
+                                    Comparator = Comparators.IsEqual
+                                },
+                                new()
+                                {
+                                    First_signal = instrumentSignal,
+                                    First_signal_networks = new() { Green = true },
+                                    Constant = instrumentIndex + 1,
+                                    Comparator = Comparators.IsEqual,
+                                    Compare_type = CompareTypes.And
+                                }
+                            ],
+                            Outputs =
+                            [
+                                new()
+                                {
+                                    Signal = SignalID.CreateVirtual(VirtualSignalNames.Each),
+                                    Copy_count_from_input = false
+                                }
+                            ]
+                        }
+                    }
+                };
+                entities.Add(pitchMapper);
+
+                wires.Add(new((pitchMapper, ConnectionType.Green1), instrumentIndex == 0 ? (instrumentOffsetPickers[^1], ConnectionType.Green1) : (previousPitchMapper, ConnectionType.Green1)));
+                wires.Add(new((pitchMapper, ConnectionType.Red1), instrumentIndex > 0 ? (previousPitchMapper, ConnectionType.Red1) : voiceIndex > 0 ? (previousFirstPitchMapper, ConnectionType.Red1) : (pitchMappingProvider, ConnectionType.Red1)));
+
+                if (instrumentIndex == 0)
+                {
+                    previousFirstPitchMapper = pitchMapper;
+                }
+
+                previousPitchMapper = pitchMapper;
+
+                var displayVolumeMultiplier = new Entity
+                {
+                    Player_description = $"Display volume multiplier for instrument {instrument} on voice {voiceIndex + 1}",
+                    Name = ItemNames.ArithmeticCombinator,
+                    Position = new Position
+                    {
+                        X = columnX,
+                        Y = (y += 2) - 1.5
+                    },
+                    Direction = Direction.Down,
+                    Control_behavior = new ControlBehavior
+                    {
+                        Arithmetic_conditions = new ArithmeticConditions
+                        {
+                            First_signal = SignalID.CreateVirtual(VirtualSignalNames.Each),
+                            First_signal_networks = new() { Red = true },
+                            Second_signal = volumeSignal,
+                            Second_signal_networks = new() { Green = true },
+                            Operation = ArithmeticOperations.Multiplication,
+                            Output_signal = SignalID.CreateVirtual(VirtualSignalNames.Each)
+                        }
+                    }
+                };
+                entities.Add(displayVolumeMultiplier);
+
+                wires.Add(new((displayVolumeMultiplier, ConnectionType.Red1), (pitchMapper, ConnectionType.Red2)));
+                wires.Add(new((displayVolumeMultiplier, ConnectionType.Green1), instrumentIndex == 0 ? (pitchGroupMapper, ConnectionType.Green1) : (displayVolumeMultipliers[^1], ConnectionType.Green1)));
+
+                if (voiceIndex > 0)
+                {
+                    var outputConnectionType = instrumentIndex % 2 == 0 ? ConnectionType.Green2 : ConnectionType.Red2;
+                    wires.Add(new((displayVolumeMultiplier, outputConnectionType), (previousDisplayVolumeMultipliers[instrumentIndex], outputConnectionType)));
+                }
+
+                displayVolumeMultipliers.Add(displayVolumeMultiplier);
+            }
+
+            previousDisplayVolumeMultipliers = displayVolumeMultipliers;
+
+            Debug.Assert(y == yOffset + headerHeight + instrumentCount * (speakerCellHeight + displayCellHeight) + footerHeight);
         }
 
         if (includePower)
         {
-            var substationWidth = (width + 7) / 16 + 1;
+            var substationWidth = (channelCount + 7) / 16 + 1;
             var substationHeight = (gridHeight + 3) / 18 + 1;
 
             AddSubstations(entities, wires, substationWidth, substationHeight, xOffset, yOffset + 2);
@@ -1258,8 +1354,6 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
         if (isHorizontal)
         {
-            (width, height) = (height, width);
-
             foreach (var entity in entities)
             {
                 (entity.Position.Y, entity.Position.X) = (entity.Position.X, entity.Position.Y);
@@ -1278,7 +1372,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
         return new Blueprint
         {
-            Label = $"{width}x{height} Music Box Speaker",
+            Label = $"{channelCount}x{instrumentCount} Music Box Speaker",
             Icons = [Icon.Create(ItemNames.ProgrammableSpeaker)],
             Entities = entities,
             Wires = wires.ToArrayList()
