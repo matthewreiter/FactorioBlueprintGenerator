@@ -113,7 +113,17 @@ public static class MusicBoxCompiler
                                     version == 1 ? ChannelCount : null,
                                     songConfig.Fade),
                                 _ => throw new Exception($"Unsupported source file extension for {songConfig.Source}")
-                            } with { Name = songConfig.Name, DisplayName = songConfig.DisplayName, Artist = songConfig.Artist, Loop = songConfig.Loop, Gapless = songConfig.Gapless, AddressIndex = songConfig.AddressIndex }
+                            }
+                            with
+                            {
+                                Name = songConfig.Name,
+                                DisplayName = songConfig.DisplayName,
+                                Album = songConfig.Album,
+                                Artist = songConfig.Artist,
+                                Loop = songConfig.Loop,
+                                Gapless = songConfig.Gapless,
+                                AddressIndex = songConfig.AddressIndex
+                            }
                         )
                         .ToList(),
                     Loop = playlistConfig.Loop
@@ -423,7 +433,7 @@ public static class MusicBoxCompiler
                 }
 
                 // Add song metadata
-                if (song.Name != null)
+                if (song.Name is not null)
                 {
                     addresses.SongMetadataAddresses[song.Name] = metadataAddress;
                 }
@@ -436,12 +446,12 @@ public static class MusicBoxCompiler
                 };
 
                 var displayName = song.DisplayName ?? song.Name;
-                if (displayName != null)
+                if (displayName is not null)
                 {
                     metadataFilters.AddRange(CreateFiltersForString(displayName, 32, 'A'));
                 }
 
-                if (song.Artist != null)
+                if (song.Artist is not null)
                 {
                     metadataFilters.AddRange(CreateFiltersForString(song.Artist, 20, 'I'));
                 }
@@ -766,7 +776,7 @@ public static class MusicBoxCompiler
                 }
 
                 // Add song metadata
-                if (song.Name != null)
+                if (song.Name is not null)
                 {
                     addresses.SongMetadataAddresses[song.Name] = metadataAddress;
                 }
@@ -779,14 +789,19 @@ public static class MusicBoxCompiler
                 };
 
                 var displayName = song.DisplayName ?? song.Name;
-                if (displayName != null)
+                if (displayName is not null)
                 {
-                    metadataFilters.AddRange(CreateFiltersForString(displayName, 32, 'A'));
+                    metadataFilters.AddRange(CreateFiltersForString(displayName, 40, 'A'));
                 }
 
-                if (song.Artist != null)
+                if (song.Album is not null)
                 {
-                    metadataFilters.AddRange(CreateFiltersForString(song.Artist, 20, 'I'));
+                    metadataFilters.AddRange(CreateFiltersForString(song.Album, 20, 'K'));
+                }
+
+                if (song.Artist is not null)
+                {
+                    metadataFilters.AddRange(CreateFiltersForString(song.Artist, 20, 'P'));
                 }
 
                 metadataCells.Add(new MemoryCell { Address = metadataAddress, Filters = metadataFilters });
@@ -843,7 +858,7 @@ public static class MusicBoxCompiler
 
     private static void WriteOutMidiEvents(string outputMidiEventsFile, List<Playlist> playlists)
     {
-        if (outputMidiEventsFile != null)
+        if (outputMidiEventsFile is not null)
         {
             using var midiEventStream = File.Create(outputMidiEventsFile);
 
@@ -853,7 +868,7 @@ public static class MusicBoxCompiler
                 {
                     var debugStream = song.DebugStream;
 
-                    if (debugStream != null)
+                    if (debugStream is not null)
                     {
                         debugStream.Position = 0;
                         debugStream.CopyTo(midiEventStream);

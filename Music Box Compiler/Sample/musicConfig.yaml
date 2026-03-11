@@ -23,6 +23,7 @@ playlists:
         volume: 200
         fade: {}
       - name: Yesterday
+        album: Help!
         artist: The Beatles
         source: Music\BitMidi\beatles-yesterday.mid
         instrumentOffsets:
@@ -32,6 +33,7 @@ playlists:
           celesta: 12
       - name: WithALittleHelpFromMyFriends
         displayName: W/ a Little Help From My Friends
+        album: Sgt. Pepper's Lonely Hearts Club Band
         artist: The Beatles
         source: Music\BitMidi\beatles-little_help_from_you_friends.mid
         instrumentOffsets:
@@ -40,6 +42,7 @@ playlists:
           celesta: 24
         volume: 80
       - name: Africa
+        album: Toto IV
         artist: Toto
         source: Music\BitMidi\toto-africa.mid
         instrumentOffsets:
@@ -50,6 +53,7 @@ playlists:
           celesta: 80
       - name: SoundOfSilence
         displayName: Sound of Silence
+        album: Sounds of Silence
         artist: Simon & Garfunkle
         source: Music\BitMidi\P.SIMON-GARFUNKEL.Sound of silence K.mid
         instrumentOffsets:
@@ -58,6 +62,7 @@ playlists:
         volume: 120
       - name: BoulevardOfBrokenDreams
         displayName: Boulevard of Broken Dreams
+        album: American Idiot
         artist: Green Day
         source: Music\BitMidi\GREENDAY.Boulevard of broken K.MID
         instrumentOffsets:
@@ -73,7 +78,8 @@ playlists:
           piano: 12
         volume: 150
       - name: EverybodyWantsToRuleTheWorld
-        displayName: Everybody Wants to Rule the Wrld
+        displayName: Everybody Wants to Rule the World
+        album: Songs from the Big Chair
         artist: Tears For Fears
         source: Music\BitMidi\Everybody-Wants-To-Rule-The-World-2.mid
         instrumentOffsets:
@@ -89,11 +95,13 @@ playlists:
         volume: 70
       - name: CryBabyCry
         displayName: Cry Baby Cry
+        album: The White Album
         artist: The Beatles
         source: Music\BitMidi\Beatles_Cry_Baby_Cry.mid
         volume: 80
       - name: PennyLane
         displayName: Penny Lane
+        album: Magical Mystery Tour
         artist: The Beatles
         source: Music\BitMidi\BEATLES.Penny lane  2 k.mid
       - name: SugarPlumFairy
@@ -111,10 +119,12 @@ playlists:
         volume: 150
       - name: HereComesTheSun
         displayName: Here Comes the Sun
+        album: Abbey Road
         artist: The Beatles
         source: Music\BitMidi\Here-Comes-The-Sun-2.mid
       - name: PaintItBlack
         displayName: Paint it Black
+        album: Aftermath
         artist: The Rolling Stones
         source: Music\BitMidi\THE ROLLING STONES.Paint it black K.mid
         volume: 80
@@ -124,6 +134,7 @@ playlists:
         volume: 130
       - name: WalkOfLife
         displayName: Walk of Life
+        album: Brothers in Arms
         artist: Dire Straits
         source: Music\BitMidi\Dire Straits - Walk of Life.mid
         instrumentVolumes:
@@ -131,6 +142,7 @@ playlists:
         volume: 90
       - name: SmokeOnTheWater
         displayName: Smoke on the Water
+        album: Machine Head
         artist: Deep Purple
         source: Music\BitMidi\Smoke-On-The-Water-2.mid
         volume: 120
@@ -141,6 +153,7 @@ playlists:
         suppressInstrumentFallback: true
       - name: LetItBe
         displayName: Let It Be
+        album: Let It Be
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.Let it be K.mid
         instrumentVolumes:
@@ -152,6 +165,7 @@ playlists:
         volume: 140
       - name: BohemianRhapsody
         displayName: Bohemian Rhapsody
+        album: A Night at the Opera
         artist: Queen
         source: Music\BitMidi\Queen - Bohemian Rhapsody.mid
       - name: Canyon
@@ -165,6 +179,7 @@ playlists:
         volume: 130
       - name: DontStopBelievin
         displayName: Don't Stop Believin'
+        album: Escape
         artist: Journey
         source: Music\BitMidi\Journey - Don't Stop Believin.mid
         volume: 80
@@ -175,10 +190,12 @@ playlists:
         source: Music\BitMidi\i_want_to_hold_your_hand-beatles.mid
       - name: IveJustSeenAFace
         displayName: I've Just Seen a Face
+        album: Help!
         artist: The Beatles
         source: Music\BitMidi\The Beatles - I've Just Seen a Face.mid
       - name: EleonorRigby
         displayName: Eleonor Rigby
+        album: Revolver
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.Eleonor Rigby K.mid
         instrumentVolumes:
@@ -188,10 +205,12 @@ playlists:
         source: Music\BitMidi\THE BEATLES.Revolution K.mid
       - name: YellowSubmarine
         displayName: Yellow Submarine
+        album: Revolver
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.Yellow submarine K.mid
       - name: TheNightBefore
         displayName: The Night Before
+        album: Help!
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.The night before K.mid
         fade: {}
@@ -201,6 +220,7 @@ playlists:
         source: Music\BitMidi\THE BEATLES.I Feel fine   K.mid
       - name: HelloGoodbye
         displayName: Hello Goodbye
+        album: Magical Mystery Tour
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.Hello Goodbye K.mid
         instrumentVolumes:
@@ -208,10 +228,12 @@ playlists:
           pluckedStrings: 90
       - name: IWantYou
         displayName: I Want You (She's So Heavy)
+        album: Abbey Road
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.I want you shes so heavy.mid
       - name: LucyInTheSkyWithDiamonds
         displayName: Lucy in the Sky With Diamonds
+        album: Sgt. Pepper's Lonely Hearts Club Band
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.Lucy in the sky K.mid
         instrumentVolumes:
@@ -219,19 +241,23 @@ playlists:
         volume: 130
       - name: NowhereMan
         displayName: Nowhere Man
+        album: Rubber Soul
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.Nowhere man K.mid
       - name: OctopusGarden
         displayName: Octopus's Garden
+        album: Abbey Road
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.Octopus's garden K.mid
       - name: ObLaDiObLaDa
         displayName: Ob-La-Di, Ob-La-Da
+        album: The White Album
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.OblaDi OblaDa K.mid
         instrumentVolumes:
           celesta: 90
       - name: Julia
+        album: The White Album
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.Julia K.mid
         instrumentVolumes:
@@ -239,19 +265,23 @@ playlists:
           celesta: 90
       - name: TheLongAndWindingRoad
         displayName: The Long and Winding Road
+        album: Let It Be
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.The long and winding road  K.mid
         volume: 120
       - name: Something
+        album: Abbey Road
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.Something K.mid
         volume: 120
       - name: InMyLife
         displayName: In My Life
+        album: Rubber Soul
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.In my life K.mid
       - name: WhileMyGuitarGentlyWeeps
         displayName: While My Guitar Gently Weeps
+        album: The White Album
         artist: The Beatles
         source: Music\BeatlesNumber9.com\while.mid
         instrumentVolumes:
@@ -260,6 +290,7 @@ playlists:
         volume: 120
       - name: LookingThroughAGlassOnion
         displayName: Looking Through a Glass Onion
+        album: The White Album
         artist: The Beatles
         source: Music\BeatlesNumber9.com\glass.mid
         instrumentVolumes:
@@ -268,25 +299,30 @@ playlists:
           steelDrum: 120
       - name: ADayInTheLife
         displayName: A Day in the Life
+        album: Sgt. Pepper's Lonely Hearts Club Band
         artist: The Beatles
         source: Music\BeatlesNumber9.com\adaylife.mid
       - name: Everlong
+        album: The Colour and the Shape
         artist: Foo Fighters
         source: Music\BitMidi\Foo Fighters - Everlong.mid
         instrumentOffsets:
           leadGuitar: 0
       - name: CarryOnMyWaywardSon
         displayName: Carry On My Wayward Son
+        album: Leftoverture
         artist: Kansas
         source: Music\BitMidi\Kansas - Carry On My Wayward Son.mid
       - name: StrawberryFieldsForever
         displayName: Strawberry Fields Forever
+        album: Magical Mystery Tour
         artist: The Beatles
         source: Music\BeatlesNumber9.com\strawberry.mid
         instrumentVolumes:
           steelDrum: 80
       - name: DearPrudence
         displayName: Dear Prudence
+        album: The White Album
         artist: The Beatles
         source: Music\BeatlesNumber9.com\dear.mid
         instrumentOffsets:
@@ -295,24 +331,29 @@ playlists:
           celesta: 12
       - name: LookingThroughYou
         displayName: I'm Looking Through You
+        album: Rubber Soul
         artist: The Beatles
         source: Music\BeatlesNumber9.com\imlooking.mid
         volume: 110
       - name: EverybodysGotSomethingToHide
         displayName: Everbody's Got Something to Hide
+        album: The White Album
         artist: The Beatles
         source: Music\BeatlesNumber9.com\everybodyhide.mid
       - name: BackInTheUssr
         displayName: Back in the USSR
+        album: The White Album
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.Back in USSR.mid
       - name: DoYouWantToKnowASecret
         displayName: Do You Want to Know a Secret
+        album: Please Please Me
         artist: The Beatles
         source: Music\BeatlesNumber9.com\dosecret.mid
         volume: 130
       - name: LovelyRita
         displayName: Lovely Rita
+        album: Sgt. Pepper's Lonely Hearts Club Band
         artist: The Beatles
         source: Music\BeatlesNumber9.com\lovely.mid
         instrumentOffsets:
@@ -328,23 +369,28 @@ playlists:
         volume: 130
       - name: BeastAndTheHarlot
         displayName: Beast and the Harlot
+        album: City of Evil
         artist: Avenged Sevenfold
         source: Music\OnlineSequencer.net\Avenged Sevenfold - Beast And The Harlot v7.mid
       - name: NeverGonnaGiveYouUp
         displayName: Never Gonna Give You Up
+        album: Whenever You Need Somebody
         artist: Rick Astley
         source: Music\BitMidi\Never-Gonna-Give-You-Up-2.mid
       - name: Sandstorm
         displayName: Sandstorm
+        album: Before the Storm
         artist: Darude
         source: Music\BitMidi\darude-sandstorm.mid
       - name: The Trees
+        album: Hemispheres
         artist: Rush
         source: Music\BitMidi\The-Trees.mid
 
       # End with Closing Time
       - name: ClosingTime
         displayName: Closing Time
+        album: Feeling Strangely Fine
         artist: Semisonic
         source: Music\Midis101.com\Semisonic_Closing_Time.mid
         instrumentVolumes:
@@ -356,46 +402,55 @@ playlists:
     songs:
       - name: YouNeverGiveMeYourMoney
         displayName: You Never Give Me Your Money
+        album: Abbey Road
         artist: The Beatles
         source: Music\BeatlesNumber9.com\younever.mid
         gapless: true
       - name: SunKing
         displayName: Sun King
+        album: Abbey Road
         artist: The Beatles
         source: Music\BeatlesNumber9.com\sunking.mid
         gapless: true
       - name: MeanMrMustard
         displayName: Mean Mr. Mustard
+        album: Abbey Road
         artist: The Beatles
         source: Music\BeatlesNumber9.com\mean.mid
         gapless: true
       - name: PolythenePam
         displayName: Polythene Pam
+        album: Abbey Road
         artist: The Beatles
         source: Music\BeatlesNumber9.com\poly.mid
         gapless: true
       - name: SheCameInThroughTheBathroomWindow
         displayName: Came in Through Bathroom Window
+        album: Abbey Road
         artist: The Beatles
         source: Music\BeatlesNumber9.com\shecame.mid
         gapless: true
       - name: GoldenSlumbers
         displayName: Golden Slumbers
+        album: Abbey Road
         artist: The Beatles
         source: Music\BeatlesNumber9.com\golden.mid
         gapless: true
       - name: CarryThatWeight
         displayName: Carry That Weight
+        album: Abbey Road
         artist: The Beatles
         source: Music\BeatlesNumber9.com\carry.mid
         gapless: true
       - name: TheEnd
         displayName: The End
+        album: Abbey Road
         artist: The Beatles
         source: Music\BeatlesNumber9.com\theend.mid
         gapless: true
       - name: HerMajesty
         displayName: Her Majesty
+        album: Abbey Road
         artist: The Beatles
         source: Music\BeatlesNumber9.com\hermajesty.mid
         gapless: true
