@@ -58,6 +58,7 @@
         public const string ConstantCombinator = "constant-combinator";
         public const string PowerSwitch = "power-switch";
         public const string ProgrammableSpeaker = "programmable-speaker";
+        public const string DisplayPanel = "display-panel";
         public const string StoneBrick = "stone-brick";
         public const string Concrete = "concrete";
         public const string HazardConcrete = "hazard-concrete";

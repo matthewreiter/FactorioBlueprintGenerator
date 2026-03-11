@@ -1014,14 +1014,14 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                             Instrument_id = (int)instrument - 1
                         }
                     },
-                    Parameters = new SpeakerParameter
+                    Parameters = new SpeakerParameters
                     {
                         Playback_mode = PlaybackModes.Global,
                         Allow_polyphony = true,
                         Volume_controlled_by_signal = true,
                         Volume_signal_id = volumeSignal
                     },
-                    Alert_parameters = new SpeakerAlertParameter
+                    Alert_parameters = new SpeakerAlertParameters
                     {
                         Show_alert = false
                     }

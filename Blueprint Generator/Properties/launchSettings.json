@@ -60,6 +60,10 @@
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/noteDisplayByInstrument.txt\" --OutputJson=\"$(ProjectDir)/Test/noteDisplayByInstrument.json\" --MemoryType=NoteDisplayByInstrument"
     },
+    "TextDisplay": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=A --Length=40"
+    },
     "Font": {
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/font.txt\" --OutputJson=\"$(ProjectDir)/Test/font.json\" --FontImage=\"$(ProjectDir)/Fonts/5x7 Font.png\" --MemoryType=Font --Signals=0123456789ABCDEFGHIJKLMNOPQRSTUVWXY"

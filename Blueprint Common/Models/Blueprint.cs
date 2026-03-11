@@ -282,12 +282,12 @@ namespace BlueprintCommon.Models
         /// <summary>
         /// Used by Programmable speaker, optional.
         /// </summary>
-        public SpeakerParameter Parameters { get; set; }
+        public SpeakerParameters Parameters { get; set; }
 
         /// <summary>
         /// Used by Programmable speaker, optional.
         /// </summary>
-        public SpeakerAlertParameter Alert_parameters { get; set; }
+        public SpeakerAlertParameters Alert_parameters { get; set; }
 
         /// <summary>
         /// Used by the rocket silo, optional. Whether auto-launch is enabled.
@@ -313,6 +313,16 @@ namespace BlueprintCommon.Models
         /// The description entered by the player.
         /// </summary>
         public string Player_description { get; set; }
+
+        /// <summary>
+        /// Used by the display panel, optional. Always show the first line of the display panel's text in "Alt-mode" even when not selected.
+        /// </summary>
+        public bool? Always_show { get; set; }
+
+        /// <summary>
+        /// Used by the display panel, optional. Show the chosen icon and first line of text in map charts.
+        /// </summary>
+        public bool? Show_in_chart { get; set; }
     }
 
     public enum Direction : uint
@@ -517,7 +527,7 @@ namespace BlueprintCommon.Models
         public int Index { get; set; }
     }
 
-    public class SpeakerParameter
+    public class SpeakerParameters
     {
         /// <summary>
         /// Volume of the speaker.
@@ -545,7 +555,7 @@ namespace BlueprintCommon.Models
         public SignalID Volume_signal_id { get; set; }
     }
 
-    public class SpeakerAlertParameter
+    public class SpeakerAlertParameters
     {
         /// <summary>
         /// Whether an alert is shown.
@@ -604,6 +614,8 @@ namespace BlueprintCommon.Models
         public CircuitCondition Circuit_condition { get; set; }
 
         public CircuitParameters Circuit_parameters { get; set; }
+
+        public List<DisplayPanelParameter> Parameters { get; set; }
 
         public bool? Circuit_enabled { get; set; }
 
@@ -802,5 +814,14 @@ namespace BlueprintCommon.Models
         /// Which note the speaker will play if <see cref="Signal_value_is_pitch"/> is true.
         /// </summary>
         public int Note_id { get; set; }
+    }
+
+    public class DisplayPanelParameter
+    {
+        public CircuitCondition Condition { get; set; }
+
+        public SignalID Icon { get; set; }
+
+        public string Text { get; set; }
     }
 }

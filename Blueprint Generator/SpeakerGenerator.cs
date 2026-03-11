@@ -410,13 +410,13 @@ public class SpeakerGenerator : IBlueprintGenerator
                             }
                         ]
                     }),
-                    Parameters = new SpeakerParameter
+                    Parameters = new SpeakerParameters
                     {
                         Playback_volume = maxVolume - (double)(relativeAddress / speakersPerVolumeLevel) / (volumeLevels - 1) * (maxVolume - minVolume),
                         Playback_mode = PlaybackModes.Global,
                         Allow_polyphony = true
                     },
-                    Alert_parameters = new SpeakerAlertParameter
+                    Alert_parameters = new SpeakerAlertParameters
                     {
                         Show_alert = false
                     }
