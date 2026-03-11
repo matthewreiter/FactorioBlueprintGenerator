@@ -3,11 +3,27 @@
     loop: true
     disabled: false
     songs:
-      - name: ToccataAndFugueInDMinor
+      - name: BachToccataAndFugueInDMinor
         displayName: Toccata and Fugue in D-minor
         artist: Bach
         source: Music\BitMidi\Toccata and Fugue in D Minor.mid
         fade: {}
+      - name: BachBadinerie
+        displayName: Orchestral Suite No. 2 in B-minor, Badinerie
+        artist: Bach
+        source: Music\BitMidi\Badinerie.mid
+      - name: BachBrandenburgConcertoNo6
+        displayName: Brandenburg Concerto No. 6 in B flat major
+        artist: Bach
+        source: Music\Kunstderfuge.com\Bach\bach-js_brandenburg_concert_6_*_(c)icking-archive.mid
+      - name: BachGoldbergsAria
+        displayName: Goldbergs Aria
+        artist: Bach
+        source: Music\Kunstderfuge.com\Bach\goldberg_variations_988_aria_(c)degiusti.mid
+      - name: BachGoldbergVariation1
+        displayName: Goldberg Variation 1
+        artist: Bach
+        source: Music\Kunstderfuge.com\Bach\goldberg_variations_988_01_(c)degiusti.mid
       - name: BeethovenOpus57
         displayName: "Opus #57"
         artist: Beethoven
