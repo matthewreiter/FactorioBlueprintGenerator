@@ -323,6 +323,11 @@ namespace BlueprintCommon.Models
         /// Used by the display panel, optional. Show the chosen icon and first line of text in map charts.
         /// </summary>
         public bool? Show_in_chart { get; set; }
+
+        /// <summary>
+        /// Used by the display panel, optional. The icon that is displayed in the panel when not connected to a circuit.
+        /// </summary>
+        public SignalID Icon { get; set; }
     }
 
     public enum Direction : uint

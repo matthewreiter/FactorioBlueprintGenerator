@@ -60,9 +60,21 @@
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/noteDisplayByInstrument.txt\" --OutputJson=\"$(ProjectDir)/Test/noteDisplayByInstrument.json\" --MemoryType=NoteDisplayByInstrument"
     },
-    "TextDisplay": {
+    "TitleTextDisplay": {
       "commandName": "Project",
-      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=A --Length=40"
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=A --Length=52"
+    },
+    "AlbumTextDisplay": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=N --Length=28"
+    },
+    "ArtistTextDisplay": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=U --Length=20"
+    },
+    "TrackElapsedTimeAndDurationTextDisplay": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=A --Format=\"ddd\\0\\0dd:dd\\0\\0dd:dd\""
     },
     "Font": {
       "commandName": "Project",
