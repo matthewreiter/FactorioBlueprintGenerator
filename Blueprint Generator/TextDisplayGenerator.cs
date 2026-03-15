@@ -54,11 +54,9 @@ public class TextDisplayGenerator : IBlueprintGenerator
         var xOffset = -gridWidth / 2;
         var yOffset = -gridHeight / 2;
 
-        var intermediateSignal = SignalID.CreateVirtual(VirtualSignalNames.Dot);
-
         var entities = new List<Entity>();
         var wires = new List<Wire>();
-        Entity previousDecoder = null;
+        List<Entity> characterDisplays = [];
 
         for (int characterIndex = 0; characterIndex < length; characterIndex++)
         {
@@ -80,7 +78,7 @@ public class TextDisplayGenerator : IBlueprintGenerator
                     {
                         Condition = new()
                         {
-                            First_signal = intermediateSignal,
+                            First_signal = characterSignal,
                             Constant = tuple.Character << shiftAmount,
                             Comparator = Comparators.IsEqual
                         },
@@ -90,36 +88,12 @@ public class TextDisplayGenerator : IBlueprintGenerator
             };
             entities.Add(characterDisplay);
 
-            var decoder = new Entity
+            if (characterIndex >= 4)
             {
-                Name = ItemNames.ArithmeticCombinator,
-                Position = new Position
-                {
-                    X = xOffset + characterIndex,
-                    Y = yOffset + 1.5
-                },
-                Direction = Direction.Up,
-                Control_behavior = new ControlBehavior
-                {
-                    Arithmetic_conditions = new()
-                    {
-                        First_signal = characterSignal,
-                        Operation = ArithmeticOperations.And,
-                        Second_constant = 0xFF << shiftAmount,
-                        Output_signal = intermediateSignal
-                    }
-                }
-            };
-            entities.Add(decoder);
-
-            wires.Add(new((decoder, ConnectionType.Green2), (characterDisplay, ConnectionType.Green1)));
-
-            if (characterIndex > 0)
-            {
-                wires.Add(new((decoder, ConnectionType.Green1), (previousDecoder, ConnectionType.Green1)));
+                wires.Add(new((characterDisplay, ConnectionType.Green1), (characterDisplays[^4], ConnectionType.Green1)));
             }
 
-            previousDecoder = decoder;
+            characterDisplays.Add(characterDisplay);
         }
 
         BlueprintUtil.PopulateEntityNumbers(entities);
