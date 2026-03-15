@@ -169,7 +169,7 @@ playlists:
         artist: Queen
         source: Music\BitMidi\Queen - Bohemian Rhapsody.mid
       - name: Canyon
-        displayName: Trip Through the Grand Canyon
+        displayName: A Trip Through the Grand Canyon
         artist: George Stone
         source: Music\BitMidi\canyon.mid
       - name: HeyJude
@@ -425,7 +425,7 @@ playlists:
         source: Music\BeatlesNumber9.com\poly.mid
         gapless: true
       - name: SheCameInThroughTheBathroomWindow
-        displayName: Came in Through Bathroom Window
+        displayName: She Came in Through the Bathroom Window
         album: Abbey Road
         artist: The Beatles
         source: Music\BeatlesNumber9.com\shecame.mid

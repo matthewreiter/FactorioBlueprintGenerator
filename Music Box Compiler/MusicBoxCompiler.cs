@@ -791,17 +791,17 @@ public static class MusicBoxCompiler
                 var displayName = song.DisplayName ?? song.Name;
                 if (displayName is not null)
                 {
-                    metadataFilters.AddRange(CreateFiltersForString(displayName, 40, 'A'));
+                    metadataFilters.AddRange(CreateFiltersForString(displayName, 52, 'A'));
                 }
 
                 if (song.Album is not null)
                 {
-                    metadataFilters.AddRange(CreateFiltersForString(song.Album, 20, 'K'));
+                    metadataFilters.AddRange(CreateFiltersForString(song.Album, 28, 'N'));
                 }
 
                 if (song.Artist is not null)
                 {
-                    metadataFilters.AddRange(CreateFiltersForString(song.Artist, 20, 'P'));
+                    metadataFilters.AddRange(CreateFiltersForString(song.Artist, 20, 'U'));
                 }
 
                 metadataCells.Add(new MemoryCell { Address = metadataAddress, Filters = metadataFilters });
