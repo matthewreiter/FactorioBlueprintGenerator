@@ -27,6 +27,7 @@ public static class MusicBoxCompiler
     private const int NoteGroupAddressBits = 16;
     private const int NoteGroupTimeOffsetBits = 11;
     private const int MetadataAddressBits = 10;
+    private const int LyricOffsetBits = 8;
     private const int MinimumNoteDuration = 10;
     private const int MaximumNoteDuration = 44000;
     private const int ChannelCooldownTicks = 1;
@@ -34,7 +35,7 @@ public static class MusicBoxCompiler
     private static readonly List<int> NoteGroupsBySize = [
         .. Enumerable.Range(1, ChannelCountV2)
             .Select(size => MusicBoxSignals.AllNoteGroupSignals
-            .FindLastIndex(noteGroupSignals => noteGroupSignals.Count >= size))
+                .FindLastIndex(noteGroupSignals => noteGroupSignals.Count >= size))
     ];
 
     public static void Run(IConfigurationRoot configuration)
@@ -502,7 +503,7 @@ public static class MusicBoxCompiler
         var noteGroupCells = new List<MemoryCell>();
         var metadataCells = new List<MemoryCell>();
         var songDataToCells = new Dictionary<MemoryCellData, MemoryCell>();
-        var noteTuplesToAddresses = new Dictionary<NoteTuple, (int Address, int SubAddress)>();
+        var noteGroupKeysToAddresses = new Dictionary<NoteGroupKey, (int Address, int SubAddress)>();
         var nextNoteGroupCellBySubAddress = new int[MusicBoxSignals.AllNoteGroupSignals.Count];
         var channelRemainingTimes = new int[ChannelCountV2];
         var currentAddress = baseAddress;
@@ -543,6 +544,15 @@ public static class MusicBoxCompiler
             return noteGroupAddress + (timeOffset << MusicBoxV2DecoderGenerator.NoteGroupAddressBits) + (subAddress << (MusicBoxV2DecoderGenerator.NoteGroupAddressBits + MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits));
         }
 
+        int EncodeLyricMetadata(int offset, bool isStartOfLine)
+        {
+            Debug.Assert(offset >= 0 && offset < (1 << LyricOffsetBits) - 1, "Lyric offset out of range");
+
+            var encodedOffset = offset + 1;
+
+            return encodedOffset + (isStartOfLine ? 1 << LyricOffsetBits : 0);
+        }
+
         var allSongs = playlists.SelectMany(playlist => playlist.Songs).ToList();
 
         var currentMetadataAddressIndex = 0;
@@ -579,6 +589,7 @@ public static class MusicBoxCompiler
                 var songAddress = currentAddress;
                 List<(int Address, int NoteGroupAddress, int SubAddress, List<(int Channel, int Note)> Notes)> noteGroups = [];
                 List<List<(int Address, int NoteGroupAddress, int SubAddress, List<(int Channel, int Note)> Notes)>> noteGroupGroups = [];
+                string currentLyrics = null;
                 var timeDeficit = 0;
 
                 void StartNewNoteGroupGroup()
@@ -657,19 +668,44 @@ public static class MusicBoxCompiler
                         .Where(note => note.Note != 0)
                         .ToList();
 
-                    if (notes.Count > 0)
+                    if (notes.Count > 0 || noteGroup.Lyrics is not null)
                     {
-                        var noteTuple = new NoteTuple(channelNotes);
+                        string lyrics = null;
+                        int lyricOffset = 0;
 
-                        if (!noteTuplesToAddresses.TryGetValue(noteTuple, out var noteGroupAddress))
+                        if (noteGroup.Lyrics is not null)
                         {
-                            var subAddress = NoteGroupsBySize[notes.Max(note => note.Channel)];
+                            if (noteGroup.IsStartOfLine)
+                            {
+                                currentLyrics = null;
+                            }
+
+                            // Lyrics are packed into integers and can therefore only be shifted by multiples of 4 characters.
+                            // This means that if the existing line is not a multiple of 4 characters, the last few need to get included in the lyrics.
+                            lyricOffset = currentLyrics is not null ? currentLyrics.Length / 4 : 0;
+                            lyrics = (currentLyrics is not null ? currentLyrics[(lyricOffset * 4)..] : "") + noteGroup.Lyrics;
+                            currentLyrics += noteGroup.Lyrics;
+                        }
+
+                        var noteGroupKey = new NoteGroupKey(new(channelNotes), lyrics, lyricOffset, noteGroup.IsStartOfLine);
+
+                        if (!noteGroupKeysToAddresses.TryGetValue(noteGroupKey, out var noteGroupAddress))
+                        {
+                            var size = notes.Count > 0 ? notes.Max(note => note.Channel) : 1;
+                            var subAddress = NoteGroupsBySize[size];
                             var noteGroupCellIndex = nextNoteGroupCellBySubAddress[subAddress]++;
                             noteGroupAddress = (baseNoteGroupAddress + noteGroupCellIndex, subAddress);
-                            noteTuplesToAddresses[noteTuple] = noteGroupAddress;
+                            noteGroupKeysToAddresses[noteGroupKey] = noteGroupAddress;
 
                             var noteGroupSignals = MusicBoxSignals.AllNoteGroupSignals[subAddress];
                             var noteGroupFilters = notes.Select(note => CreateFilter(noteGroupSignals[note.Channel], note.Note)).ToList();
+
+                            if (noteGroup.Lyrics is not null)
+                            {
+                                var lyricSignals = MusicBoxSignals.AllLyricSignals[subAddress];
+                                noteGroupFilters.Add(CreateFilter(lyricSignals[0], EncodeLyricMetadata(lyricOffset, noteGroup.IsStartOfLine)));
+                                noteGroupFilters.AddRange(CreateFiltersForString(lyrics, 16, lyricSignals[1..]));
+                            }
 
                             if (noteGroupCellIndex < noteGroupCells.Count)
                             {
@@ -884,6 +920,13 @@ public static class MusicBoxCompiler
 
     private static IEnumerable<Filter> CreateFiltersForString(string text, int maxCharactersToDisplay, char initialSignal)
     {
+        List<string> signalNames = [.. Enumerable.Range(0, maxCharactersToDisplay / 4).Select(index => VirtualSignalNames.LetterOrDigit((char)(initialSignal + index)))];
+
+        return CreateFiltersForString(text, maxCharactersToDisplay, signalNames);
+    }
+
+    private static IEnumerable<Filter> CreateFiltersForString(string text, int maxCharactersToDisplay, List<string> signalNames)
+    {
         var charactersToDisplay = Math.Min(text.Length, maxCharactersToDisplay);
         var encodedBlock = 0;
         var blockIndex = 0;
@@ -897,7 +940,7 @@ public static class MusicBoxCompiler
 
             if (positionInBlock == 3 || index == charactersToDisplay - 1)
             {
-                yield return CreateFilter((char)(initialSignal + blockIndex), encodedBlock);
+                yield return CreateFilter(signalNames[blockIndex], encodedBlock);
                 encodedBlock = 0;
                 blockIndex++;
             }
@@ -933,6 +976,8 @@ public static class MusicBoxCompiler
             return hash.ToHashCode();
         }
     }
+
+    private record NoteGroupKey(NoteTuple NoteTuple, string Lyrics = null, int LyricOffset = 0, bool IsStartOfLine = false);
 
     private class MemoryCellData(List<KeyValuePair<string, int>> signals) : IEnumerable<KeyValuePair<string, int>>
     {

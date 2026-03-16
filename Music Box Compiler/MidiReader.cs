@@ -229,22 +229,22 @@ public static class MidiReader
 
         var currentTime = TimeSpan.Zero;
         var currentNotes = new List<Note>();
+        string currentLyrics = null;
+        bool isStartOfLine = false;
         var noteGroups = new List<NoteGroup>();
 
         foreach (var midiNote in expandedMidiNotes.OrderBy(midiNote => midiNote.StartTime))
         {
-            var instrument = midiNote.Instrument;
-            var noteNumber = midiNote.EffectiveNoteNumber;
-            var instrumentInfo = Instruments[instrument];
-
             if (midiNote.StartTime - currentTime >= TickDuration || channelCount is not null && currentNotes.Count >= channelCount)
             {
                 var length = midiNote.StartTime - currentTime;
 
-                if (currentNotes.Count > 0 || noteGroups.Count == 0)
+                if (currentNotes.Count > 0 || currentLyrics is not null || noteGroups.Count == 0)
                 {
-                    noteGroups.Add(new NoteGroup { Notes = currentNotes, Length = length });
+                    noteGroups.Add(new NoteGroup { Notes = currentNotes, Lyrics = currentLyrics, IsStartOfLine = isStartOfLine, Length = length });
                     currentNotes = [];
+                    currentLyrics = null;
+                    isStartOfLine = false;
                 }
                 else
                 {
@@ -254,6 +254,24 @@ public static class MidiReader
                 currentTime = midiNote.StartTime;
             }
 
+            if (midiNote.Lyric is not null)
+            {
+                if (currentLyrics is null)
+                {
+                    isStartOfLine = midiNote.IsStartOfLine;
+                }
+                else if (midiNote.IsStartOfLine)
+                {
+                    currentLyrics += " ";
+                }
+
+                currentLyrics += midiNote.Lyric;
+                continue;
+            }
+
+            var instrument = midiNote.Instrument;
+            var noteNumber = midiNote.EffectiveNoteNumber;
+            var instrumentInfo = Instruments[instrument];
             var instrumentVolume = instrumentVolumes != null && instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
             var pressure = Math.Pow(midiNote.Pressure.Value, PressureExponent) + 1;
             var volume = Math.Min(midiNote.Velocity * pressure * midiNote.Expression.Value * midiNote.ChannelVolume.Value * midiNote.FadeMultiplier * instrumentInfo.BaseVolume * instrumentVolume * masterVolume, 1);
@@ -309,7 +327,7 @@ public static class MidiReader
 
         if (currentNotes.Count > 0)
         {
-            noteGroups.Add(new() { Notes = currentNotes });
+            noteGroups.Add(new() { Notes = currentNotes, Lyrics = currentLyrics, IsStartOfLine = isStartOfLine });
         }
 
         if (noteGroups.Count > 0)
@@ -381,6 +399,12 @@ public static class MidiReader
 
     private static IEnumerable<MidiNote> ApplyInstrumentOffsets(MidiNote midiNote, Dictionary<Instrument, int> instrumentOffsets, bool allowInstrumentFallback)
     {
+        if (midiNote.Lyric is not null)
+        {
+            yield return midiNote;
+            yield break;
+        }
+
         var instrument = midiNote.Instrument;
 
         if (Instruments.TryGetValue(instrument, out var instrumentInfo))
@@ -431,7 +455,7 @@ public static class MidiReader
 
         Debug.Assert(effectiveNoteNumber is > -12 and <= 48);
 
-        if (effectiveNoteNumber > 0)
+        if (effectiveNoteNumber > 0 || note.Instrument == Instrument.Unknown)
         {
             yield return note;
         }
@@ -585,6 +609,7 @@ public static class MidiReader
         var trackName = new List<string>();
         var text = new List<string>();
         var copyright = new List<string>();
+        var isStartOfLine = true;
 
         void UpdateValue(IEnumerable<MidiNote> notesToUpdate, Func<MidiNote, ChangeableValue> getChangeableValue, double newValue)
         {
@@ -636,6 +661,30 @@ public static class MidiReader
                             break;
                         case MidiMetaType.Tempo:
                             tempo = MidiMetaType.GetTempo(midiEvent.ExtraData, midiEvent.ExtraDataOffset);
+                            break;
+                        case MidiMetaType.Lyric:
+                            if (currentTime > TimeSpan.Zero) // Lyrics at time zero are copyright notices rather than actual lyrics, so ignore them
+                            {
+                                var lyric = Encoding.ASCII.GetString(midiEvent.ExtraData);
+
+                                isStartOfLine |= lyric.StartsWith('\r') || lyric.StartsWith('\n');
+                                var nextIsStartOfLine = lyric.EndsWith('\r') || lyric.EndsWith('\n');
+
+                                lyric = lyric.Trim('\r', '\n');
+
+                                if (!string.IsNullOrWhiteSpace(lyric))
+                                {
+                                    notes.Add(new()
+                                    {
+                                        Lyric = lyric,
+                                        IsStartOfLine = isStartOfLine,
+                                        StartTime = currentTime
+                                    });
+                                }
+
+                                isStartOfLine = nextIsStartOfLine;
+                            }
+
                             break;
                     }
 
@@ -838,6 +887,8 @@ public static class MidiReader
         public ChangeableValue Expression { get; init; }
         public ChangeableValue ChannelVolume { get; init; }
         public double FadeMultiplier { get; set; } = 1;
+        public string Lyric { get; init; }
+        public bool IsStartOfLine { get; init; }
         public TimeSpan StartTime { get; init; }
         public TimeSpan? EndTime { get; set; }
         public int EffectiveNoteNumber { get; set; }

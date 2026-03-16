@@ -39,6 +39,7 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
         var addressSignal = SignalID.CreateVirtual(VirtualSignalNames.Info);
         var noteGroupTimeOffsetSignal = SignalID.CreateLetterOrDigit('X');
         var noteGroupSubAddressSignal = SignalID.CreateLetterOrDigit('W');
+        var metadataAddressSignal = SignalID.CreateLetterOrDigit('Y');
 
         var entities = new List<Entity>();
         var wires = new List<Wire>();
@@ -76,6 +77,13 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
                                 First_signal = noteGroupReferenceSignal,
                                 Constant = 0,
                                 Comparator = Comparators.IsNotEqual
+                            },
+                            new DeciderCondition
+                            {
+                                First_signal = metadataAddressSignal,
+                                Constant = 0,
+                                Comparator = Comparators.GreaterThan,
+                                Compare_type = CompareTypes.And
                             }
                         ],
                         Outputs =
@@ -121,6 +129,13 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
                                     First_signal = noteGroupReferenceSignal,
                                     Constant = 0,
                                     Comparator = Comparators.IsNotEqual
+                                },
+                                new DeciderCondition
+                                {
+                                    First_signal = metadataAddressSignal,
+                                    Constant = 0,
+                                    Comparator = Comparators.GreaterThan,
+                                    Compare_type = CompareTypes.And
                                 }
                             ],
                             Outputs =
@@ -496,7 +511,6 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
             Debug.Assert(y == yOffset + mainHeight);
         }
 
-        var channelCount = MusicBoxSignals.SpeakerChannelSignals.Count;
         var noteGroupCount = MusicBoxSignals.AdditionalNoteGroupSignals.Count;
 
         int GetColumnX(int currentColumn) => currentColumn + (includePower ? (currentColumn / 16 + 1) * 2 : 0) + xOffset;
@@ -563,20 +577,27 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
         };
         entities.Add(allNoteBuffer);
 
-        wires.Add(new((allNoteBuffer, ConnectionType.Green1), (noteGroupSenders[column2], ConnectionType.Green2)));
+        wires.Add(new((allNoteBuffer, ConnectionType.Green1), (noteGroupSenders[0], ConnectionType.Green2)));
         wires.Add(new((allNoteBuffer, ConnectionType.Red2), (allNoteSelector, ConnectionType.Red1)));
+
+        Entity previousSignalRenamer = allNoteBuffer;
+        Entity firstSubAddressBufferInput = allNoteBuffer;
 
         for (int noteGroupIndex = 0; noteGroupIndex < noteGroupCount; noteGroupIndex++)
         {
-            var noteGroupSignals = MusicBoxSignals.AdditionalNoteGroupSignals[noteGroupIndex];
-            var noteCount = noteGroupSignals.Count;
-            Debug.Assert(noteCount <= channelCount);
+            var additionalNoteGroupSignals = MusicBoxSignals.AdditionalNoteGroupSignals[noteGroupIndex];
+            var additionalLyricSignals = MusicBoxSignals.AdditionalLyricSignals[noteGroupIndex];
+            List<string> inputSignals = [.. additionalNoteGroupSignals, .. additionalLyricSignals];
+            List<string> outputSignals = [.. MusicBoxSignals.SpeakerChannelSignals[0..additionalNoteGroupSignals.Count], .. MusicBoxSignals.LyricSignals[0..additionalLyricSignals.Count]];
+            var signalCount = inputSignals.Count;
 
-            if (column2 + noteCount + 2 >= width)
+            if (column2 + signalCount + 2 >= width)
             {
                 column2 = 0;
                 y += 2;
             }
+
+            var isFirstGroupInRow = column2 == 0;
 
             var noteGroupSelector = new Entity
             {
@@ -637,15 +658,18 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
             };
             entities.Add(subAddressBuffer);
 
-            wires.Add(new((subAddressBuffer, ConnectionType.Green1), (noteGroupSenders[column2], ConnectionType.Green2)));
+            wires.Add(new((subAddressBuffer, ConnectionType.Green1), isFirstGroupInRow ? (firstSubAddressBufferInput, ConnectionType.Green1) : (previousSignalRenamer, ConnectionType.Green1)));
             wires.Add(new((subAddressBuffer, ConnectionType.Red2), (noteGroupSelector, ConnectionType.Red1)));
 
-            Entity previousSignalRenamer = null;
-
-            for (int signalIndex = 0; signalIndex < noteCount; signalIndex++)
+            if (isFirstGroupInRow)
             {
-                var inputSignal = SignalID.Create(noteGroupSignals[signalIndex]);
-                var outputSignal = SignalID.Create(MusicBoxSignals.SpeakerChannelSignals[signalIndex]);
+                firstSubAddressBufferInput = subAddressBuffer;
+            }
+
+            for (int signalIndex = 0; signalIndex < signalCount; signalIndex++)
+            {
+                var inputSignal = SignalID.Create(inputSignals[signalIndex]);
+                var outputSignal = SignalID.Create(outputSignals[signalIndex]);
 
                 var signalRenamer = new Entity
                 {

@@ -72,6 +72,10 @@
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=U --Length=20"
     },
+    "LyricsTextDisplay": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=A --Length=48"
+    },
     "TrackElapsedTimeAndDurationTextDisplay": {
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=A --Format=\"ddd\\0\\0dd:dd\\0\\0dd:dd\""
