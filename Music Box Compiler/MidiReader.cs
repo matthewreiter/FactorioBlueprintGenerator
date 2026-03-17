@@ -610,6 +610,7 @@ public static class MidiReader
         var text = new List<string>();
         var copyright = new List<string>();
         var isStartOfLine = true;
+        var insertSpace = false;
 
         void UpdateValue(IEnumerable<MidiNote> notesToUpdate, Func<MidiNote, ChangeableValue> getChangeableValue, double newValue)
         {
@@ -671,6 +672,15 @@ public static class MidiReader
                                 var nextIsStartOfLine = lyric.EndsWith('\r') || lyric.EndsWith('\n');
 
                                 lyric = lyric.Trim('\r', '\n');
+
+                                if (insertSpace && !isStartOfLine)
+                                {
+                                    lyric = " " + lyric;
+                                    insertSpace = false;
+                                }
+
+                                insertSpace = lyric.EndsWith(' ');
+                                lyric = lyric.TrimEnd(' ');
 
                                 if (!string.IsNullOrWhiteSpace(lyric))
                                 {
