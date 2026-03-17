@@ -106,6 +106,7 @@ playlists:
         source: Music\BitMidi\BEATLES.Penny lane  2 k.mid
       - name: SugarPlumFairy
         displayName: Dance of the Sugar Plum Fairy
+        album: The Nutcracker Suite
         artist: Tchaikovsky
         source: Music\BitMidi\Dance-Of-'The-Sugar-Plum-Fairy'.mid
       - name: FurElise
@@ -114,6 +115,7 @@ playlists:
         source: Music\BitMidi\Fur-Elise-1.mid
       - name: SiegeOfMadrigal
         displayName: Siege of Madrigal
+        album: "Myth I: The Fallen Lords"
         artist: Martin O'Donnell
         source: Music\BitMidi\Halo - Siege of Madrigal.mid
         volume: 150
@@ -129,7 +131,8 @@ playlists:
         source: Music\BitMidi\THE ROLLING STONES.Paint it black K.mid
         volume: 80
       - name: Edelweiss
-        artist: Richard Rogers
+        album: The Sound of Music
+        artist: Richard Rodgers
         source: Music\BitMidi\Edelweiss.mid
         volume: 130
       - name: WalkOfLife
@@ -146,7 +149,8 @@ playlists:
         artist: Deep Purple
         source: Music\BitMidi\Smoke-On-The-Water-2.mid
         volume: 120
-      - name: Toumei
+      - name: Toumei Elegy
+        album: Before the Curtain Call is Over
         artist: n-buna
         source: Music\BitMidi\toumei1.mid
         volume: 115
@@ -170,6 +174,7 @@ playlists:
         source: Music\BitMidi\Queen - Bohemian Rhapsody.mid
       - name: Canyon
         displayName: A Trip Through the Grand Canyon
+        album: Windows 3.0
         artist: George Stone
         source: Music\BitMidi\canyon.mid
       - name: HeyJude
@@ -457,6 +462,7 @@ playlists:
   - songs:
       - name: Cynthia
         displayName: Approaching Champion Cynthia
+        album: Pokemon Diamond/Pearl
         artist: Go Ichinose
         addressIndex: 998
         source: Music\BitMidi\Pokemon DiamondPearlPlatinum - Approaching Champion Cynthia.mid

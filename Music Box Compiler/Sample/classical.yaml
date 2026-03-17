@@ -17,11 +17,13 @@
         artist: Bach
         source: Music\Kunstderfuge.com\Bach\bach-js_brandenburg_concert_6_*_(c)icking-archive.mid
       - name: BachGoldbergsAria
-        displayName: Goldbergs Aria
+        displayName: Aria
+        album: Goldberg Variations
         artist: Bach
         source: Music\Kunstderfuge.com\Bach\goldberg_variations_988_aria_(c)degiusti.mid
       - name: BachGoldbergVariation1
-        displayName: Goldberg Variation 1
+        displayName: Variation 1
+        album: Goldberg Variations
         artist: Bach
         source: Music\Kunstderfuge.com\Bach\goldberg_variations_988_01_(c)degiusti.mid
       - name: BeethovenOpus57
@@ -73,6 +75,7 @@
         source: Music\Kunstderfuge.com\Mozart\clarinet_concerto_622_*_(c)bakels.mid
       - name: NutcrackerSuiteOverture
         displayName: Nutcracker Suite Overture
+        album: The Nutcracker Suite
         artist: Tchaikovsky
         source: Music\Kunstderfuge.com\Tchaikovsky\tchaikovsky_nutcracker_suite_overture_71a_1_(c)kirschbaum.mid
       - name: VivaldiTrioSonataLaFollia
@@ -84,19 +87,23 @@
         artist: Vivaldi
         source: Music\Kunstderfuge.com\Vivaldi\vivaldi_concerto_in_c_major_*_(c)icking-archive.mid
       - name: VivaldiQuattoStagioniPrimavera
-        displayName: Le Quatto Stagioni, La Primavera
+        displayName: La Primavera
+        album: Le Quatto Stagioni
         artist: Vivaldi
         source: Music\Kunstderfuge.com\Vivaldi\vivaldi_4_stagioni_primavera_*_(c)pollen.mid
       - name: VivaldiQuattoStagioniEstate
-        displayName: Le Quatto Stagioni, L'Estate
+        displayName: L'Estate
+        album: Le Quatto Stagioni
         artist: Vivaldi
         source: Music\Kunstderfuge.com\Vivaldi\vivaldi_4_stagioni_estate_*_(c)pollen.mid
       - name: VivaldiQuattoStagioniAutunno
-        displayName: Le Quatto Stagioni, L'Autunno
+        displayName: L'Autunno
+        album: Le Quatto Stagioni
         artist: Vivaldi
         source: Music\Kunstderfuge.com\Vivaldi\vivaldi_4_stagioni_autunno_*_(c)pollen.mid
       - name: VivaldiQuattoStagioniInverno
-        displayName: Le Quatto Stagioni, L'Inverno
+        displayName: L'Inverno
+        album: Le Quatto Stagioni
         artist: Vivaldi
         source: Music\Kunstderfuge.com\Vivaldi\vivaldi_4_stagioni_inverno_*_(c)pollen.mid
       # - name: ChopinPianoConcertoNo1InEMinor
