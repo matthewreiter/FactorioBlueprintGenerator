@@ -933,10 +933,17 @@ public static class MusicBoxCompiler
 
         for (var index = 0; index < charactersToDisplay; index++)
         {
-            var currentCharacter = (byte)text[index];
+            var currentCharacter = text[index];
             var positionInBlock = index % 4;
 
-            encodedBlock |= currentCharacter << (positionInBlock * 8);
+            var normalizedCharacter = currentCharacter switch
+            {
+                '‘' or '’' or '\u0092' => '\'',
+                '“' or '”' => '"',
+                _ => currentCharacter
+            };
+
+            encodedBlock |= (byte)normalizedCharacter << (positionInBlock * 8);
 
             if (positionInBlock == 3 || index == charactersToDisplay - 1)
             {
