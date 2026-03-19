@@ -146,7 +146,7 @@ public class TextDisplayGenerator : IBlueprintGenerator
                             {
                                 First_signal = digitSignal,
                                 Constant = value,
-                                Comparator = Comparators.IsEqual
+                                Comparator = value > 0 ? Comparators.IsEqual : Comparators.LessThanOrEqualTo
                             },
                             Icon = SignalID.CreateLetterOrDigit((char)('0' + value))
                         })]);

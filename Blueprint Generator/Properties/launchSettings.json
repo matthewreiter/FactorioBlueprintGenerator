@@ -78,7 +78,7 @@
     },
     "TrackElapsedTimeAndDurationTextDisplay": {
       "commandName": "Project",
-      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=A --Format=\"ddd\\0\\0dd:dd\\0\\0dd:dd\""
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=A --Format=\"ddd\\0\\0dd:dd\\0\\0-dd:dd\""
     },
     "Font": {
       "commandName": "Project",
