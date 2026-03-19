@@ -143,7 +143,11 @@ public static class MusicBoxCompiler
                         Name = "Blank",
                         DisplayName = "",
                         AddressIndex = 1000 - baseMetadataAddress,
-                        NoteGroups = [new() { Length = TimeSpan.FromSeconds(10), Notes = [] }],
+                        NoteGroups = [new()
+                        {
+                            Length = TimeSpan.FromSeconds(10),
+                            Notes = [new() { Instrument = Instrument.LeadGuitar, Number = 48 }] // Use a note that is out of range of the instrument
+                        }]
                     }
                 ]
             });
