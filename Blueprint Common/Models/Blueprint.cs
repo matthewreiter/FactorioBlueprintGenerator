@@ -706,6 +706,8 @@ namespace BlueprintCommon.Models
         /// </summary>
         public int Index { get; set; }
 
+        public static Filter Create(char letterOrDigit, int count) => Create(VirtualSignalNames.LetterOrDigit(letterOrDigit), count);
+
         public static Filter Create(string signalName, int count = 1) => Create(SignalID.Create(signalName), count);
 
         public static Filter Create(SignalID signal, int count = 1) => new Filter
