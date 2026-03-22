@@ -266,6 +266,9 @@ public static class MidiReader
                 }
 
                 currentLyrics += midiNote.Lyric;
+
+                midiEventWriter.WriteLine($"{midiNote.StartTime:mm\\:ss\\.fff}: '{midiNote.Lyric}'");
+
                 continue;
             }
 
