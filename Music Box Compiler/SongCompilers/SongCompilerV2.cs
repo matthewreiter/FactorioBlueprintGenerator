@@ -439,8 +439,8 @@ public class SongCompilerV2 : ISongCompiler
             var address = currentReferenceGroup[0].Address;
             var memoryCellData = new MemoryCellData([
                 .. currentReferenceGroup.Select((reference, index) => new KeyValuePair<string, int>(
-                            MusicBoxSignals.NoteGroupReferenceSignals[index],
-                            EncodeNoteGroupReference(reference.NoteGroup.Address, reference.NoteGroup.SubAddress, reference.Address - address - index + 1)))
+                    MusicBoxSignals.NoteGroupReferenceSignals[index],
+                    EncodeNoteGroupReference(reference.NoteGroup.Address, reference.NoteGroup.SubAddress, reference.Address - address - index + 1)))
             ]);
 
             if (songDataToCells.TryGetValue(memoryCellData, out var memoryCell))
