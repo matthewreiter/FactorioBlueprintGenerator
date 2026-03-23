@@ -374,11 +374,6 @@ public class SongCompilerV2 : ISongCompiler
         {
             var (subAddressToMoveFrom, noteGroupsToMoveFrom) = noteGroupsBySubAddress.Index().MaxBy(tuple => tuple.Item.Count);
 
-            if (noteGroupsToMoveFrom.Count == 0)
-            {
-                break;
-            }
-
             var subAddressToMoveTo = -1;
             for (subAddressToMoveTo = subAddressToMoveFrom - 1; subAddressToMoveTo >= 0; subAddressToMoveTo--)
             {
