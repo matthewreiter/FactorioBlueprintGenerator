@@ -32,8 +32,8 @@ public class SongCompilerV1 : ISongCompiler
         var songCells = new List<MemoryCell>();
         var noteGroupCells = new List<MemoryCell>();
         var metadataCells = new List<MemoryCell>();
-        var allNoteTuples = new HashSet<NoteTuple>();
-        var noteTuplesToAddresses = new Dictionary<NoteTuple, (int Address, int SubAddress)>();
+        var allNoteTuples = new HashSet<NoteTuple<int>>();
+        var noteTuplesToAddresses = new Dictionary<NoteTuple<int>, (int Address, int SubAddress)>();
         Dictionary<string, int> playlistAddresses = [];
         Dictionary<string, int> songMetadataAddresses = [];
         var currentAddress = baseAddress;
@@ -63,7 +63,7 @@ public class SongCompilerV1 : ISongCompiler
             return (int)((maxVolume - volume) / (maxVolume - minVolume) * (volumeLevels - 1));
         }
 
-        NoteTuple CreateNoteTuple(NoteGroup noteGroup)
+        NoteTuple<int> CreateNoteTuple(NoteGroup noteGroup)
         {
             var notes = noteGroup.Notes
                 .OrderBy(note => note.Instrument).ThenBy(note => note.Number)
@@ -99,7 +99,7 @@ public class SongCompilerV1 : ISongCompiler
             .Select(CreateNoteTuple)
             .ToList();
 
-        var noteGroupCellDataByFreeSpace = Enumerable.Range(0, maxFilters).Select(index => new Queue<List<NoteTuple>>()).ToList();
+        var noteGroupCellDataByFreeSpace = Enumerable.Range(0, maxFilters).Select(index => new Queue<List<NoteTuple<int>>>()).ToList();
 
         foreach (var noteTuple in noteTuples)
         {
@@ -112,7 +112,7 @@ public class SongCompilerV1 : ISongCompiler
 
             for (int freeSpace = spaceRequired; ; freeSpace++)
             {
-                List<NoteTuple> noteGroupCellData = null;
+                List<NoteTuple<int>> noteGroupCellData = null;
                 if (freeSpace >= noteGroupCellDataByFreeSpace.Count || noteGroupCellDataByFreeSpace[freeSpace].TryDequeue(out noteGroupCellData))
                 {
                     (noteGroupCellData ??= []).Add(noteTuple);

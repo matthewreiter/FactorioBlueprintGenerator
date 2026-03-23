@@ -5,15 +5,15 @@ using System.Linq;
 
 namespace MusicBoxCompiler.SongCompilers;
 
-public class NoteTuple(ICollection<int> notes) : IEnumerable<int>
+public class NoteTuple<T>(ICollection<T> notes) : IEnumerable<T>
 {
-    public IEnumerator<int> GetEnumerator() => notes.GetEnumerator();
+    public IEnumerator<T> GetEnumerator() => notes.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => notes.GetEnumerator();
 
     public override bool Equals(object obj)
     {
-        return obj is NoteTuple other && notes.SequenceEqual(other);
+        return obj is NoteTuple<T> other && notes.SequenceEqual(other);
     }
 
     public override int GetHashCode()

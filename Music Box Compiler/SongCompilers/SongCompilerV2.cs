@@ -39,17 +39,17 @@ public class SongCompilerV2 : ISongCompiler
         var baseMetadataAddress = configuration.BaseMetadataAddress ?? 1;
         var nextAddress = configuration.NextAddress ?? baseAddress;
 
-        var songCells = new List<MemoryCell>();
-        var noteGroupCells = new List<MemoryCell>();
-        var metadataCells = new List<MemoryCell>();
-        var songDataToCells = new Dictionary<MemoryCellData, MemoryCell>();
-        var noteGroupKeysToAddresses = new Dictionary<NoteGroupKey, (int Address, int SubAddress)>();
-        var nextNoteGroupCellBySubAddress = new int[MusicBoxSignals.AllNoteGroupSignals.Count];
+        List<MemoryCell> songCells = [];
+        List<MemoryCell> metadataCells = [];
+        List<List<NoteGroupReference>> noteGroupReferenceGroups = [];
+        Dictionary<NoteGroupKey, List<ChannelizedNoteGroup>> noteGroupsByKey = [];
+        Stack<ChannelizedNoteGroup>[] noteGroupsBySubAddress = [.. Enumerable.Range(0, MusicBoxSignals.AllNoteGroupSignals.Count).Select(_ => new Stack<ChannelizedNoteGroup>())];
         var channelRemainingTimes = new int[ChannelCount];
         Dictionary<string, int> playlistAddresses = [];
         Dictionary<string, int> songMetadataAddresses = [];
         var currentAddress = baseAddress;
         var totalPlayTime = 0;
+        ChannelizedNoteGroup emptyNoteGroupData = new(new(new([]), null), []) { Address = 1 };
 
         Filter AddJump(int targetAddress, bool isEnabled = true)
         {
@@ -93,6 +93,17 @@ public class SongCompilerV2 : ISongCompiler
             return encodedOffset + (isStartOfLine ? 1 << LyricOffsetBits : 0);
         }
 
+        long EncodeNoteTuple(Note note)
+        {
+            var (encodedNote, encodedPreviousChannel) = note.PreviousNote is not null
+                ? (EncodeVolumeChange(note), note.PreviousNote.Channel.Value + 1)
+                : (EncodeNote(note), 0);
+
+            return encodedNote + (encodedPreviousChannel << 32);
+        }
+
+        NoteTuple<long> CreateNoteTuple(IEnumerable<Note> notes) => new([.. notes.Select(EncodeNoteTuple).Order()]);
+
         var allSongs = playlists.SelectMany(playlist => playlist.Songs).ToList();
 
         var currentMetadataAddressIndex = 0;
@@ -127,15 +138,14 @@ public class SongCompilerV2 : ISongCompiler
             {
                 var metadataAddress = baseMetadataAddress + (song.AddressIndex ?? AllocateNextMetadataAddress());
                 var songAddress = currentAddress;
-                List<(int Address, int NoteGroupAddress, int SubAddress, List<(int Channel, int Note)> Notes)> noteGroups = [];
-                List<List<(int Address, int NoteGroupAddress, int SubAddress, List<(int Channel, int Note)> Notes)>> noteGroupGroups = [];
+                List<NoteGroupReference> noteGroupReferences = [];
                 string currentLyrics = null;
                 var timeDeficit = 0;
 
-                void StartNewNoteGroupGroup()
+                void StartNewNoteGroupReferenceGroup()
                 {
-                    noteGroupGroups.Add(noteGroups);
-                    noteGroups = [];
+                    noteGroupReferenceGroups.Add(noteGroupReferences);
+                    noteGroupReferences = [];
                 }
 
                 trackNumber++;
@@ -165,53 +175,27 @@ public class SongCompilerV2 : ISongCompiler
                         timeDeficit = 0;
                     }
 
-                    var channelNotes = new int[ChannelCount];
-
-                    foreach (var note in noteGroup.Notes.OrderBy(note => note.Instrument).ThenBy(note => note.Number))
+                    // Propagate channels for sustained notes
+                    foreach (var note in noteGroup.Notes)
                     {
-                        if (note.PreviousNote is not null)
-                        {
-                            // Use the same channel as the previous note
-                            var previousChannel = note.PreviousNote.Channel;
-                            if (!previousChannel.HasValue)
-                            {
-                                continue;
-                            }
-
-                            // Add the volume change to the channel
-                            note.Channel = previousChannel;
-                            channelNotes[previousChannel.Value] += EncodeVolumeChange(note);
-                        }
-                        else
-                        {
-                            // Find the next available channel
-                            var channelIndex = Array.IndexOf(channelRemainingTimes, 0);
-
-                            // If all channels are busy, give up
-                            if (channelIndex == -1)
-                            {
-                                continue;
-                            }
-
-                            // Allocate time on the channel
-                            var noteDuration = EncodeDuration(note.Duration);
-                            channelRemainingTimes[channelIndex] = noteDuration + ChannelCooldownTicks;
-
-                            // Add the note to the channel
-                            note.Channel = channelIndex;
-                            channelNotes[channelIndex] = EncodeNote(note);
-                        }
+                        note.Channel = note.PreviousNote?.Channel;
                     }
 
-                    var notes = channelNotes
-                        .Select((note, channelIndex) => (Channel: channelIndex, Note: note))
-                        .Where(note => note.Note != 0)
+                    var sustainedNotes = noteGroup.Notes
+                        .Where(note => note.Channel is not null && EncodeVolumeChange(note) != 0)
                         .ToList();
 
-                    if (notes.Count > 0 || noteGroup.Lyrics is not null)
+                    var availableChannelCount = channelRemainingTimes.Count(channelTime => channelTime == 0);
+                    var newNotes = noteGroup.Notes
+                        .Where(note => note.PreviousNote is null)
+                        .OrderBy(note => note.Instrument)
+                        .ThenBy(note => note.Number)
+                        .Take(availableChannelCount)
+                        .ToList();
+
+                    if (sustainedNotes.Count > 0 || newNotes.Count > 0 || noteGroup.Lyrics is not null)
                     {
-                        string lyrics = null;
-                        int lyricOffset = 0;
+                        LyricInfo lyricInfo = null;
 
                         if (noteGroup.Lyrics is not null)
                         {
@@ -222,62 +206,86 @@ public class SongCompilerV2 : ISongCompiler
 
                             // Lyrics are packed into integers and can therefore only be shifted by multiples of 4 characters.
                             // This means that if the existing line is not a multiple of 4 characters, the last few need to get included in the lyrics.
-                            lyricOffset = currentLyrics is not null ? currentLyrics.Length / 4 : 0;
-                            lyrics = (currentLyrics is not null ? currentLyrics[(lyricOffset * 4)..] : "") + noteGroup.Lyrics;
+                            var lyricOffset = currentLyrics is not null ? currentLyrics.Length / 4 : 0;
+                            var lyrics = (currentLyrics is not null ? currentLyrics[(lyricOffset * 4)..] : "") + noteGroup.Lyrics;
+                            lyricInfo = new(lyrics, lyricOffset, noteGroup.IsStartOfLine);
                             currentLyrics += noteGroup.Lyrics;
                         }
 
-                        var noteGroupKey = new NoteGroupKey(new(channelNotes), lyrics, lyricOffset, noteGroup.IsStartOfLine);
+                        var noteGroupKey = new NoteGroupKey(CreateNoteTuple([.. sustainedNotes, .. newNotes]), lyricInfo);
 
-                        if (!noteGroupKeysToAddresses.TryGetValue(noteGroupKey, out var noteGroupAddress))
+                        if (!noteGroupsByKey.TryGetValue(noteGroupKey, out var noteGroupsWithKey))
                         {
+                            noteGroupsWithKey = [];
+                            noteGroupsByKey[noteGroupKey] = noteGroupsWithKey;
+                        }
+
+                        var channelizedNoteGroup = noteGroupsWithKey.FirstOrDefault(noteGroup => noteGroup.Notes.All(channelNote => channelRemainingTimes[channelNote.Channel] == 0));
+                        var channelNotes = new int[ChannelCount];
+
+                        foreach (var note in sustainedNotes)
+                        {
+                            // Add the volume change to the channel
+                            channelNotes[note.Channel.Value] += EncodeVolumeChange(note);
+                        }
+
+                        foreach (var note in newNotes)
+                        {
+                            var encodedNote = EncodeNote(note);
+
+                            // Find the next available channel
+                            var channelIndex = channelizedNoteGroup is not null
+                                ? channelizedNoteGroup.Notes.FirstOrDefault(n => n.Note == encodedNote)?.Channel ?? -1
+                                : Array.IndexOf(channelRemainingTimes, 0);
+
+                            Debug.Assert(channelIndex >= 0);
+
+                            // Allocate time on the channel
+                            var noteDuration = EncodeDuration(note.Duration);
+                            channelRemainingTimes[channelIndex] = noteDuration + ChannelCooldownTicks;
+
+                            // Add the note to the channel
+                            note.Channel = channelIndex;
+                            channelNotes[channelIndex] = encodedNote;
+                        }
+
+                        if (channelizedNoteGroup is null)
+                        {
+                            var notes = channelNotes
+                                .Select((note, channelIndex) => new ChannelNote(channelIndex, note))
+                                .Where(note => note.Note != 0)
+                                .ToList();
+
+                            Debug.Assert(notes.Count > 0 || noteGroup.Lyrics is not null);
+
                             var size = notes.Count > 0 ? notes.Max(note => note.Channel) : 1;
-                            var subAddress = NoteGroupsBySize[size];
-                            var noteGroupCellIndex = nextNoteGroupCellBySubAddress[subAddress]++;
-                            noteGroupAddress = (baseNoteGroupAddress + noteGroupCellIndex, subAddress);
-                            noteGroupKeysToAddresses[noteGroupKey] = noteGroupAddress;
+                            var maxSubAddress = NoteGroupsBySize[size];
 
-                            var noteGroupSignals = MusicBoxSignals.AllNoteGroupSignals[subAddress];
-                            var noteGroupFilters = notes.Select(note => Filter.Create(noteGroupSignals[note.Channel], note.Note)).ToList();
-
-                            if (noteGroup.Lyrics is not null)
-                            {
-                                var lyricSignals = MusicBoxSignals.AllLyricSignals[subAddress];
-                                noteGroupFilters.Add(Filter.Create(lyricSignals[0], EncodeLyricMetadata(lyricOffset, noteGroup.IsStartOfLine)));
-                                noteGroupFilters.AddRange(FilterUtils.CreateFiltersForString(lyrics, 16, lyricSignals[1..]));
-                            }
-
-                            if (noteGroupCellIndex < noteGroupCells.Count)
-                            {
-                                noteGroupCells[noteGroupCellIndex].Filters.AddRange(noteGroupFilters);
-                            }
-                            else
-                            {
-                                Debug.Assert(noteGroupCellIndex == noteGroupCells.Count);
-                                noteGroupCells.Add(new MemoryCell { Address = noteGroupAddress.Address, Filters = noteGroupFilters });
-                            }
+                            channelizedNoteGroup = new(noteGroupKey, notes);
+                            noteGroupsWithKey.Add(channelizedNoteGroup);
+                            noteGroupsBySubAddress[maxSubAddress].Push(channelizedNoteGroup);
                         }
 
-                        // Start a new note group group if the time offset gets too big to encode
-                        if (noteGroups.Count > 0 && currentAddress - noteGroups[0].Address - noteGroups.Count + 1 >= (1 << MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits))
+                        // Start a new note group reference group if the time offset gets too big to encode
+                        if (noteGroupReferences.Count > 0 && currentAddress - noteGroupReferences[0].Address - noteGroupReferences.Count + 1 >= (1 << MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits))
                         {
-                            // Fill up the current note group group to ensure that all registers in the decoder get loaded instead of being left with the previous values
-                            for (var index = noteGroups.Count; index < MusicBoxSignals.NoteGroupReferenceSignals.Count; index++)
+                            // Fill up the current note group reference group to ensure that all registers in the decoder get loaded instead of being left with the previous values
+                            for (var index = noteGroupReferences.Count; index < MusicBoxSignals.NoteGroupReferenceSignals.Count; index++)
                             {
-                                noteGroups.Add((noteGroups[0].Address + noteGroups.Count - 2 + (1 << MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits), 1, 0, []));
+                                noteGroupReferences.Add(new(noteGroupReferences[0].Address + noteGroupReferences.Count - 2 + (1 << MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits), emptyNoteGroupData));
                             }
 
-                            StartNewNoteGroupGroup();
+                            StartNewNoteGroupReferenceGroup();
                         }
 
-                        noteGroups.Add((currentAddress, noteGroupAddress.Address, noteGroupAddress.SubAddress, notes));
+                        noteGroupReferences.Add(new(currentAddress, channelizedNoteGroup));
 
-                        Debug.Assert(noteGroups.Count <= MusicBoxSignals.NoteGroupReferenceSignals.Count);
+                        Debug.Assert(noteGroupReferences.Count <= MusicBoxSignals.NoteGroupReferenceSignals.Count);
 
-                        if (noteGroups.Count == MusicBoxSignals.NoteGroupReferenceSignals.Count)
+                        if (noteGroupReferences.Count == MusicBoxSignals.NoteGroupReferenceSignals.Count)
                         {
                             var minimumCellLength = MusicBoxSignals.NoteGroupReferenceSignals.Count + 1; // The number of cycles required to finish loading all of the note groups
-                            var cellLength = currentAddress + noteGroupLength - noteGroups[0].Address;
+                            var cellLength = currentAddress + noteGroupLength - noteGroupReferences[0].Address;
 
                             if (cellLength < minimumCellLength)
                             {
@@ -286,7 +294,7 @@ public class SongCompilerV2 : ISongCompiler
                                 timeDeficit += extension;
                             }
 
-                            StartNewNoteGroupGroup();
+                            StartNewNoteGroupReferenceGroup();
                         }
                     }
 
@@ -299,9 +307,9 @@ public class SongCompilerV2 : ISongCompiler
                     }
                 }
 
-                if (noteGroups.Count > 0)
+                if (noteGroupReferences.Count > 0)
                 {
-                    StartNewNoteGroupGroup();
+                    StartNewNoteGroupReferenceGroup();
                 }
 
                 var songLength = currentAddress - songAddress;
@@ -313,34 +321,6 @@ public class SongCompilerV2 : ISongCompiler
                     AddressRanges = [(songAddress, currentAddress)], // From the beginning of the song to the jump at the end
                     Filters = [Filter.Create('Y', metadataAddress)]
                 });
-
-                // Add memory cells for the note group groups in the songs
-                foreach (var currentNoteGroupGroup in noteGroupGroups)
-                {
-                    var address = currentNoteGroupGroup[0].Address;
-                    var memoryCellData = new MemoryCellData([
-                        .. currentNoteGroupGroup.Select((noteGroup, index) => new KeyValuePair<string, int>(
-                            MusicBoxSignals.NoteGroupReferenceSignals[index],
-                            EncodeNoteGroupReference(noteGroup.NoteGroupAddress, noteGroup.SubAddress, noteGroup.Address - address - index + 1)))
-                    ]);
-
-                    if (songDataToCells.TryGetValue(memoryCellData, out var memoryCell))
-                    {
-                        // Reuse an existing memory cell
-                        memoryCell.AddressRanges.Add((address, address));
-                    }
-                    else
-                    {
-                        // Create a new memory cell
-                        memoryCell = new MemoryCell
-                        {
-                            Address = address,
-                            Filters = memoryCellData.ToFilters()
-                        };
-                        songCells.Add(memoryCell);
-                        songDataToCells[memoryCellData] = memoryCell;
-                    }
-                }
 
                 // Create a jump back to the beginning of the song
                 AddJump(songAddress, isEnabled: song.Loop);
@@ -389,6 +369,98 @@ public class SongCompilerV2 : ISongCompiler
 
         AddJump(nextAddress);
 
+        // Rebalance note groups, moving note groups from sub-addresses with more note groups to smaller-numbered sub-addresses (which support larger note groups) that have fewer note groups
+        while (true)
+        {
+            var (subAddressToMoveFrom, noteGroupsToMoveFrom) = noteGroupsBySubAddress.Index().MaxBy(tuple => tuple.Item.Count);
+
+            if (noteGroupsToMoveFrom.Count == 0)
+            {
+                break;
+            }
+
+            var subAddressToMoveTo = -1;
+            for (subAddressToMoveTo = subAddressToMoveFrom - 1; subAddressToMoveTo >= 0; subAddressToMoveTo--)
+            {
+                if (noteGroupsBySubAddress[subAddressToMoveTo].Count < noteGroupsToMoveFrom.Count)
+                {
+                    break;
+                }
+            }
+
+            if (subAddressToMoveTo < 0)
+            {
+                break;
+            }
+
+            var noteGroupToMove = noteGroupsBySubAddress[subAddressToMoveFrom].Pop();
+            noteGroupsBySubAddress[subAddressToMoveTo].Push(noteGroupToMove);
+        }
+
+        List<MemoryCell> noteGroupCells = [];
+
+        // Add memory cells for the note groups
+        foreach (var (subAddress, noteGroups) in noteGroupsBySubAddress.Index())
+        {
+            foreach (var (noteGroupCellIndex, noteGroup) in noteGroups.Index())
+            {
+                var address = baseNoteGroupAddress + noteGroupCellIndex;
+
+                noteGroup.Address = address;
+                noteGroup.SubAddress = subAddress;
+
+                var noteGroupSignals = MusicBoxSignals.AllNoteGroupSignals[subAddress];
+                var noteGroupFilters = noteGroup.Notes.Select(note => Filter.Create(noteGroupSignals[note.Channel], note.Note)).ToList();
+
+                if (noteGroup.Key.LyricInfo is not null)
+                {
+                    var lyricSignals = MusicBoxSignals.AllLyricSignals[subAddress];
+                    noteGroupFilters.Add(Filter.Create(lyricSignals[0], EncodeLyricMetadata(noteGroup.Key.LyricInfo.LyricOffset, noteGroup.Key.LyricInfo.IsStartOfLine)));
+                    noteGroupFilters.AddRange(FilterUtils.CreateFiltersForString(noteGroup.Key.LyricInfo.Lyrics, 16, lyricSignals[1..]));
+                }
+
+                if (noteGroupCellIndex < noteGroupCells.Count)
+                {
+                    noteGroupCells[noteGroupCellIndex].Filters.AddRange(noteGroupFilters);
+                }
+                else
+                {
+                    Debug.Assert(noteGroupCellIndex == noteGroupCells.Count);
+                    noteGroupCells.Add(new MemoryCell { Address = address, Filters = noteGroupFilters });
+                }
+            }
+        }
+
+        Dictionary<MemoryCellData, MemoryCell> songDataToCells = [];
+
+        // Add memory cells for the note group reference groups
+        foreach (var currentReferenceGroup in noteGroupReferenceGroups)
+        {
+            var address = currentReferenceGroup[0].Address;
+            var memoryCellData = new MemoryCellData([
+                .. currentReferenceGroup.Select((reference, index) => new KeyValuePair<string, int>(
+                            MusicBoxSignals.NoteGroupReferenceSignals[index],
+                            EncodeNoteGroupReference(reference.NoteGroup.Address, reference.NoteGroup.SubAddress, reference.Address - address - index + 1)))
+            ]);
+
+            if (songDataToCells.TryGetValue(memoryCellData, out var memoryCell))
+            {
+                // Reuse an existing memory cell
+                memoryCell.AddressRanges.Add((address, address));
+            }
+            else
+            {
+                // Create a new memory cell
+                memoryCell = new MemoryCell
+                {
+                    Address = address,
+                    Filters = memoryCellData.ToFilters()
+                };
+                songCells.Add(memoryCell);
+                songDataToCells[memoryCellData] = memoryCell;
+            }
+        }
+
         songCells.AddRange(noteGroupCells);
 
         return new CompiledSongs
@@ -401,7 +473,19 @@ public class SongCompilerV2 : ISongCompiler
         };
     }
 
-    private record NoteGroupKey(NoteTuple NoteTuple, string Lyrics = null, int LyricOffset = 0, bool IsStartOfLine = false);
+    private record NoteGroupReference(int Address, ChannelizedNoteGroup NoteGroup);
+
+    private record ChannelizedNoteGroup(NoteGroupKey Key, List<ChannelNote> Notes)
+    {
+        public int Address { get; set; }
+        public int SubAddress { get; set; }
+    }
+
+    private record NoteGroupKey(NoteTuple<long> NoteTuple, LyricInfo LyricInfo);
+
+    private record LyricInfo(string Lyrics = null, int LyricOffset = 0, bool IsStartOfLine = false);
+
+    private record ChannelNote(int Channel, int Note);
 
     private class MemoryCellData(List<KeyValuePair<string, int>> signals) : IEnumerable<KeyValuePair<string, int>>
     {
