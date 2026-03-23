@@ -106,7 +106,15 @@
         album: Le Quatto Stagioni
         artist: Vivaldi
         source: Music\Kunstderfuge.com\Vivaldi\vivaldi_4_stagioni_inverno_*_(c)pollen.mid
-      # - name: ChopinPianoConcertoNo1InEMinor
-      #   displayName: Piano Concerto No. 1 in E Minor, Op. 11
-      #   artist: Chopin
-      #   source: Music\Kunstderfuge.com\Chopin\concerto_11_*_(c)oguri.mid
+      - name: BrahmsViolinConcertoInDMajor
+        displayName: Violin Concerto in D major
+        artist: Brahms
+        source: Music\Kunstderfuge.com\Brahms\violin_concert_1_(c)unknown.mid
+      - name: Brahms3rdSymphony
+        displayName: Symphony No. 3 in F major
+        artist: Brahms
+        source: Music\Kunstderfuge.com\Brahms\symphony_3_*_(c)lucarelli.mid
+      - name: ChopinPianoConcertoNo1InEMinor
+        displayName: Piano Concerto No. 1 in E Minor, Op. 11
+        artist: Chopin
+        source: Music\Kunstderfuge.com\Chopin\concerto_11_*_(c)oguri.mid
