@@ -86,6 +86,7 @@
         displayName: Concerto in C-Major
         artist: Vivaldi
         source: Music\Kunstderfuge.com\Vivaldi\vivaldi_concerto_in_c_major_*_(c)icking-archive.mid
+        volume: 200
       - name: VivaldiQuattoStagioniPrimavera
         displayName: La Primavera
         album: Le Quatto Stagioni
@@ -114,7 +115,9 @@
         displayName: Symphony No. 3 in F major
         artist: Brahms
         source: Music\Kunstderfuge.com\Brahms\symphony_3_*_(c)lucarelli.mid
+        volume: 200
       - name: ChopinPianoConcertoNo1InEMinor
         displayName: Piano Concerto No. 1 in E Minor, Op. 11
         artist: Chopin
         source: Music\Kunstderfuge.com\Chopin\concerto_11_*_(c)oguri.mid
+        volume: 200
