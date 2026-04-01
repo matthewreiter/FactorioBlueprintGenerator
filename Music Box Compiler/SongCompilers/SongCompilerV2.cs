@@ -18,6 +18,7 @@ public class SongCompilerV2 : ISongCompiler
     private const int VolumeCount = 100;
     private static readonly int ChannelCount = MusicBoxSignals.SpeakerChannelSignals.Count;
     private const int LyricOffsetBits = 8;
+    private const int LyricLineWidth = 56;
     private const int MinimumNoteDuration = 10;
     private const int MaximumNoteDuration = 44000;
     private const int ChannelCooldownTicks = 1;
@@ -199,7 +200,8 @@ public class SongCompilerV2 : ISongCompiler
 
                         if (noteGroup.Lyrics is not null)
                         {
-                            if (noteGroup.IsStartOfLine)
+                            var isStartOfLine = noteGroup.IsStartOfLine || (currentLyrics?.Length ?? 0) + noteGroup.Lyrics.Length > LyricLineWidth;
+                            if (isStartOfLine)
                             {
                                 currentLyrics = null;
                             }
@@ -208,7 +210,7 @@ public class SongCompilerV2 : ISongCompiler
                             // This means that if the existing line is not a multiple of 4 characters, the last few need to get included in the lyrics.
                             var lyricOffset = currentLyrics is not null ? currentLyrics.Length / 4 : 0;
                             var lyrics = (currentLyrics is not null ? currentLyrics[(lyricOffset * 4)..] : "") + noteGroup.Lyrics;
-                            lyricInfo = new(lyrics, lyricOffset, noteGroup.IsStartOfLine);
+                            lyricInfo = new(lyrics, lyricOffset, isStartOfLine);
                             currentLyrics += noteGroup.Lyrics;
                         }
 
