@@ -672,7 +672,7 @@ public static class MidiReader
                             if (currentTime > TimeSpan.Zero) // Lyrics at time zero are copyright notices rather than actual lyrics, so ignore them
                             {
                                 // Use Latin1 for lyrics to handle special apostrophes
-                                var lyric = Encoding.Latin1.GetString(midiEvent.ExtraData);
+                                var lyric = Encoding.Latin1.GetString(midiEvent.ExtraData).Trim('\0');
 
                                 isStartOfLine |= lyric.StartsWith('\r') || lyric.StartsWith('\n');
                                 var nextIsStartOfLine = lyric.EndsWith('\r') || lyric.EndsWith('\n');
