@@ -32,7 +32,7 @@ playlists:
           pluckedStrings: 12
           celesta: 12
       - name: WithALittleHelpFromMyFriends
-        displayName: W/ a Little Help From My Friends
+        displayName: With a Little Help From My Friends
         album: Sgt. Pepper's Lonely Hearts Club Band
         artist: The Beatles
         source: Music\BitMidi\beatles-little_help_from_you_friends.mid
@@ -391,6 +391,119 @@ playlists:
         album: Hemispheres
         artist: Rush
         source: Music\BitMidi\The-Trees.mid
+      - name: ColdAsIce
+        displayName: Cold as Ice
+        album: Foreigner
+        artist: Foreigner
+        source: Music\BitMidi\Cold-As-Ice-2.mid
+        volume: 140
+      - name: SmellsLikeTeenSpirit
+        displayName: Smells Like Teen Spirit
+        album: Nevermind
+        artist: Nirvana
+        source: Music\BitMidi\NIRVANA.Smells like teen spirit K.mid
+      - name: AttackOnTitanJiyuuNoTsubasa
+        displayName: Jiyuu no Tsubasa
+        album: Attack on Titan
+        artist: Linked Horizon
+        source: Music\BitMidi\Attack on Titan - Jiyuu no Tsubasa.mid
+        volume: 150
+      - name: BackstreetBoysIWantItThatWay
+        displayName: I Want It That Way
+        album: Millennium
+        artist: Backstreet Boys
+        source: Music\BitMidi\Backstreet Boys - I Want It That Way.mid
+        volume: 150
+      - name: BillyJoelPianoMan
+        displayName: Piano Man
+        album: Piano Man
+        artist: Billy Joel
+        source: Music\BitMidi\Billy Joel - Piano Man.mid
+        volume: 150
+      - name: DebussyClairDeLune
+        displayName: Clair de Lune
+        album: Suite Bergamasque
+        artist: Debussy
+        source: Music\BitMidi\debussy-clair-de-lune.mid
+        volume: 300
+      - name: FinalFantasyVIIMainTheme
+        displayName: Final Fantasy VII Main Theme
+        album: Final Fantasy VII
+        artist: Nobuo Uematsu
+        source: Music\BitMidi\Final Fantasy VII - Final Fantasy VII Main Theme.mid
+        volume: 120
+      - name: FlyMeToTheMoon
+        displayName: Fly Me to the Moon
+        album: It Might as Well Be Swing
+        artist: Frank Sinatra
+        source: Music\BitMidi\Fly-Me-To-The-Moon.mid
+        volume: 120
+      - name: GangstasParadise
+        displayName: Gangsta's Paradise
+        album: Gangsta's Paradise
+        artist: Coolio
+        source: Music\BitMidi\Gangsta's-Paradise-2.mid
+        volume: 60
+        instrumentVolumes:
+          piano: 220
+      - name: SweetChildOMine
+        displayName: Sweet Child O' Mine
+        album: Appetite for Destruction
+        artist: Guns N' Roses
+        source: Music\BitMidi\Guns n Roses - Sweet Child O Mine.mid
+      - name: OneStepCloser
+        displayName: One Step Closer
+        album: Hybrid Theory
+        artist: Linkin Park
+        source: Music\BitMidi\Linkin Park - One Step Closer.mid
+        volume: 90
+        fade:
+          duration: 0:00:05
+      - name: BeatIt
+        displayName: Beat It
+        album: Thriller
+        artist: Michael Jackson
+        source: Music\BitMidi\Michael Jackson - Beat It.mid
+        volume: 100
+        instrumentVolumes:
+          bassGuitar: 120
+          leadGuitar: 120
+      - name: BillieJean
+        displayName: Billie Jean
+        album: Thriller
+        artist: Michael Jackson
+        source: Music\BitMidi\Michael Jackson - Billie Jean.mid
+      - name: Californication
+        displayName: Californication
+        album: Californication
+        artist: Red Hot Chili Peppers
+        source: Music\BitMidi\Red Hot Chili Peppers - Californication.mid
+        volume: 120
+        instrumentVolumes:
+          celesta: 200
+      - name: AllStar
+        displayName: All Star
+        album: Astro Lounge
+        artist: Smash Mouth
+        source: Music\BitMidi\SMASH MOUTH.All star.mid
+      - name: SonicGreenHillZone
+        displayName: Green Hill Zone
+        album: Sonic the Hedgehog
+        artist: Sega
+        source: Music\BitMidi\Sonic the Hedgehog - Green Hill Zone.mid
+        volume: 200
+      - name: ZeldaSongOfTime
+        displayName: Song of Time
+        album: Ocarina of Time
+        artist: Koji Kondo
+        source: Music\BitMidi\The Legend of Zelda Ocarina of Time - Song of Time.mid
+        volume: 180
+      - name: ZeldaSongOfStorms
+        displayName: Song of Storms
+        album: Ocarina of Time
+        artist: Koji Kondo
+        source: Music\BitMidi\The Legend of Zelda Ocarina of Time - Song of Storms.mid
+        volume: 130
 
       # End with Closing Time
       - name: ClosingTime

@@ -26,11 +26,31 @@
         album: Goldberg Variations
         artist: Bach
         source: Music\Kunstderfuge.com\Bach\goldberg_variations_988_01_(c)degiusti.mid
+      - name: BachConcertoInDMajor
+        displayName: Concerto in D major
+        artist: Bach
+        source: Music\Kunstderfuge.com\Bach\concertos_bwv-972_(c)sankey.mid
+      - name: BachConcertoInGMajor
+        displayName: Concerto in G major
+        artist: Bach
+        source: Music\Kunstderfuge.com\Bach\concertos_bwv-973_(c)sankey.mid
+      - name: BachConcertoInDMinor
+        displayName: Concerto in D minor
+        artist: Bach
+        source: Music\Kunstderfuge.com\Bach\concertos_bwv-974_(c)sankey.mid
+      - name: BachConcertoInGMinor
+        displayName: Concerto in G minor
+        artist: Bach
+        source: Music\Kunstderfuge.com\Bach\concertos_bwv-975_(c)sankey.mid
+      - name: BachConcertoInCMajor
+        displayName: Concerto in C major
+        artist: Bach
+        source: Music\Kunstderfuge.com\Bach\concertos_bwv-976_(c)sankey.mid
       - name: BeethovenOpus57
         displayName: "Opus #57"
         artist: Beethoven
         source: Music\BitMidi\Beethoven-Opus-57.mid
-        volume: 140
+        volume: 150
         fade:
           duration: 0:00:15
       - name: Beethoven1stSymphony
@@ -111,11 +131,19 @@
         displayName: Violin Concerto in D major
         artist: Brahms
         source: Music\Kunstderfuge.com\Brahms\violin_concert_1_(c)unknown.mid
-      - name: Brahms3rdSymphony
-        displayName: Symphony No. 3 in F major
+      - name: BrahmsVariationsOnAThemeByHaydn
+        displayName: Variations on a Theme by Haydn in B flat major
         artist: Brahms
-        source: Music\Kunstderfuge.com\Brahms\symphony_3_*_(c)lucarelli.mid
-        volume: 200
+        source: Music\Kunstderfuge.com\Brahms\variations_haydn_56a_(bakels).mid
+      # - name: Brahms2ndSymphony
+      #   displayName: Symphony No. 2 in D major
+      #   artist: Brahms
+      #   source: Music\Kunstderfuge.com\Brahms\symphony_2_*_(c)lucarelli.mid
+      # - name: Brahms3rdSymphony
+      #   displayName: Symphony No. 3 in F major
+      #   artist: Brahms
+      #   source: Music\Kunstderfuge.com\Brahms\symphony_3_*_(c)lucarelli.mid
+      #   volume: 200
       - name: ChopinPianoConcertoNo1InEMinor
         displayName: Piano Concerto No. 1 in E Minor, Op. 11
         artist: Chopin
