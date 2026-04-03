@@ -448,6 +448,7 @@ public static class MidiReader
             if (isNoteInRange)
             {
                 midiNote.EffectiveNoteNumber = effectiveNoteNumber;
+                midiNote.Instrument = instrument;
                 yield return midiNote;
             }
         }
@@ -896,7 +897,7 @@ public static class MidiReader
         public string OriginalInstrumentName { get; init; }
         public string OriginalNoteName { get; init; }
         public int OriginalNoteNumber { get; init; }
-        public Instrument Instrument { get; init; }
+        public Instrument Instrument { get; set; }
         public int RelativeNoteNumber { get; init; }
         public double Velocity { get; init; }
         public ChangeableValue Pressure { get; init; }
