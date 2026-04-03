@@ -137,7 +137,7 @@ public static class MidiReader
     private static readonly TimeSpan TickDuration = TimeSpan.FromMilliseconds(1000d / 60); // 1000ms / 60fps (approximately 17 ms per tick)
     private const double PressureExponent = 2;
     private static readonly int[] HarmonicOffsets = [12, 19, 24];
-    private const double HarmonicVelocityMultiplier = 0.8; // Reduce the volume of the harmonics so that the combined volume is closer to the original note
+    private const double HarmonicVelocityMultiplier = 0.6; // Reduce the volume of the harmonics so that the combined volume is closer to the original note
     private const int UnreasonablyHighOctave = 12; // This is to ensure that we don't have a negative number before calculating the octave, which would throw off the result
     private const double MinimumVolume = 0.01;
 
