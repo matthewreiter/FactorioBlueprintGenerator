@@ -18,6 +18,10 @@ namespace MusicBoxCompiler;
 
 public static class MusicBoxCompiler
 {
+    private static readonly IDeserializer musicConfigDeserializer = new DeserializerBuilder()
+        .WithNamingConvention(CamelCaseNamingConvention.Instance)
+        .Build();
+
     public static void Run(IConfigurationRoot configuration)
     {
         Run(configuration.Get<MusicBoxConfiguration>());
@@ -51,6 +55,7 @@ public static class MusicBoxCompiler
                 {
                     Name = playlistConfig.Name,
                     Songs = playlistConfig.Songs
+                        .Where(songConfig => !songConfig.Disabled)
                         .SelectMany(songConfig => Path.GetExtension(songConfig.Source).ToLower() switch
                         {
                             ".yaml" => LoadConfig(songConfig.Source).Playlists.Find(playlist => playlist.Name == songConfig.SourcePlaylist)?.Songs ?? [],
@@ -85,21 +90,15 @@ public static class MusicBoxCompiler
                         })
                         .ToList() // Store the intermediate results as a list to preserve the order when parallelized
                         .AsParallel()
-                        .Where(songConfig => !songConfig.Disabled)
                         .Select(songConfig =>
                             Path.GetExtension(songConfig.Source).ToLower() switch
                             {
                                 ".xlsx" => SpreadsheetReader.ReadSongFromSpreadsheet(songConfig.Source, songConfig.SpreadsheetTab),
                                 ".mid" => MidiReader.ReadSong(
-                                    songConfig.Source,
+                                    songConfig,
                                     outputMidiEventsFile != null,
-                                    songConfig.InstrumentOffsets,
-                                    ProcessMasterVolume(songConfig.Volume),
-                                    ProcessInstrumentVolumes(songConfig.InstrumentVolumes),
-                                    !songConfig.SuppressInstrumentFallback,
-                                    songConfig.ExpandNotes && !songCompiler.SupportsSustainedNotes,
-                                    songCompiler.MaxConcurrentNotes,
-                                    songConfig.Fade),
+                                    songCompiler.SupportsSustainedNotes,
+                                    songCompiler.MaxConcurrentNotes),
                                 _ => throw new Exception($"Unsupported source file extension for {songConfig.Source}")
                             }
                             with
@@ -157,27 +156,19 @@ public static class MusicBoxCompiler
     {
         var basePath = Path.GetDirectoryName(configFile);
         using var reader = new StreamReader(configFile);
-        var deserializer = new DeserializerBuilder()
-            .WithNamingConvention(CamelCaseNamingConvention.Instance)
-            .Build();
-        var config = deserializer.Deserialize<MusicConfig>(reader);
+        var config = musicConfigDeserializer.Deserialize<MusicConfig>(reader);
 
-        return config with
+        // Update song sources to be absolute paths based on the config file location
+        foreach (var playlist in config.Playlists)
         {
-            Playlists = [.. config.Playlists.Select(playlistConfig => playlistConfig with
+            foreach (var song in playlist.Songs)
             {
-                Songs = [.. playlistConfig.Songs.Select(songConfig => songConfig with
-                {
-                    Source = Path.Combine(basePath, songConfig.Source)
-                })]
-            })]
-        };
+                song.Source = Path.Combine(basePath, song.Source);
+            }
+        }
+
+        return config;
     }
-
-    private static double ProcessMasterVolume(double? masterVolume) => (masterVolume ?? 100) / 100;
-
-    private static Dictionary<Instrument, double> ProcessInstrumentVolumes(Dictionary<Instrument, double> instrumentVolumes) =>
-        instrumentVolumes?.Select(entry => (entry.Key, Value: entry.Value / 100))?.ToDictionary(entry => entry.Key, entry => entry.Value);
 
     private static Blueprint CreateBlueprintFromCompiledSongs(CompiledSongs compiledSongs, MusicBoxConfiguration configuration)
     {

@@ -148,8 +148,15 @@ public static class MidiReader
             .ToDictionary(entry => entry.channel, entry => entry.Instrument);
     }
 
-    public static Song ReadSong(string midiFile, bool debug, Dictionary<Instrument, int> instrumentOffsets, double masterVolume, Dictionary<Instrument, double> instrumentVolumes, bool allowInstrumentFallback, bool expandNotes, int? maxConcurrentNotes, FadeConfig fade)
+    public static Song ReadSong(SongConfig songConfig, bool debug, bool supportsSustainedNotes, int? maxConcurrentNotes)
     {
+        var midiFile = songConfig.Source;
+        var instrumentConfigs = songConfig.Instruments;
+        var allowInstrumentFallback = !songConfig.SuppressInstrumentFallback;
+        var masterVolume = (songConfig.Volume ?? 100) / 100;
+        var expandNotes = songConfig.ExpandNotes && !supportsSustainedNotes;
+        var fade = songConfig.Fade;
+
         var midiEventStream = debug ? new MemoryStream() : null;
         var midiEventWriter = debug ? new StreamWriter(midiEventStream) : null;
 
@@ -182,11 +189,11 @@ public static class MidiReader
             }
         }
 
-        if (instrumentOffsets == null)
-        {
-            instrumentOffsets = CalculateInstrumentOffsets(midiNotes);
-            midiEventWriter?.WriteLine($"Calculated instrument offsets: {string.Join(", ", instrumentOffsets.OrderBy(entry => entry.Key).Select(entry => $"{entry.Key}: {entry.Value}"))}");
-        }
+        var instrumentOffsets = Instruments.Keys.ToDictionary(instrument => instrument, instrument => instrumentConfigs?.GetValueOrDefault(instrument)?.Offset ?? CalculateInstrumentOffset(midiNotes, instrument));
+        var instrumentVolumes = Instruments.Keys.ToDictionary(instrument => instrument, instrument => (instrumentConfigs?.GetValueOrDefault(instrument)?.Volume ?? 100) / 100);
+        var instrumentPreferHarmonics = Instruments.Keys.ToDictionary(instrument => instrument, instrument => instrumentConfigs?.GetValueOrDefault(instrument)?.PreferHarmonics ?? false);
+
+        midiEventWriter?.WriteLine($"Calculated instrument offsets: {string.Join(", ", instrumentOffsets.OrderBy(entry => entry.Key).Select(entry => $"{entry.Key}: {entry.Value}"))}");
 
         if (midiEventWriter != null)
         {
@@ -222,7 +229,7 @@ public static class MidiReader
         }
 
         var midiNotesWithInstrumentOffsets = midiNotes.SelectMany(midiNote => ApplyInstrumentOffsets(midiNote, instrumentOffsets, allowInstrumentFallback));
-        var midiNotesWithHarmonics = midiNotesWithInstrumentOffsets.SelectMany(ExpandHarmonics);
+        var midiNotesWithHarmonics = midiNotesWithInstrumentOffsets.SelectMany(midiNote => ExpandHarmonics(midiNote, instrumentPreferHarmonics));
 
         var expandedMidiNotes = expandNotes
             ? midiNotesWithHarmonics.SelectMany(midiNote => ExpandNote(midiNote, fade))
@@ -276,7 +283,7 @@ public static class MidiReader
             var instrument = midiNote.Instrument;
             var noteNumber = midiNote.EffectiveNoteNumber;
             var instrumentInfo = Instruments[instrument];
-            var instrumentVolume = instrumentVolumes != null && instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
+            var instrumentVolume = instrumentVolumes[instrument];
             var pressure = Math.Pow(midiNote.Pressure.Value, PressureExponent) + 1;
             var volume = Math.Min(midiNote.Velocity * pressure * midiNote.Expression.Value * midiNote.ChannelVolume.Value * midiNote.FadeMultiplier * instrumentInfo.BaseVolume * instrumentVolume * masterVolume, 1);
 
@@ -357,48 +364,48 @@ public static class MidiReader
         };
     }
 
-    private static Dictionary<Instrument, int> CalculateInstrumentOffsets(List<MidiNote> midiNotes)
+    private static int CalculateInstrumentOffset(List<MidiNote> midiNotes, Instrument instrument)
     {
-        return midiNotes
-            .Where(note => note.Instrument is not Instrument.Unknown and not Instrument.Drumkit)
-            .GroupBy(note => note.Instrument, note => note.RelativeNoteNumber, (instrument, noteNumbers) =>
-            {
-                var octaves = noteNumbers.GroupBy(relativeNoteNumber => (relativeNoteNumber - 1 + UnreasonablyHighOctave * 12) / 12 - UnreasonablyHighOctave, (octaveNumber, groupedNoteNumbers) => (OctaveNumber: octaveNumber, NoteCount: groupedNoteNumbers.Count()));
-                var totalNotes = octaves.Sum(octave => octave.NoteCount);
-                var minOctave = octaves.Min(octave => octave.OctaveNumber);
-                var maxOctave = octaves.Max(octave => octave.OctaveNumber);
-                var minOctaveShift = Math.Min(minOctave, 0);
-                var maxOctaveShift = Math.Max(maxOctave - 3, 0);
-                var maxAllowedOctave = Instruments[instrument].NoteCount / 12 - 1;
+        var octaves = midiNotes
+            .Where(note => note.Instrument == instrument)
+            .GroupBy(note => (note.RelativeNoteNumber - 1 + UnreasonablyHighOctave * 12) / 12 - UnreasonablyHighOctave, (octaveNumber, groupedNotes) => (OctaveNumber: octaveNumber, NoteCount: groupedNotes.Count()))
+            .ToList();
 
-                const double newNotesOutOfRangePenalty = 4;
-                const double octaveShiftPenaltyBase = 0.05;
-                const double octaveShiftPenaltyGrowth = 2;
+        if (octaves.Count == 0)
+        {
+            return 0;
+        }
 
-                return (
-                    Instrument: instrument,
-                    NoteShift: minOctaveShift < 0 || maxOctaveShift > 0
-                        ? Enumerable.Range(minOctaveShift, maxOctaveShift - minOctaveShift + 1)
-                            .Select(octavesOutOfRange =>
-                            {
-                                bool IsOutOfRange(int octaveNumber) => octaveNumber < -1 || octaveNumber > maxAllowedOctave;
+        var totalNotes = octaves.Sum(octave => octave.NoteCount);
+        var minOctave = octaves.Min(octave => octave.OctaveNumber);
+        var maxOctave = octaves.Max(octave => octave.OctaveNumber);
+        var minOctaveShift = Math.Min(minOctave, 0);
+        var maxOctaveShift = Math.Max(maxOctave - 3, 0);
+        var maxAllowedOctave = Instruments[instrument].NoteCount / 12 - 1;
 
-                                var octavesThatAreOutOfRange = octaves.Where(octave => IsOutOfRange(octave.OctaveNumber - octavesOutOfRange));
+        const double newNotesOutOfRangePenalty = 4;
+        const double octaveShiftPenaltyBase = 0.05;
+        const double octaveShiftPenaltyGrowth = 2;
 
-                                return (
-                                    OctaveShift: -octavesOutOfRange,
-                                    NotesStillOutOfRange: octavesThatAreOutOfRange.Where(octave => IsOutOfRange(octave.OctaveNumber)).Sum(octave => octave.NoteCount),
-                                    NewNotesOutOfRange: octavesThatAreOutOfRange.Where(octave => !IsOutOfRange(octave.OctaveNumber)).Sum(octave => octave.NoteCount)
-                                );
-                            })
-                            // Order by the number of notes still out of range, imposing a penalty for each octave we shift to favor shifting less even if a few notes are left behind
-                            .OrderBy(tuple => (tuple.NotesStillOutOfRange + tuple.NewNotesOutOfRange * newNotesOutOfRangePenalty) / totalNotes + (tuple.OctaveShift != 0 ? octaveShiftPenaltyBase * Math.Pow(octaveShiftPenaltyGrowth, Math.Abs(tuple.OctaveShift) - 1) : 0))
-                            .First()
-                            .OctaveShift * 12
-                        : 0
-                );
-            })
-            .ToDictionary(tuple => tuple.Instrument, tuple => tuple.NoteShift);
+        return minOctaveShift < 0 || maxOctaveShift > 0
+            ? Enumerable.Range(minOctaveShift, maxOctaveShift - minOctaveShift + 1)
+                .Select(octavesOutOfRange =>
+                {
+                    bool IsOutOfRange(int octaveNumber) => octaveNumber < -1 || octaveNumber > maxAllowedOctave;
+
+                    var octavesThatAreOutOfRange = octaves.Where(octave => IsOutOfRange(octave.OctaveNumber - octavesOutOfRange));
+
+                    return (
+                        OctaveShift: -octavesOutOfRange,
+                        NotesStillOutOfRange: octavesThatAreOutOfRange.Where(octave => IsOutOfRange(octave.OctaveNumber)).Sum(octave => octave.NoteCount),
+                        NewNotesOutOfRange: octavesThatAreOutOfRange.Where(octave => !IsOutOfRange(octave.OctaveNumber)).Sum(octave => octave.NoteCount)
+                    );
+                })
+                // Order by the number of notes still out of range, imposing a penalty for each octave we shift to favor shifting less even if a few notes are left behind
+                .OrderBy(tuple => (tuple.NotesStillOutOfRange + tuple.NewNotesOutOfRange * newNotesOutOfRangePenalty) / totalNotes + (tuple.OctaveShift != 0 ? octaveShiftPenaltyBase * Math.Pow(octaveShiftPenaltyGrowth, Math.Abs(tuple.OctaveShift) - 1) : 0))
+                .First()
+                .OctaveShift * 12
+            : 0;
     }
 
     private static IEnumerable<MidiNote> ApplyInstrumentOffsets(MidiNote midiNote, Dictionary<Instrument, int> instrumentOffsets, bool allowInstrumentFallback)
@@ -454,17 +461,21 @@ public static class MidiReader
         }
     }
 
-    private static IEnumerable<MidiNote> ExpandHarmonics(MidiNote note)
+    private static IEnumerable<MidiNote> ExpandHarmonics(MidiNote note, Dictionary<Instrument, bool> instrumentPreferHarmonics)
     {
+        if (note.Instrument == Instrument.Unknown)
+        {
+            yield return note;
+            yield break;
+        }
+
         var effectiveNoteNumber = note.EffectiveNoteNumber;
+        var preferHarmonics = instrumentPreferHarmonics.GetValueOrDefault(note.Instrument, false);
+        var instrumentNoteCount = Instruments[note.Instrument].NoteCount;
 
         Debug.Assert(effectiveNoteNumber is > -12 and <= 48);
 
-        if (effectiveNoteNumber > 0 || note.Instrument == Instrument.Unknown)
-        {
-            yield return note;
-        }
-        else
+        if (effectiveNoteNumber <= 0 || preferHarmonics && effectiveNoteNumber <= instrumentNoteCount - HarmonicOffsets[^1])
         {
             // Replace a note that is up to an octave too low with its second through fourth harmonic, which sound close enough to the original note
             foreach (var offset in HarmonicOffsets)
@@ -475,6 +486,10 @@ public static class MidiReader
                     Velocity = note.Velocity * HarmonicVelocityMultiplier
                 };
             }
+        }
+        else
+        {
+            yield return note;
         }
     }
 

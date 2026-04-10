@@ -34,8 +34,7 @@ public record SongConfig
     public string Source { get; set; }
     public string SourcePlaylist { get; set; }
     public string SpreadsheetTab { get; set; }
-    public Dictionary<Instrument, int> InstrumentOffsets { get; set; }
-    public Dictionary<Instrument, double> InstrumentVolumes { get; set; }
+    public Dictionary<Instrument, InstrumentConfig> Instruments { get; set; }
     public double? Volume { get; set; }
     public FadeConfig Fade { get; set; }
     public bool SuppressInstrumentFallback { get; set; }
@@ -62,4 +61,11 @@ public record FadeConfig
     /// The time required to complete the fade. Null means to continue until the end of the song.
     /// </summary>
     public TimeSpan? Duration { get; set; }
+}
+
+public record InstrumentConfig
+{
+    public int? Offset { get; set; }
+    public double? Volume { get; set; }
+    public bool PreferHarmonics { get; set; }
 }
