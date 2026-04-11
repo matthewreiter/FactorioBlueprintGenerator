@@ -121,19 +121,19 @@ public static class MidiReader
     };
     private static readonly Dictionary<Instrument, InstrumentInfo> Instruments = new()
     {
-        [Instrument.Drumkit] = new(0, 17, 0.85),
+        [Instrument.Drumkit] = new(0, 17, BaseVolume: 0.85),
         [Instrument.Piano] = new(-52, 48),
-        [Instrument.BassGuitar] = new(-40, 36),
-        [Instrument.LeadGuitar] = new(-40, 36),
-        [Instrument.Sawtooth] = new(-40, 36, 0.75),
-        [Instrument.Square] = new(-40, 36, 0.5),
+        [Instrument.BassGuitar] = new(-40, 36, HighFallback: Instrument.Vibraphone),
+        [Instrument.LeadGuitar] = new(-40, 36, HighFallback: Instrument.Vibraphone),
+        [Instrument.Sawtooth] = new(-40, 36, BaseVolume: 0.75),
+        [Instrument.Square] = new(-40, 36, BaseVolume: 0.5),
         [Instrument.Celesta] = new(-76, 36),
         [Instrument.Vibraphone] = new(-76, 36),
         [Instrument.PluckedStrings] = new(-64, 36),
         [Instrument.SteelDrum] = new(-52, 36),
     };
-    private const Instrument LowFallbackInstrument = Instrument.LeadGuitar;
-    private const Instrument HighFallbackInstrument = Instrument.Celesta;
+    private const Instrument DefaultLowFallbackInstrument = Instrument.LeadGuitar;
+    private const Instrument DefaultHighFallbackInstrument = Instrument.Celesta;
     private static readonly TimeSpan TickDuration = TimeSpan.FromMilliseconds(1000d / 60); // 1000ms / 60fps (approximately 17 ms per tick)
     private const double PressureExponent = 2;
     private static readonly int[] HarmonicOffsets = [12, 19, 24];
@@ -430,7 +430,7 @@ public static class MidiReader
                 {
                     var originalBaseNoteOffset = instrumentInfo.BaseNoteOffset;
 
-                    instrument = effectiveNoteNumber <= 0 ? LowFallbackInstrument : HighFallbackInstrument;
+                    instrument = effectiveNoteNumber <= 0 ? instrumentInfo.LowFallback : instrumentInfo.HighFallback;
                     instrumentInfo = Instruments[instrument];
                     effectiveNoteNumber += instrumentInfo.BaseNoteOffset - originalBaseNoteOffset;
                     isNoteInRange = effectiveNoteNumber > -12 && effectiveNoteNumber <= instrumentInfo.NoteCount;
@@ -896,7 +896,7 @@ public static class MidiReader
         };
     }
 
-    private record InstrumentInfo(int BaseNoteOffset, int NoteCount, double BaseVolume = 1);
+    private record InstrumentInfo(int BaseNoteOffset, int NoteCount, double BaseVolume = 1, Instrument LowFallback = DefaultLowFallbackInstrument, Instrument HighFallback = DefaultHighFallbackInstrument);
 
     private record MidiData
     {
