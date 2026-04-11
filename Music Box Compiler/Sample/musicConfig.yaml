@@ -533,6 +533,11 @@ playlists:
         album: Astro Lounge
         artist: Smash Mouth
         source: Music\BitMidi\SMASH MOUTH.All star.mid
+      - name: WalkingOnTheSun
+        displayName: Walking on the Sun
+        album: Fush Yu Mang
+        artist: Smash Mouth
+        source: Music\BitMidi\Walking-On-The-Sun.mid
       - name: SonicGreenHillZone
         displayName: Green Hill Zone
         album: Sonic the Hedgehog
