@@ -445,9 +445,6 @@ playlists:
         album: Nevermind
         artist: Nirvana
         source: Music\BitMidi\NIRVANA.Smells like teen spirit K.mid
-        instruments:
-          celesta:
-            preferHarmonics: true
       - name: AttackOnTitanJiyuuNoTsubasa
         displayName: Jiyuu no Tsubasa
         album: Attack on Titan

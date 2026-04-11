@@ -138,6 +138,8 @@ public static class MidiReader
     private const double PressureExponent = 2;
     private static readonly int[] HarmonicOffsets = [12, 19, 24];
     private const double HarmonicVelocityMultiplier = 0.6; // Reduce the volume of the harmonics so that the combined volume is closer to the original note
+    private const double MinimumHarmonicReplacementFraction = 0.5; // If at least this fraction of the notes must be replaced by harmonics, then prefer harmonics
+    private const double MinimumHarmonicMustToCannotRatio = 10; // If the number of notes that must be replaced by harmonics is at least this many times the number of notes that cannot be replaced by harmonics, then prefer harmonics
     private const int UnreasonablyHighOctave = 12; // This is to ensure that we don't have a negative number before calculating the octave, which would throw off the result
     private const double MinimumVolume = 0.01;
 
@@ -187,16 +189,7 @@ public static class MidiReader
             {
                 midiEventWriter.WriteLine($"Copyright: {copyright}");
             }
-        }
 
-        var instrumentOffsets = Instruments.Keys.ToDictionary(instrument => instrument, instrument => instrumentConfigs?.GetValueOrDefault(instrument)?.Offset ?? CalculateInstrumentOffset(midiNotes, instrument));
-        var instrumentVolumes = Instruments.Keys.ToDictionary(instrument => instrument, instrument => (instrumentConfigs?.GetValueOrDefault(instrument)?.Volume ?? 100) / 100);
-        var instrumentPreferHarmonics = Instruments.Keys.ToDictionary(instrument => instrument, instrument => instrumentConfigs?.GetValueOrDefault(instrument)?.PreferHarmonics ?? false);
-
-        midiEventWriter?.WriteLine($"Calculated instrument offsets: {string.Join(", ", instrumentOffsets.OrderBy(entry => entry.Key).Select(entry => $"{entry.Key}: {entry.Value}"))}");
-
-        if (midiEventWriter != null)
-        {
             var instrumentsNotMapped = midiNotes.Where(note => note.Instrument == Instrument.Unknown).GroupBy(note => note.OriginalInstrumentName, (originalInstrumentName, notes) => originalInstrumentName).ToList();
             if (instrumentsNotMapped.Count > 0)
             {
@@ -209,12 +202,17 @@ public static class MidiReader
                 midiEventWriter.WriteLine($"Percussions not mapped: {string.Join(", ", percussionsNotMapped)}");
             }
 
-            var instrumentsInSong = midiNotes.Where(note => note.Instrument != Instrument.Unknown).GroupBy(note => note.Instrument, (instrument, notes) => instrument).ToList();
+            var instrumentsInSong = midiNotes.Select(note => note.Instrument).Where(instrument => instrument != Instrument.Unknown).Distinct().Order().ToList();
             if (instrumentsInSong.Count > 0)
             {
                 midiEventWriter.WriteLine($"Instruments in song: {string.Join(", ", instrumentsInSong)}");
             }
         }
+
+        var instrumentOffsets = Instruments.Keys.ToDictionary(instrument => instrument, instrument => instrumentConfigs?.GetValueOrDefault(instrument)?.Offset ?? CalculateInstrumentOffset(midiNotes, instrument));
+        var instrumentVolumes = Instruments.Keys.ToDictionary(instrument => instrument, instrument => (instrumentConfigs?.GetValueOrDefault(instrument)?.Volume ?? 100) / 100);
+
+        midiEventWriter?.WriteLine($"Calculated instrument offsets: {string.Join(", ", instrumentOffsets.OrderBy(entry => entry.Key).Select(entry => $"{entry.Key}: {entry.Value}"))}");
 
         if (fade is not null)
         {
@@ -228,7 +226,11 @@ public static class MidiReader
             };
         }
 
-        var midiNotesWithInstrumentOffsets = midiNotes.SelectMany(midiNote => ApplyInstrumentOffsets(midiNote, instrumentOffsets, allowInstrumentFallback));
+        var midiNotesWithInstrumentOffsets = midiNotes.SelectMany(midiNote => ApplyInstrumentOffsets(midiNote, instrumentOffsets, allowInstrumentFallback)).ToList();
+
+        var instrumentPreferHarmonics = Instruments.Keys.ToDictionary(instrument => instrument, instrument => instrumentConfigs?.GetValueOrDefault(instrument)?.PreferHarmonics ?? CalculatePreferHarmonics(midiNotesWithInstrumentOffsets, instrument));
+        midiEventWriter?.WriteLine($"Calculated instrument harmonic preferences: {string.Join(", ", instrumentPreferHarmonics.OrderBy(entry => entry.Key).Select(entry => $"{entry.Key}: {entry.Value}"))}");
+
         var midiNotesWithHarmonics = midiNotesWithInstrumentOffsets.SelectMany(midiNote => ExpandHarmonics(midiNote, instrumentPreferHarmonics));
 
         var expandedMidiNotes = expandNotes
@@ -461,16 +463,39 @@ public static class MidiReader
         }
     }
 
+    private static bool CalculatePreferHarmonics(List<MidiNote> midiNotes, Instrument instrument)
+    {
+        if (instrument == Instrument.Drumkit)
+        {
+            return false;
+        }
+
+        var noteForInstrument = midiNotes.Where(note => note.Instrument == instrument).ToList();
+        var totalNotes = noteForInstrument.Count;
+
+        if (totalNotes == 0)
+        {
+            return false;
+        }
+
+        var maxNoteThatCanBeReplacedByHarmonics = Instruments[instrument].NoteCount - HarmonicOffsets[^1];
+        var notesThatMustBeReplacedByHarmonics = noteForInstrument.Count(note => note.EffectiveNoteNumber <= 0);
+        var notesThatCannotBeReplacedByHarmonics = noteForInstrument.Count(note => note.EffectiveNoteNumber > maxNoteThatCanBeReplacedByHarmonics);
+
+        return notesThatMustBeReplacedByHarmonics > totalNotes * MinimumHarmonicReplacementFraction &&
+            notesThatMustBeReplacedByHarmonics > notesThatCannotBeReplacedByHarmonics * MinimumHarmonicMustToCannotRatio;
+    }
+
     private static IEnumerable<MidiNote> ExpandHarmonics(MidiNote note, Dictionary<Instrument, bool> instrumentPreferHarmonics)
     {
-        if (note.Instrument == Instrument.Unknown)
+        if (note.Instrument is Instrument.Unknown or Instrument.Drumkit)
         {
             yield return note;
             yield break;
         }
 
         var effectiveNoteNumber = note.EffectiveNoteNumber;
-        var preferHarmonics = instrumentPreferHarmonics.GetValueOrDefault(note.Instrument, false);
+        var preferHarmonics = instrumentPreferHarmonics[note.Instrument];
         var instrumentNoteCount = Instruments[note.Instrument].NoteCount;
 
         Debug.Assert(effectiveNoteNumber is > -12 and <= 48);

@@ -67,5 +67,5 @@ public record InstrumentConfig
 {
     public int? Offset { get; set; }
     public double? Volume { get; set; }
-    public bool PreferHarmonics { get; set; }
+    public bool? PreferHarmonics { get; set; }
 }
