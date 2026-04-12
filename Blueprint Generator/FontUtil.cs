@@ -32,7 +32,7 @@ public static class FontUtil
         var fullHeight = height + 2;
         var fullWidth = 0;
 
-        var characters = new List<Character>();
+        List<Character> characters = [];
         var currentCharacterCode = 0;
         var maxWidth = 0;
 

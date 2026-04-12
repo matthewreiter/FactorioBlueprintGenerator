@@ -26,6 +26,7 @@ public class FontGenerator : IBlueprintGenerator
         var inputSignal = configuration.InputSignal ?? VirtualSignalNames.Dot;
         var widthSignal = configuration.WidthSignal;
         var heightSignal = configuration.HeightSignal;
+        var multiLine = configuration.MultiLine ?? false;
         var signals = configuration.Signals.Contains(',') ? [.. configuration.Signals.Split(',')] : configuration.Signals.Select(VirtualSignalNames.LetterOrDigit).ToList();
 
         var font = FontUtil.ReadFont(fontImageFile);
@@ -35,7 +36,7 @@ public class FontGenerator : IBlueprintGenerator
         List<Wire> wires = [];
         List<Entity> matchers = [];
 
-        if (heightSignal is not null)
+        if (multiLine)
         {
             characters.Add(new FontUtil.Character
             {
@@ -186,5 +187,6 @@ public class FontConfiguration
     public string InputSignal { get; init; }
     public string WidthSignal { get; init; }
     public string HeightSignal { get; init; }
+    public bool? MultiLine { get; init; }
     public string Signals { get; init; }
 }
