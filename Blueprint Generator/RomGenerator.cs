@@ -47,8 +47,10 @@ public class RomGenerator : IBlueprintGenerator
         var gridWidth = width + ((width + 7) / 16 + 1) * 2;
         var gridHeight = height * cellHeight + (height - 1) / blockHeightInCells * blockGapHeight;
 
-        var entities = new List<Entity>();
-        var wires = new List<Wire>();
+        var addressSignal = SignalID.CreateVirtual(VirtualSignalNames.Info);
+
+        List<Entity> entities = [];
+        List<Wire> wires = [];
         var memoryCellReaders = new Entity[height, width];
 
         for (int row = 0; row < height; row++)
@@ -61,18 +63,18 @@ public class RomGenerator : IBlueprintGenerator
                 var memoryCellX = column + (column / 16 + 1) * 2 + xOffset;
                 var memoryCellY = gridHeight - (row + 1) * cellHeight - row / blockHeightInCells * blockGapHeight + yOffset;
 
-                var adjacentMemoryCells = new List<Entity>();
+                List<Entity> adjacentReaders = [];
 
                 // Add left neighbor if it exists
                 if (column > 0)
                 {
-                    adjacentMemoryCells.Add(memoryCellReaders[row, column - 1]);
+                    adjacentReaders.Add(memoryCellReaders[row, column - 1]);
                 }
 
                 // Add top neighbor if it exists, is in the same section (program/data), and is in the first column
                 if (row > 0 && row != programRows && column == 0)
                 {
-                    adjacentMemoryCells.Add(memoryCellReaders[row - 1, column]);
+                    adjacentReaders.Add(memoryCellReaders[row - 1, column]);
                 }
 
                 var memoryCellData = new Entity
@@ -111,7 +113,7 @@ public class RomGenerator : IBlueprintGenerator
                                 {
                                     return [new DeciderCondition
                                     {
-                                        First_signal = SignalID.CreateVirtual(VirtualSignalNames.Info),
+                                        First_signal = addressSignal,
                                         Constant = range.Start,
                                         Comparator = Comparators.IsEqual,
                                         Compare_type = CompareTypes.Or
@@ -122,14 +124,14 @@ public class RomGenerator : IBlueprintGenerator
                                     return [
                                         new DeciderCondition
                                         {
-                                            First_signal = SignalID.CreateVirtual(VirtualSignalNames.Info),
+                                            First_signal = addressSignal,
                                             Constant = range.Start,
                                             Comparator = Comparators.GreaterThanOrEqualTo,
                                             Compare_type = CompareTypes.Or
                                         },
                                         new DeciderCondition
                                         {
-                                            First_signal = SignalID.CreateVirtual(VirtualSignalNames.Info),
+                                            First_signal = addressSignal,
                                             Constant = range.End,
                                             Comparator = Comparators.LessThanOrEqualTo,
                                             Compare_type = CompareTypes.And
@@ -152,13 +154,13 @@ public class RomGenerator : IBlueprintGenerator
                 // Connection to memory cell
                 wires.Add(new((memoryCellReader, ConnectionType.Green1), (memoryCellData, ConnectionType.Green1)));
 
-                foreach (var adjacentMemoryCell in adjacentMemoryCells)
+                foreach (var adjacentReader in adjacentReaders)
                 {
                     // Connection to adjacent reader input (address line)
-                    wires.Add(new((memoryCellReader, ConnectionType.Red1), (adjacentMemoryCell, ConnectionType.Red1)));
+                    wires.Add(new((memoryCellReader, ConnectionType.Red1), (adjacentReader, ConnectionType.Red1)));
 
                     // Connection to adjacent reader output
-                    wires.Add(new((memoryCellReader, ConnectionType.Green2), (adjacentMemoryCell, ConnectionType.Green2)));
+                    wires.Add(new((memoryCellReader, ConnectionType.Green2), (adjacentReader, ConnectionType.Green2)));
                 }
             }
         }

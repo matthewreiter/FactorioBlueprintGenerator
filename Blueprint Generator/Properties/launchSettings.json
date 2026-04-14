@@ -8,6 +8,10 @@
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/ram.txt\" --OutputJson=\"$(ProjectDir)/Test/ram.json\" --MemoryType=RAM --Width=128 --Height=32 --BaseAddress=16384"
     },
+    "RenderedTextBuffer": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/renderedTextBuffer.txt\" --OutputJson=\"$(ProjectDir)/Test/renderedTextBuffer.json\" --MemoryType=RAM --Width=56 --Height=1 --Signal=signal-everything --IncludeClearSignal=true --IncludePower=false"
+    },
     "Registers": {
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/registers.txt\" --OutputJson=\"$(ProjectDir)/Test/registers.json\" --MemoryType=Registers --RegisterCount=32"

@@ -1,269 +1,259 @@
-﻿using BlueprintCommon.Constants;
+﻿using BlueprintCommon;
+using BlueprintCommon.Constants;
 using BlueprintCommon.Models;
+using BlueprintGenerator.Models;
 using Microsoft.Extensions.Configuration;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using static BlueprintGenerator.ConnectionUtil;
-using static BlueprintGenerator.PowerUtil;
 
-namespace BlueprintGenerator
+namespace BlueprintGenerator;
+
+public class RamGenerator : IBlueprintGenerator
 {
-    public class RamGenerator : IBlueprintGenerator
+    public Blueprint Generate(IConfigurationRoot configuration)
     {
-        public Blueprint Generate(IConfigurationRoot configuration)
+        return Generate(configuration.Get<RamConfiguration>());
+    }
+
+    public static Blueprint Generate(RamConfiguration configuration)
+    {
+        var width = configuration.Width ?? 16;
+        var height = configuration.Height ?? 16;
+        var baseAddress = configuration.BaseAddress ?? 0;
+        var signalName = configuration.Signal ?? VirtualSignalNames.LetterOrDigit('0');
+        var includeClearSignal = configuration.IncludeClearSignal ?? false;
+        var includePower = configuration.IncludePower ?? true;
+
+        const int entitiesPerCell = 3;
+        const int cellHeight = 6;
+
+        const int writerEntityOffset = -1;
+        const int readerEntityOffset = 1;
+
+        var gridWidth = width + (includePower ? ((width + 7) / 16 + 1) * 2 : 0);
+        var gridHeight = height * cellHeight;
+        var xOffset = -gridWidth / 2;
+        var yOffset = -gridHeight / 2;
+
+        var writeAddressSignal = SignalID.CreateVirtual(VirtualSignalNames.Check);
+        var readAddressSignal = SignalID.CreateVirtual(VirtualSignalNames.Info);
+        var dataSignal = SignalID.Create(signalName);
+        var clearSignal = includeClearSignal ? SignalID.CreateVirtual(VirtualSignalNames.Deny) : null;
+
+        List<Entity> entities = [];
+        List<Wire> wires = [];
+        var memoryCellWriters = new Entity[height, width];
+        var memoryCellReaders = new Entity[height, width];
+
+        for (int row = 0; row < height; row++)
         {
-            return Generate(configuration.Get<RamConfiguration>());
-        }
-
-        public static Blueprint Generate(RamConfiguration configuration)
-        {
-            var width = configuration.Width ?? 16;
-            var height = configuration.Height ?? 16;
-            var baseAddress = configuration.BaseAddress ?? 0;
-            var signal = configuration.Signal ?? '0';
-            var includePower = configuration.IncludePower ?? true;
-
-            const int entitiesPerCell = 3;
-            const int cellHeight = 6;
-
-            const int writerEntityOffset = -1;
-            const int readerEntityOffset = 1;
-
-            var gridWidth = width + (includePower ? ((width + 7) / 16 + 1) * 2 : 0);
-            var gridHeight = height * cellHeight;
-            var xOffset = -gridWidth / 2;
-            var yOffset = -gridHeight / 2;
-
-            var entities = new List<Entity>();
-
-            for (int row = 0; row < height; row++)
+            for (int column = 0; column < width; column++)
             {
-                for (int column = 0; column < width; column++)
+                var address = row * width + column + baseAddress + 1;
+                var memoryCellEntityNumber = (row * width + column) * entitiesPerCell + 2;
+                var memoryCellX = column + (includePower ? (column / 16 + 1) * 2 : 0) + xOffset;
+                var memoryCellY = gridHeight - (row + 1) * cellHeight + 2.5 + yOffset;
+
+                List<Entity> adjacentWriters = [];
+                List<Entity> adjacentReaders = [];
+
+                // Add left neighbor if it exists
+                if (column > 0)
                 {
-                    var address = row * width + column + baseAddress + 1;
-                    var memoryCellEntityNumber = (row * width + column) * entitiesPerCell + 2;
-                    var memoryCellX = column + (includePower ? (column / 16 + 1) * 2 : 0) + xOffset;
-                    var memoryCellY = (height - row - 1) * cellHeight + 2.5 + yOffset;
+                    adjacentWriters.Add(memoryCellWriters[row, column - 1]);
+                    adjacentReaders.Add(memoryCellReaders[row, column - 1]);
+                }
 
-                    var adjacentMemoryCells = new List<int> { -1, 1 }
-                        .Where(offset => column + offset >= 0 && column + offset < width)
-                        .Select(offset => memoryCellEntityNumber + offset * entitiesPerCell)
-                        .Concat(new List<int> { -1, 1 }
-                            .Where(offset => row + offset >= 0 && row + offset < height && column == 0)
-                            .Select(offset => memoryCellEntityNumber + offset * width * entitiesPerCell)
-                        )
-                        .ToList();
+                // Add top neighbor if it exists
+                if (row > 0)
+                {
+                    adjacentWriters.Add(memoryCellWriters[row - 1, column]);
+                    adjacentReaders.Add(memoryCellReaders[row - 1, column]);
+                }
 
-                    // Memory cell
-                    entities.Add(new Entity
+                var memoryCellData = new Entity
+                {
+                    Name = ItemNames.DeciderCombinator,
+                    Position = new Position
                     {
-                        Entity_number = memoryCellEntityNumber,
-                        Name = ItemNames.DeciderCombinator,
-                        Position = new Position
-                        {
-                            X = memoryCellX,
-                            Y = memoryCellY
-                        },
-                        Direction = Direction.Down,
-                        Control_behavior = new ControlBehavior
-                        {
-                            Decider_conditions = new DeciderConditions
-                            {
-                                First_signal = SignalID.CreateVirtual(VirtualSignalNames.Check),
-                                Constant = address,
-                                Comparator = Comparators.IsNotEqual,
-                                Output_signal = SignalID.CreateLetterOrDigit(signal),
-                                Copy_count_from_input = true
-                            }
-                        },
-                        Connections = CreateConnections(new ConnectionPoint
-                        {
-                            Red = new List<ConnectionData>
-                            {
-                                // Connection to writer input (address line)
-                                new ConnectionData
-                                {
-                                    Entity_id = memoryCellEntityNumber + writerEntityOffset,
-                                    Circuit_id = CircuitId.Input
-                                },
-                                // Connection to reader input (address line)
-                                new ConnectionData
-                                {
-                                    Entity_id = memoryCellEntityNumber + readerEntityOffset,
-                                    Circuit_id = CircuitId.Input
-                                }
-                            },
-                            Green = new List<ConnectionData>
-                            {
-                                // Connection to own output (data feedback)
-                                new ConnectionData
-                                {
-                                    Entity_id = memoryCellEntityNumber,
-                                    Circuit_id = CircuitId.Output
-                                },
-                                // Connection to writer output (data in)
-                                new ConnectionData
-                                {
-                                    Entity_id = memoryCellEntityNumber + writerEntityOffset,
-                                    Circuit_id = CircuitId.Output
-                                }
-                            }
-                        }, new ConnectionPoint
-                        {
-                            Green = new List<ConnectionData>
-                            {
-                                // Connection to own input (data feedback)
-                                new ConnectionData
-                                {
-                                    Entity_id = memoryCellEntityNumber,
-                                    Circuit_id = CircuitId.Input
-                                },
-                                // Connection to reader input (data out)
-                                new ConnectionData
-                                {
-                                    Entity_id = memoryCellEntityNumber + readerEntityOffset,
-                                    Circuit_id = CircuitId.Input
-                                }
-                            }
-                        })
-                    });
-
-                    // Memory cell writer
-                    entities.Add(new Entity
+                        X = memoryCellX,
+                        Y = memoryCellY
+                    },
+                    Direction = Direction.Down,
+                    Control_behavior = new ControlBehavior
                     {
-                        Entity_number = memoryCellEntityNumber + writerEntityOffset,
-                        Name = ItemNames.DeciderCombinator,
-                        Position = new Position
+                        Decider_conditions = new DeciderConditions
                         {
-                            X = memoryCellX,
-                            Y = memoryCellY - 2
-                        },
-                        Direction = Direction.Down,
-                        Control_behavior = new ControlBehavior
-                        {
-                            Decider_conditions = new DeciderConditions
-                            {
-                                First_signal = SignalID.CreateVirtual(VirtualSignalNames.Check),
-                                Constant = address,
-                                Comparator = Comparators.IsEqual,
-                                Output_signal = SignalID.CreateLetterOrDigit(signal),
-                                Copy_count_from_input = true
-                            }
-                        },
-                        Connections = CreateConnections(new ConnectionPoint
-                        {
-                            // Connection to adjacent writer input (address line)
-                            Red = adjacentMemoryCells.Select(entityNumber => new ConnectionData
-                            {
-                                Entity_id = entityNumber + writerEntityOffset,
-                                Circuit_id = CircuitId.Input
-                            }).Concat(new List<ConnectionData>
-                            {
-                                // Connection to memory cell input (address line)
-                                new ConnectionData
+                            Conditions =
+                            [
+                                new()
                                 {
-                                    Entity_id = memoryCellEntityNumber,
-                                    Circuit_id = CircuitId.Input
-                                }
-                            }).ToList(),
-                            // Connection to adjacent writer input (data in)
-                            Green = adjacentMemoryCells.Select(entityNumber => new ConnectionData
-                            {
-                                Entity_id = entityNumber + writerEntityOffset,
-                                Circuit_id = CircuitId.Input
-                            }).ToList()
-                        }, new ConnectionPoint
-                        {
-                            Green = new List<ConnectionData>
-                            {
-                                // Connection to memory cell input (data out)
-                                new ConnectionData
+                                    First_signal = writeAddressSignal,
+                                    First_signal_networks = new() { Red = true },
+                                    Constant = address,
+                                    Comparator = Comparators.IsNotEqual
+                                },
+                                .. includeClearSignal ? [
+                                    new()
+                                    {
+                                        First_signal = clearSignal,
+                                        First_signal_networks = new() { Red = true },
+                                        Constant = 0,
+                                        Comparator = Comparators.IsEqual,
+                                        Compare_type = CompareTypes.And
+                                    }
+                                ] : Array.Empty<DeciderCondition>()
+                            ],
+                            Outputs =
+                            [
+                                new()
                                 {
-                                    Entity_id = memoryCellEntityNumber,
-                                    Circuit_id = CircuitId.Input
+                                    Signal = dataSignal,
+                                    Copy_count_from_input = true,
+                                    Networks = new() { Green = true }
                                 }
-                            }
-                        })
-                    });
+                            ]
+                        }
+                    }
+                };
+                entities.Add(memoryCellData);
 
-                    // Memory cell reader
-                    entities.Add(new Entity
+                // Connection to self (data feedback)
+                wires.Add(new((memoryCellData, ConnectionType.Green1), (memoryCellData, ConnectionType.Green2)));
+
+                var memoryCellWriter = new Entity
+                {
+                    Entity_number = memoryCellEntityNumber + writerEntityOffset,
+                    Name = ItemNames.DeciderCombinator,
+                    Position = new Position
                     {
-                        Entity_number = memoryCellEntityNumber + readerEntityOffset,
-                        Name = ItemNames.DeciderCombinator,
-                        Position = new Position
+                        X = memoryCellX,
+                        Y = memoryCellY - 2
+                    },
+                    Direction = Direction.Down,
+                    Control_behavior = new ControlBehavior
+                    {
+                        Decider_conditions = new DeciderConditions
                         {
-                            X = memoryCellX,
-                            Y = memoryCellY + 2
-                        },
-                        Direction = Direction.Down,
-                        Control_behavior = new ControlBehavior
-                        {
-                            Decider_conditions = new DeciderConditions
-                            {
-                                First_signal = SignalID.CreateVirtual(VirtualSignalNames.Info),
-                                Constant = address,
-                                Comparator = Comparators.IsEqual,
-                                Output_signal = SignalID.CreateLetterOrDigit(signal),
-                                Copy_count_from_input = true
-                            }
-                        },
-                        Connections = CreateConnections(new ConnectionPoint
-                        {
-                            Red = new List<ConnectionData>
-                            {
-                                // Connection to memory cell input (address line)
-                                new ConnectionData
+                            Conditions =
+                            [
+                                new()
                                 {
-                                    Entity_id = memoryCellEntityNumber,
-                                    Circuit_id = CircuitId.Input
+                                    First_signal = writeAddressSignal,
+                                    First_signal_networks = new() { Red = true },
+                                    Constant = address,
+                                    Comparator = Comparators.IsEqual
                                 }
-                            },
-                            Green = new List<ConnectionData>
-                            {
-                                // Connection to memory cell output (data out)
-                                new ConnectionData
+                            ],
+                            Outputs =
+                            [
+                                new()
                                 {
-                                    Entity_id = memoryCellEntityNumber,
-                                    Circuit_id = CircuitId.Output
+                                    Signal = dataSignal,
+                                    Copy_count_from_input = true,
+                                    Networks = new() { Green = true }
                                 }
-                            }
-                        }, new ConnectionPoint
+                            ]
+                        }
+                    }
+                };
+                entities.Add(memoryCellWriter);
+                memoryCellWriters[row, column] = memoryCellWriter;
+
+                // Connection to memory cell input (address line)
+                wires.Add(new((memoryCellWriter, ConnectionType.Red1), (memoryCellData, ConnectionType.Red1)));
+
+                // Connection to memory cell input (data in)
+                wires.Add(new((memoryCellWriter, ConnectionType.Green2), (memoryCellData, ConnectionType.Green1)));
+
+                foreach (var adjacentWriter in adjacentWriters)
+                {
+                    // Connection to adjacent writer input (address line)
+                    wires.Add(new((memoryCellWriter, ConnectionType.Red1), (adjacentWriter, ConnectionType.Red1)));
+
+                    // Connection to adjacent writer input (data in)
+                    wires.Add(new((memoryCellWriter, ConnectionType.Green1), (adjacentWriter, ConnectionType.Green1)));
+                }
+
+                var memoryCellReader = new Entity
+                {
+                    Entity_number = memoryCellEntityNumber + readerEntityOffset,
+                    Name = ItemNames.DeciderCombinator,
+                    Position = new Position
+                    {
+                        X = memoryCellX,
+                        Y = memoryCellY + 2
+                    },
+                    Direction = Direction.Down,
+                    Control_behavior = new ControlBehavior
+                    {
+                        Decider_conditions = new DeciderConditions
                         {
-                            // Connection to adjacent reader output (data out)
-                            Green = adjacentMemoryCells.Select(entityNumber => new ConnectionData
-                            {
-                                Entity_id = entityNumber + readerEntityOffset,
-                                Circuit_id = CircuitId.Output
-                            }).ToList()
-                        })
-                    });
+                            Conditions =
+                            [
+                                new()
+                                {
+                                    First_signal = readAddressSignal,
+                                    First_signal_networks = new() { Red = true },
+                                    Constant = address,
+                                    Comparator = Comparators.IsEqual
+                                }
+                            ],
+                            Outputs =
+                            [
+                                new()
+                                {
+                                    Signal = dataSignal,
+                                    Copy_count_from_input = true,
+                                    Networks = new() { Green = true }
+                                }
+                            ]
+                        }
+                    }
+                };
+                entities.Add(memoryCellReader);
+                memoryCellReaders[row, column] = memoryCellReader;
+
+                // Connection to memory cell input (address line)
+                wires.Add(new((memoryCellReader, ConnectionType.Red1), (memoryCellData, ConnectionType.Red1)));
+
+                // Connection to memory cell output (data out)
+                wires.Add(new((memoryCellReader, ConnectionType.Green1), (memoryCellData, ConnectionType.Green2)));
+
+                foreach (var adjacentReader in adjacentReaders)
+                {
+                    // Connection to adjacent reader output (data out)
+                    wires.Add(new((memoryCellReader, ConnectionType.Green2), (adjacentReader, ConnectionType.Green2)));
                 }
             }
-
-            if (includePower)
-            {
-                var substationWidth = (width + 7) / 16 + 1;
-                var substationHeight = (gridHeight + 3) / 18 + 1;
-
-                entities.AddRange(CreateSubstations(substationWidth, substationHeight, xOffset, gridHeight % 18 - 4 + yOffset, width * height * entitiesPerCell + 1));
-            }
-
-            return new Blueprint
-            {
-                Label = $"{width}x{height} RAM",
-                Icons = [Icon.Create(ItemNames.AdvancedCircuit)],
-                Entities = entities
-            };
         }
-    }
 
-    public class RamConfiguration
-    {
-        public int? Width { get; set; }
-        public int? Height { get; set; }
-        public int? BaseAddress { get; set; }
-        public char? Signal { get; set; }
-        public bool? IncludePower { get; set; }
+        if (includePower)
+        {
+            var substationWidth = (width + 7) / 16 + 1;
+            var substationHeight = (gridHeight + 3) / 18 + 1;
+
+            PowerUtil.AddSubstations(entities, wires, substationWidth, substationHeight, xOffset, gridHeight % 18 - 4 + yOffset);
+        }
+
+        BlueprintUtil.PopulateEntityNumbers(entities);
+
+        return new Blueprint
+        {
+            Label = $"{width}x{height} RAM",
+            Icons = [Icon.Create(ItemNames.AdvancedCircuit)],
+            Entities = entities,
+            Wires = wires.ToArrayList()
+        };
     }
+}
+
+public class RamConfiguration
+{
+    public int? Width { get; set; }
+    public int? Height { get; set; }
+    public int? BaseAddress { get; set; }
+    public string Signal { get; set; }
+    public bool? IncludeClearSignal {  get; set; }
+    public bool? IncludePower { get; set; }
 }
