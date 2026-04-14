@@ -220,6 +220,7 @@ playlists:
         album: Help!
         artist: The Beatles
         source: Music\BitMidi\The Beatles - I've Just Seen a Face.mid
+        fade: {}
       - name: EleonorRigby
         displayName: Eleonor Rigby
         album: Revolver
@@ -430,6 +431,7 @@ playlists:
         album: Before the Storm
         artist: Darude
         source: Music\BitMidi\darude-sandstorm.mid
+        fade: {}
       - name: The Trees
         album: Hemispheres
         artist: Rush
