@@ -1,16 +1,15 @@
 ﻿using Microsoft.Extensions.Configuration;
 
-namespace BlueprintGenerator
-{
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
-            var configuration = new ConfigurationBuilder()
-                .AddCommandLine(args)
-                .Build();
+namespace BlueprintGenerator;
 
-            MemoryInitializer.Run(configuration);
-        }
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddCommandLine(args)
+            .Build();
+
+        BlueprintGeneratorInvoker.Run(configuration);
     }
 }
