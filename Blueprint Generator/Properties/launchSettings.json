@@ -84,6 +84,10 @@
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/font.txt\" --OutputJson=\"$(ProjectDir)/Test/font.json\" --FontImage=\"$(ProjectDir)/Fonts/5x7 Font.png\" --MemoryType=Font --Signals=0123456789ABCDEFGHIJKLMNOPQRSTUVWXY"
     },
+    "VariableWidthFont": {
+      "commandName": "Project",
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/variableWidthFont.txt\" --OutputJson=\"$(ProjectDir)/Test/variableWidthFont.json\" --FontImage=\"$(ProjectDir)/Fonts/10px Font.png\" --MemoryType=Font --UseOneSignalPerRow=true --Signals=0123456789 --WidthSignal=signal-X"
+    },
     "ComputerFont": {
       "commandName": "Project",
       "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/computerFont.txt\" --OutputJson=\"$(ProjectDir)/Test/computerFont.json\" --FontImage=\"$(ProjectDir)/Fonts/10px Font.png\" --MemoryType=Font --UseOneSignalPerRow=true --Signals=0123456789 --WidthSignal=signal-X --HeightSignal=signal-Y --MultiLine=true"
