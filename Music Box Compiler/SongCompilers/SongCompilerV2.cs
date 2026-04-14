@@ -1,6 +1,7 @@
 ﻿using BlueprintCommon.Models;
 using BlueprintGenerator;
 using BlueprintGenerator.Constants;
+using BlueprintGenerator.MusicBox;
 using MusicBoxCompiler.Models;
 using MusicBoxCompiler.Utils;
 using System;

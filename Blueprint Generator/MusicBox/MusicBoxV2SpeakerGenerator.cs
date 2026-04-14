@@ -10,7 +10,7 @@ using System.Diagnostics;
 using System.Linq;
 using static BlueprintGenerator.PowerUtil;
 
-namespace BlueprintGenerator;
+namespace BlueprintGenerator.MusicBox;
 
 public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 {

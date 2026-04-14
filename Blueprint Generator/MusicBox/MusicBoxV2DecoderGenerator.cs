@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using static BlueprintGenerator.PowerUtil;
 
-namespace BlueprintGenerator;
+namespace BlueprintGenerator.MusicBox;
 
 public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
 {

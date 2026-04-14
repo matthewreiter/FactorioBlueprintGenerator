@@ -5,7 +5,7 @@ using BlueprintGenerator.Models;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
 
-namespace BlueprintGenerator;
+namespace BlueprintGenerator.MusicBox;
 
 public class NoteDisplayGenerator : IBlueprintGenerator
 {
