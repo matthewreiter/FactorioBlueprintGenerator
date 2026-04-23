@@ -20,8 +20,11 @@ public class RamGenerator : IBlueprintGenerator
         var width = configuration.Width ?? 16;
         var height = configuration.Height ?? 16;
         var baseAddress = configuration.BaseAddress ?? 0;
-        var signalName = configuration.Signal ?? VirtualSignalNames.LetterOrDigit('0');
-        var includeClearSignal = configuration.IncludeClearSignal ?? false;
+        var writeAddressSignal = SignalID.CreateVirtual(configuration.WriteAddressSignal ?? VirtualSignalNames.Check);
+        var readAddressSignal = SignalID.CreateVirtual(configuration.ReadAddressSignal ?? VirtualSignalNames.Info);
+        var readCheckerSignal = configuration.ReadCheckerSignal is not null ? SignalID.CreateVirtual(configuration.ReadCheckerSignal) : null;
+        var dataSignal = SignalID.CreateVirtual(configuration.DataSignal ?? VirtualSignalNames.LetterOrDigit('0'));
+        var clearSignal = (configuration.IncludeClearSignal ?? false) ? SignalID.CreateVirtual(VirtualSignalNames.Deny) : null;
         var includePower = configuration.IncludePower ?? true;
 
         const int entitiesPerCell = 3;
@@ -34,11 +37,6 @@ public class RamGenerator : IBlueprintGenerator
         var gridHeight = height * cellHeight;
         var xOffset = -gridWidth / 2;
         var yOffset = -gridHeight / 2;
-
-        var writeAddressSignal = SignalID.CreateVirtual(VirtualSignalNames.Check);
-        var readAddressSignal = SignalID.CreateVirtual(VirtualSignalNames.Info);
-        var dataSignal = SignalID.Create(signalName);
-        var clearSignal = includeClearSignal ? SignalID.CreateVirtual(VirtualSignalNames.Deny) : null;
 
         List<Entity> entities = [];
         List<Wire> wires = [];
@@ -93,7 +91,7 @@ public class RamGenerator : IBlueprintGenerator
                                     Constant = address,
                                     Comparator = Comparators.IsNotEqual
                                 },
-                                .. includeClearSignal ? [
+                                .. clearSignal is not null ? [
                                     new()
                                     {
                                         First_signal = clearSignal,
@@ -195,7 +193,9 @@ public class RamGenerator : IBlueprintGenerator
                                 {
                                     First_signal = readAddressSignal,
                                     First_signal_networks = new() { Red = true },
-                                    Constant = address,
+                                    Second_signal = readCheckerSignal,
+                                    Second_signal_networks = readCheckerSignal is not null ? new() { Green = true } : null,
+                                    Constant = readCheckerSignal is null ? address : null,
                                     Comparator = Comparators.IsEqual
                                 }
                             ],
@@ -253,7 +253,10 @@ public class RamConfiguration
     public int? Width { get; set; }
     public int? Height { get; set; }
     public int? BaseAddress { get; set; }
-    public string Signal { get; set; }
-    public bool? IncludeClearSignal {  get; set; }
+    public string WriteAddressSignal { get; set; }
+    public string ReadAddressSignal { get; set; }
+    public string ReadCheckerSignal { get; set; }
+    public string DataSignal { get; set; }
+    public bool? IncludeClearSignal { get; set; }
     public bool? IncludePower { get; set; }
 }
