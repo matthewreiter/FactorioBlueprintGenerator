@@ -27,9 +27,9 @@ public class RenderedTextBufferGenerator : IBlueprintGenerator
         var clearSignal = SignalID.CreateVirtual(configuration.ClearSignal ?? VirtualSignalNames.Deny);
         var includePower = configuration.IncludePower ?? true;
 
-        if (width % 2 != 0)
+        if (width % 2 != 0 && height > 1)
         {
-            throw new ArgumentException("The width must be even.");
+            throw new ArgumentException("The width must be even if the height is greater than 1.");
         }
 
         const int entitiesPerCell = 3;

@@ -10,7 +10,7 @@
     },
     "RenderedTextBuffer": {
       "commandName": "Project",
-      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/renderedTextBuffer.txt\" --OutputJson=\"$(ProjectDir)/Test/renderedTextBuffer.json\" --MemoryType=RenderedTextBuffer --Width=14 --Height=1 --IncludePower=false"
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/renderedTextBuffer.txt\" --OutputJson=\"$(ProjectDir)/Test/renderedTextBuffer.json\" --MemoryType=RenderedTextBuffer --Width=15 --Height=1 --IncludePower=false"
     },
     "Registers": {
       "commandName": "Project",
