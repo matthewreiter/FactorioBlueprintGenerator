@@ -104,7 +104,7 @@ playlists:
           celesta:
             offset: 12
       - name: BalladOfJohnAndYoko
-        displayName: Ballad of John and Yoko
+        displayName: The Ballad of John and Yoko
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.Ballad of John and Yoko k.mid
         instruments:
