@@ -20,7 +20,6 @@ public class SongCompilerV2 : ISongCompiler
     private static readonly int ChannelCount = MusicBoxSignals.SpeakerChannelSignals.Count;
     private const int LyricOffsetBits = 8;
     private const int LyricLineWidth = 56;
-    private const int MinimumNoteDuration = 10;
     private const int MaximumNoteDuration = 44000;
     private const int ChannelCooldownTicks = 1;
 
@@ -61,7 +60,7 @@ public class SongCompilerV2 : ISongCompiler
             return jumpFilter;
         }
 
-        int EncodeDuration(TimeSpan duration) => Math.Min(Math.Max((int)double.Ceiling(duration.TotalSeconds * 60), MinimumNoteDuration), MaximumNoteDuration);
+        int EncodeDuration(TimeSpan duration) => Math.Min(Math.Max((int)double.Ceiling(duration.TotalSeconds * 60), MusicBoxV2SpeakerGenerator.NoteTrailOffTicks), MaximumNoteDuration);
 
         int EncodeVolume(double volume) => Math.Min(Math.Max((int)double.Round(volume * 100), 1), 100) - 1;
 

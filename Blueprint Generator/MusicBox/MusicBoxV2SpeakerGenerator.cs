@@ -14,6 +14,8 @@ namespace BlueprintGenerator.MusicBox;
 
 public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 {
+    public const int NoteTrailOffTicks = 10;
+
     public Blueprint Generate(IConfigurationRoot configuration)
     {
         return Generate(configuration.Get<MusicBoxV2SpeakerConfiguration>());
@@ -30,14 +32,13 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         const int maxPitches = 48;
         const int maxVolumes = 100;
         const int ticksPerCycle = 3;
-        const int trailOffTicks = 10;
         const int pitchesPerGroup = 6; // 2 groups per octave for a total of 12 groups
         const int octaveCount = 6;
         const int notesPerOctave = 12;
 
         const int pitchGroupCount = octaveCount * notesPerOctave / pitchesPerGroup;
 
-        const int headerHeight = 42;
+        const int headerHeight = 49;
         const int speakerCellHeight = 3;
         const int footerHeight = 16;
         const int displayCellHeight = 4;
@@ -92,6 +93,13 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                     Constant = 9,
                     Comparator = Comparators.LessThan,
                     Compare_type = CompareTypes.And
+                },
+                new()
+                {
+                    First_signal = remainingTimeSignal,
+                    Constant = 3,
+                    Comparator = Comparators.GreaterThan,
+                    Compare_type = CompareTypes.And
                 }
             ]),
             (30, "Sustained note volume adjustment",
@@ -101,6 +109,61 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                     First_signal = elapsedTimeSignal,
                     Constant = 9,
                     Comparator = Comparators.GreaterThanOrEqualTo
+                },
+                new()
+                {
+                    First_signal = remainingTimeSignal,
+                    Constant = 3,
+                    Comparator = Comparators.GreaterThan,
+                    Compare_type = CompareTypes.And
+                }
+            ]),
+            (20, "Trailoff volume adjustment 1",
+            [
+                new()
+                {
+                    First_signal = elapsedTimeSignal,
+                    Constant = 5,
+                    Comparator = Comparators.GreaterThanOrEqualTo
+                },
+                new()
+                {
+                    First_signal = remainingTimeSignal,
+                    Constant = 3,
+                    Comparator = Comparators.IsEqual,
+                    Compare_type = CompareTypes.And
+                }
+            ]),
+            (10, "Trailoff volume adjustment 2",
+            [
+                new()
+                {
+                    First_signal = elapsedTimeSignal,
+                    Constant = 5,
+                    Comparator = Comparators.GreaterThanOrEqualTo
+                },
+                new()
+                {
+                    First_signal = remainingTimeSignal,
+                    Constant = 2,
+                    Comparator = Comparators.IsEqual,
+                    Compare_type = CompareTypes.And
+                }
+            ]),
+            (5, "Trailoff volume adjustment 3",
+            [
+                new()
+                {
+                    First_signal = elapsedTimeSignal,
+                    Constant = 5,
+                    Comparator = Comparators.GreaterThanOrEqualTo
+                },
+                new()
+                {
+                    First_signal = remainingTimeSignal,
+                    Constant = 1,
+                    Comparator = Comparators.IsEqual,
+                    Compare_type = CompareTypes.And
                 }
             ])
         ];
@@ -194,7 +257,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                 Position = new Position
                 {
                     X = (includePower ? 2 : 0) + xOffset - 1,
-                    Y = yOffset + 28 + volumeLevelIndex * 2
+                    Y = yOffset + 28 + volumeLevelIndex * 2 + (volumeLevelIndex >= 3 ? 1 : 0) + (includePower && volumeLevelIndex == 5 ? 1 : 0)
                 },
                 Direction = Direction.Down,
                 Control_behavior = new ControlBehavior
@@ -230,7 +293,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             Position = new Position
             {
                 X = (includePower ? 2 : 0) + xOffset - 1,
-                Y = yOffset + headerHeight + instrumentCount * speakerCellHeight + 1
+                Y = yOffset + headerHeight + instrumentCount * speakerCellHeight + 2
             },
             Direction = Direction.Down,
             Control_behavior = new ControlBehavior
@@ -684,7 +747,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                             {
                                 First_signal = remainingTimeSignal,
                                 First_signal_networks = new() { Green = true },
-                                Constant = trailOffTicks,
+                                Constant = NoteTrailOffTicks,
                                 Comparator = Comparators.GreaterThan,
                                 Compare_type = CompareTypes.And
                             }
@@ -755,10 +818,28 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             wires.Add(new((signalPropagator1, ConnectionType.Green1), (timeGate, ConnectionType.Green1)));
             wires.Add(new((signalPropagator1, ConnectionType.Red2), (timeGate, ConnectionType.Red2)));
 
+            var signalPropagatorBridge = new Entity
+            {
+                Name = ItemNames.MediumElectricPole,
+                Position = new Position
+                {
+                    X = columnX,
+                    Y = y + 6
+                }
+            };
+            entities.Add(signalPropagatorBridge);
+
+            wires.Add(new((signalPropagatorBridge, ConnectionType.Red1), (signalPropagator1, ConnectionType.Red2)));
+
             List<Entity> volumeAdjustmentPickers = [];
 
             foreach (var (volumeAdjustment, volumeLevelIndex) in volumeAdjustments.Select((volumeAdjustment, index) => (volumeAdjustment, index)))
             {
+                if (volumeLevelIndex == 3)
+                {
+                    y++;
+                }
+
                 var volumeAdjustmentPicker = new Entity
                 {
                     Player_description = $"Volume adjustment picker {volumeLevelIndex + 1} for voice {voiceIndex + 1}",
@@ -851,7 +932,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             };
             entities.Add(signalPropagator2);
 
-            wires.Add(new((signalPropagator2, ConnectionType.Red1), (signalPropagator1, ConnectionType.Red2)));
+            wires.Add(new((signalPropagator2, ConnectionType.Red1), (signalPropagatorBridge, ConnectionType.Red1)));
 
             var masterVolumeMultiplier = new Entity
             {
