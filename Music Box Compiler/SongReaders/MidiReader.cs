@@ -138,7 +138,7 @@ public static class MidiReader
     private const double PressureExponent = 2;
     private static readonly int[] HarmonicOffsets = [12, 19, 24];
     private const double HarmonicVelocityMultiplier = 0.6; // Reduce the volume of the harmonics so that the combined volume is closer to the original note
-    private const double MinimumHarmonicReplacementFraction = 0.5; // If at least this fraction of the notes must be replaced by harmonics, then prefer harmonics
+    private const double MinimumHarmonicReplacementFraction = 0.6; // If at least this fraction of the notes must be replaced by harmonics, then prefer harmonics
     private const double MinimumHarmonicMustToCannotRatio = 10; // If the number of notes that must be replaced by harmonics is at least this many times the number of notes that cannot be replaced by harmonics, then prefer harmonics
     private const int UnreasonablyHighOctave = 12; // This is to ensure that we don't have a negative number before calculating the octave, which would throw off the result
     private const double MinimumVolume = 0.01;
