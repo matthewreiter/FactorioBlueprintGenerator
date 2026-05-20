@@ -60,18 +60,23 @@ public class SongCompilerV2 : ISongCompiler
             return jumpFilter;
         }
 
-        int EncodeDuration(TimeSpan duration) => Math.Min(Math.Max((int)double.Ceiling(duration.TotalSeconds * 60), MusicBoxV2SpeakerGenerator.NoteTrailOffTicks), MaximumNoteDuration);
+        int EncodeDuration(Note note) =>
+            Math.Min(
+                Math.Max(
+                    (int)double.Ceiling(note.Duration.TotalSeconds * 60),
+                    Math.Min(AudioClipInfo.GetAudioClipLength(note), MusicBoxV2SpeakerGenerator.NoteTrailOffTicks)),
+                MaximumNoteDuration);
 
-        int EncodeVolume(double volume) => Math.Min(Math.Max((int)double.Round(volume * 100), 1), 100) - 1;
+        int EncodeVolume(Note note) => Math.Min(Math.Max((int)double.Round(note.Volume * 100), 1), 100) - 1;
 
-        int EncodeVolumeChange(Note note) => EncodeVolume(note.Volume) - EncodeVolume(note.PreviousNote.Volume);
+        int EncodeVolumeChange(Note note) => EncodeVolume(note) - EncodeVolume(note.PreviousNote);
 
         int EncodeNote(Note note)
         {
-            var encodedDuration = EncodeDuration(note.Duration);
+            var encodedDuration = EncodeDuration(note);
             var encodedInstrument = (int)note.Instrument - 3;
             var encodedPitch = note.Number - 1;
-            var encodedVolume = EncodeVolume(note.Volume);
+            var encodedVolume = EncodeVolume(note);
 
             return encodedVolume + (encodedPitch + (encodedInstrument + encodedDuration * InstrumentCount) * PitchCount) * VolumeCount;
         }
@@ -243,7 +248,7 @@ public class SongCompilerV2 : ISongCompiler
                             Debug.Assert(channelIndex >= 0);
 
                             // Allocate time on the channel
-                            var noteDuration = EncodeDuration(note.Duration);
+                            var noteDuration = EncodeDuration(note);
                             channelRemainingTimes[channelIndex] = noteDuration + ChannelCooldownTicks;
 
                             // Add the note to the channel
