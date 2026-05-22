@@ -509,7 +509,7 @@ playlists:
         displayName: Beat It
         album: Thriller
         artist: Michael Jackson
-        source: Music\BitMidi\Michael Jackson - Beat It.mid
+        source: Music\BitMidi\Michael Jackson - Beat It - Edited.mid
         volume: 100
         instruments:
           bassGuitar:
