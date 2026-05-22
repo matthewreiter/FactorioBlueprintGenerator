@@ -277,7 +277,7 @@ public static class MidiReader
 
                 currentLyrics += midiNote.Lyric;
 
-                midiEventWriter.WriteLine($"{midiNote.StartTime:mm\\:ss\\.fff}: '{midiNote.Lyric}'");
+                midiEventWriter.WriteLine($"{midiNote.StartTime:mm\\:ss\\.fff}: {(isStartOfLine ? "¶ " : "")}'{midiNote.Lyric}'");
 
                 continue;
             }
@@ -716,9 +716,9 @@ public static class MidiReader
                                 var lyric = Encoding.Latin1.GetString(midiEvent.ExtraData).Trim('\0');
 
                                 isStartOfLine |= lyric.StartsWith('\r') || lyric.StartsWith('\n');
-                                var nextIsStartOfLine = lyric.EndsWith('\r') || lyric.EndsWith('\n');
+                                var nextIsStartOfLine = lyric.EndsWith('\r') || lyric.EndsWith('\n') || lyric.EndsWith('|');
 
-                                lyric = lyric.Trim('\r', '\n');
+                                lyric = lyric.Trim('\r', '\n', '|');
 
                                 if (insertSpace && !isStartOfLine)
                                 {
