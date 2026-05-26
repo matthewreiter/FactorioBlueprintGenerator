@@ -715,7 +715,7 @@ public static class MidiReader
                                 // Use Latin1 for lyrics to handle special apostrophes
                                 var lyric = Encoding.Latin1.GetString(midiEvent.ExtraData).Trim('\0');
 
-                                isStartOfLine |= lyric.StartsWith('\r') || lyric.StartsWith('\n');
+                                isStartOfLine |= lyric.StartsWith('\r') || lyric.StartsWith('\n') || lyric.StartsWith('|');
                                 var nextIsStartOfLine = lyric.EndsWith('\r') || lyric.EndsWith('\n') || lyric.EndsWith('|');
 
                                 lyric = lyric.Trim('\r', '\n', '|');
