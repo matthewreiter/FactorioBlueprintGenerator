@@ -38,7 +38,7 @@ playlists:
             offset: 12
       - name: WithALittleHelpFromMyFriends
         displayName: With a Little Help From My Friends
-        album: Sgt. Pepper's Lonely Hearts Club Band
+        album: Sgt Pepper's Lonely Hearts Club Band
         artist: The Beatles
         source: Music\BitMidi\beatles-little_help_from_you_friends.mid
         instruments:
@@ -264,7 +264,7 @@ playlists:
         source: Music\BitMidi\THE BEATLES.I want you shes so heavy.mid
       - name: LucyInTheSkyWithDiamonds
         displayName: Lucy in the Sky With Diamonds
-        album: Sgt. Pepper's Lonely Hearts Club Band
+        album: Sgt Pepper's Lonely Hearts Club Band
         artist: The Beatles
         source: Music\BitMidi\THE BEATLES.Lucy in the sky K.mid
         instruments:
@@ -339,7 +339,7 @@ playlists:
             volume: 120
       - name: ADayInTheLife
         displayName: A Day in the Life
-        album: Sgt. Pepper's Lonely Hearts Club Band
+        album: Sgt Pepper's Lonely Hearts Club Band
         artist: The Beatles
         source: Music\BeatlesNumber9.com\adaylife.mid
       - name: Everlong
@@ -381,7 +381,7 @@ playlists:
         source: Music\BeatlesNumber9.com\imlooking.mid
         volume: 110
       - name: EverybodysGotSomethingToHide
-        displayName: Everbody's Got Something to Hide
+        displayName: Everybody's Got Something to Hide Except Me and My Monkey
         album: The White Album
         artist: The Beatles
         source: Music\BeatlesNumber9.com\everybodyhide.mid
@@ -398,7 +398,7 @@ playlists:
         volume: 130
       - name: LovelyRita
         displayName: Lovely Rita
-        album: Sgt. Pepper's Lonely Hearts Club Band
+        album: Sgt Pepper's Lonely Hearts Club Band
         artist: The Beatles
         source: Music\BeatlesNumber9.com\lovely.mid
         instruments:

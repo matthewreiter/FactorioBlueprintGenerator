@@ -66,15 +66,15 @@
     },
     "TitleTextDisplay": {
       "commandName": "Project",
-      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=A --Length=52"
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=A --Length=64"
     },
     "AlbumTextDisplay": {
       "commandName": "Project",
-      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=N --Length=28"
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=Q --Length=36"
     },
     "ArtistTextDisplay": {
       "commandName": "Project",
-      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=U --Length=20"
+      "commandLineArgs": "--OutputBlueprint=\"$(ProjectDir)/Test/textDisplay.txt\" --OutputJson=\"$(ProjectDir)/Test/textDisplay.json\" --MemoryType=TextDisplay --StartingSignal=3 --Length=24"
     },
     "LyricsTextDisplay": {
       "commandName": "Project",

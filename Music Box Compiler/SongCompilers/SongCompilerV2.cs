@@ -354,17 +354,17 @@ public class SongCompilerV2 : ISongCompiler
                 var displayName = song.DisplayName ?? song.Name;
                 if (displayName is not null)
                 {
-                    metadataFilters.AddRange(FilterUtils.CreateFiltersForString(displayName, 52, 'A'));
+                    metadataFilters.AddRange(FilterUtils.CreateFiltersForString(displayName, 64, 'A'));
                 }
 
                 if (song.Album is not null)
                 {
-                    metadataFilters.AddRange(FilterUtils.CreateFiltersForString(song.Album, 28, 'N'));
+                    metadataFilters.AddRange(FilterUtils.CreateFiltersForString(song.Album, 36, 'Q'));
                 }
 
                 if (song.Artist is not null)
                 {
-                    metadataFilters.AddRange(FilterUtils.CreateFiltersForString(song.Artist, 20, 'U'));
+                    metadataFilters.AddRange(FilterUtils.CreateFiltersForString(song.Artist, 24, '3'));
                 }
 
                 metadataCells.Add(new MemoryCell { Address = metadataAddress, Filters = metadataFilters });
