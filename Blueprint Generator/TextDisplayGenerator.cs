@@ -38,6 +38,7 @@ public class TextDisplayGenerator : IBlueprintGenerator
         ('[', VirtualSignalNames.LeftSquareBracket),
         (']', VirtualSignalNames.RightSquareBracket),
         (' ', VirtualSignalNames.Black),
+        ('\0', VirtualSignalNames.Black),
     ];
     private static readonly Dictionary<char, SignalID> CharacterMap = CharacterTuples.ToDictionary(tuple => tuple.Character, tuple => SignalID.Create(tuple.SignalName));
 
