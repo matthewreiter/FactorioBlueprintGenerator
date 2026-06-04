@@ -14,6 +14,7 @@ public class SongCompilerV1 : ISongCompiler
     private const int NoteGroupAddressBits = 16;
     private const int NoteGroupTimeOffsetBits = 11;
     private const int MetadataAddressBits = 10;
+    private const int SongGapTicks = 120;
 
     public int? MaxConcurrentNotes => 10;
 
@@ -252,7 +253,7 @@ public class SongCompilerV1 : ISongCompiler
                 // Add a pause between songs
                 if (!song.Gapless)
                 {
-                    currentAddress += 120;
+                    currentAddress += SongGapTicks;
                 }
 
                 // Add song metadata

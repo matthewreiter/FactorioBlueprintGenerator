@@ -22,6 +22,7 @@ public class SongCompilerV2 : ISongCompiler
     private const int LyricLineWidth = 56;
     private const int MaximumNoteDuration = 44000;
     private const int ChannelCooldownTicks = 1;
+    private const int SongGapTicks = 120;
 
     private static readonly List<int> NoteGroupsBySize = [
         .. Enumerable.Range(1, ChannelCount)
@@ -335,7 +336,7 @@ public class SongCompilerV2 : ISongCompiler
                 // Add a pause between songs
                 if (!song.Gapless)
                 {
-                    currentAddress += 120;
+                    currentAddress += SongGapTicks;
                 }
 
                 // Add song metadata
