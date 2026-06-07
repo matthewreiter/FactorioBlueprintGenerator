@@ -495,7 +495,7 @@ public static class MidiReader
         }
 
         var effectiveNoteNumber = note.EffectiveNoteNumber;
-        var preferHarmonics = instrumentPreferHarmonics[note.Instrument];
+        var preferHarmonics = note.Instrument == note.InitialMappedInstrument && instrumentPreferHarmonics[note.Instrument];
         var instrumentNoteCount = Instruments[note.Instrument].NoteCount;
 
         Debug.Assert(effectiveNoteNumber is > -12 and <= 48);
@@ -778,6 +778,7 @@ public static class MidiReader
                                 OriginalInstrumentName = instrumentName,
                                 OriginalNoteName = noteName,
                                 OriginalNoteNumber = noteNumber,
+                                InitialMappedInstrument = instrument,
                                 Instrument = instrument,
                                 RelativeNoteNumber = relativeNoteNumber,
                                 Velocity = velocity / 127d,
@@ -937,6 +938,7 @@ public static class MidiReader
         public string OriginalInstrumentName { get; init; }
         public string OriginalNoteName { get; init; }
         public int OriginalNoteNumber { get; init; }
+        public Instrument InitialMappedInstrument { get; init; }
         public Instrument Instrument { get; set; }
         public int RelativeNoteNumber { get; init; }
         public double Velocity { get; init; }
