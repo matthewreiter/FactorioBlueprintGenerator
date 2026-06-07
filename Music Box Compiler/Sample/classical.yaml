@@ -17,12 +17,12 @@
         artist: Bach
         source: Music\Kunstderfuge.com\Bach\bach-js_brandenburg_concert_6_*_(c)icking-archive.mid
       - name: BachGoldbergsAria
-        displayName: Aria
+        displayName: "Goldberg Variations Aria"
         album: Goldberg Variations
         artist: Bach
         source: Music\Kunstderfuge.com\Bach\goldberg_variations_988_aria_(c)degiusti.mid
       - name: BachGoldbergVariation1
-        displayName: Variation 1
+        displayName: "Goldberg Variation 1"
         album: Goldberg Variations
         artist: Bach
         source: Music\Kunstderfuge.com\Bach\goldberg_variations_988_01_(c)degiusti.mid
