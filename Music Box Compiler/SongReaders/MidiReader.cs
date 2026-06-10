@@ -240,6 +240,7 @@ public static class MidiReader
         var currentTime = TimeSpan.Zero;
         var currentNotes = new List<Note>();
         string currentLyrics = null;
+        var combinedLyrics = new StringBuilder();
         bool isStartOfLine = false;
         var noteGroups = new List<NoteGroup>();
 
@@ -278,6 +279,13 @@ public static class MidiReader
                 currentLyrics += midiNote.Lyric;
 
                 midiEventWriter.WriteLine($"{midiNote.StartTime:mm\\:ss\\.fff}: {(isStartOfLine ? "¶ " : "")}'{midiNote.Lyric}'");
+
+                if (isStartOfLine)
+                {
+                    combinedLyrics.AppendLine();
+                }
+
+                combinedLyrics.Append(midiNote.Lyric);
 
                 continue;
             }
@@ -354,6 +362,11 @@ public static class MidiReader
             noteGroups[^1].Length = finalPlayTime - currentTime;
 
             midiEventWriter?.WriteLine($"Final play time: {finalPlayTime}");
+        }
+
+        if (combinedLyrics.Length > 0)
+        {
+            midiEventWriter?.WriteLine($"Combined lyrics:{combinedLyrics}");
         }
 
         midiEventWriter?.WriteLine();
