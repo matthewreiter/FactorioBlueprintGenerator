@@ -432,7 +432,8 @@ playlists:
         artist: Darude
         source: Music\BitMidi\darude-sandstorm.mid
         fade: {}
-      - name: The Trees
+      - name: TheTrees
+        displayName: The Trees
         album: Hemispheres
         artist: Rush
         source: Music\BitMidi\The-Trees.mid
@@ -558,6 +559,10 @@ playlists:
         artist: Koji Kondo
         source: Music\BitMidi\The Legend of Zelda Ocarina of Time - Song of Storms.mid
         volume: 130
+      - name: Ohio
+        album: So Far
+        artist: Neil Young
+        source: Music\Midis101.com\ohio.mid
 
       # End with Closing Time
       - name: ClosingTime
