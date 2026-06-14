@@ -16,7 +16,7 @@ public class RomGenerator : IBlueprintGenerator
         return Generate(configuration.Get<RomConfiguration>());
     }
 
-    public static Blueprint Generate(RomConfiguration configuration, IList<MemoryCell> program = null, IList<MemoryCell> data = null)
+    public static Blueprint Generate(RomConfiguration configuration, IList<MemoryCell> program = null, IList<MemoryCell> data = null, List<Filter> metadata = null)
     {
         var snapToGrid = configuration.SnapToGrid ?? false;
         var xOffset = configuration.X ?? 0;
@@ -165,7 +165,7 @@ public class RomGenerator : IBlueprintGenerator
             }
         }
 
-        // Timestamp
+        // Timestamp and additional metadata
         entities.Add(new Entity
         {
             Entity_number = entities.Count + 1,
@@ -178,7 +178,11 @@ public class RomGenerator : IBlueprintGenerator
             Direction = Direction.Down,
             Control_behavior = new ControlBehavior
             {
-                Sections = Sections.Create([Filter.Create(VirtualSignalNames.LetterOrDigit('0'), (int)(DateTime.Now.Ticks / 10000))])
+                Sections = Sections.Create(
+                [
+                    Section.Create([Filter.Create(VirtualSignalNames.LetterOrDigit('0'), (int)(DateTime.Now.Ticks / 10000))]),
+                    .. metadata?.Count > 0 ? [Section.Create(metadata)] : Array.Empty<Section>()
+                ])
             }
         });
 
@@ -246,7 +250,12 @@ public class RomConfiguration
 
 public class MemoryCell
 {
-    public int Address { set => AddressRanges = [new(value, value)]; }
+    public int Address
+    {
+        set => AddressRanges = [new(value, value)];
+        get => AddressRanges[0].Start;
+    }
+
     public List<(int Start, int End)> AddressRanges { get; set; }
     public List<Filter> Filters { get; set; }
     public bool IsEnabled { get; set; } = true;

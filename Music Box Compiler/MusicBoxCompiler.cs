@@ -178,6 +178,11 @@ public static class MusicBoxCompiler
         var width = configuration.Width ?? 16;
         var height = configuration.Height ?? 16;
 
+        List<Filter> metadata =
+        [
+            Filter.Create(VirtualSignalNames.StackSize, GetSongCount(compiledSongs))
+        ];
+
         var romUsed = compiledSongs.SongCells.Count;
         var totalRom = width * (height - 1);
 
@@ -194,7 +199,18 @@ public static class MusicBoxCompiler
             ProgramRows = 1, // Allocate one line for the constant cells
             ProgramName = "Songs",
             IconNames = [ItemNames.ElectronicCircuit, ItemNames.ProgrammableSpeaker]
-        }, compiledSongs.MetadataCells, compiledSongs.SongCells);
+        }, compiledSongs.MetadataCells, compiledSongs.SongCells, metadata);
+    }
+
+    private static int GetSongCount(CompiledSongs compiledSongs)
+    {
+        var metadataAddresses = compiledSongs.MetadataCells.Select(cell => cell.Address).Order().ToArray();
+
+        // Count the number of contiguous song metadata addresses
+        int count = 0;
+        for (; count < metadataAddresses.Length && metadataAddresses[count] == count + 1; count++) ;
+
+        return count;
     }
 
     private static void WriteOutConstants(string outputConstantsFile, CompiledSongs compiledSongs, string constantsNamespace)

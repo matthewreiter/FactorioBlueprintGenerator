@@ -656,6 +656,14 @@ namespace BlueprintCommon.Models
         [JsonPropertyName("sections")]
         public List<Section> SectionList { get; set; }
 
+        public static Sections Create(List<Section> sections)
+        {
+            return new Sections
+            {
+                SectionList = sections
+            };
+        }
+
         public static Sections Create(List<Filter> filters)
         {
             return new Sections
@@ -679,6 +687,14 @@ namespace BlueprintCommon.Models
         /// Index of the section, 1-based.
         /// </summary>
         public int Index { get; set; }
+
+        public static Section Create(List<Filter> filters)
+        {
+            return new Section
+            {
+                Filters = filters
+            };
+        }
     }
 
     public class Filter
