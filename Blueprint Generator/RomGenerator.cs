@@ -180,7 +180,7 @@ public class RomGenerator : IBlueprintGenerator
             {
                 Sections = Sections.Create(
                 [
-                    Section.Create([Filter.Create(VirtualSignalNames.LetterOrDigit('0'), (int)(DateTime.Now.Ticks / 10000))]),
+                    Section.Create([Filter.Create(VirtualSignalNames.Lock, (int)(DateTime.Now.Ticks / 10000))]),
                     .. metadata?.Count > 0 ? [Section.Create(metadata)] : Array.Empty<Section>()
                 ])
             }
