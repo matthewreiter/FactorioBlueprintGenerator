@@ -174,7 +174,7 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
                         [
                             new DeciderCondition
                             {
-                                First_signal = SignalID.CreateVirtual(VirtualSignalNames.Check),
+                                First_signal = SignalID.CreateVirtual(VirtualSignalNames.Damage),
                                 First_signal_networks = new() { Red = true },
                                 Constant = 0,
                                 Comparator = Comparators.IsEqual
@@ -196,11 +196,7 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
 
             wires.Add(new((addressSuppressor, ConnectionType.Green1), (previousSignalPropagator, ConnectionType.Green1)));
             wires.Add(new((signalPropagator, ConnectionType.Green1), (previousSignalPropagator, ConnectionType.Green2)));
-
-            if (column > 0)
-            {
-                wires.Add(new((signalPropagator, ConnectionType.Red1), (previousSignalPropagator, ConnectionType.Red1)));
-            }
+            wires.Add(new((signalPropagator, ConnectionType.Red1), (previousSignalPropagator, ConnectionType.Red1)));
 
             var addressExtractor = new Entity
             {
