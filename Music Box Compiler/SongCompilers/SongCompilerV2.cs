@@ -1,4 +1,5 @@
-﻿using BlueprintCommon.Models;
+﻿using BlueprintCommon.Constants;
+using BlueprintCommon.Models;
 using BlueprintGenerator;
 using BlueprintGenerator.Constants;
 using BlueprintGenerator.MusicBox;
@@ -38,8 +39,6 @@ public class SongCompilerV2 : ISongCompiler
     {
         var baseAddress = configuration.BaseAddress ?? 1;
         var baseNoteAddress = configuration.BaseNoteAddress ?? 1 << MusicBoxV2DecoderGenerator.NoteGroupAddressBits;
-        var baseMetadataAddress = configuration.BaseMetadataAddress ?? 1;
-        var nextAddress = configuration.NextAddress ?? baseAddress;
 
         List<MemoryCell> songCells = [];
         List<MemoryCell> metadataCells = [];
@@ -53,10 +52,10 @@ public class SongCompilerV2 : ISongCompiler
         var totalPlayTime = 0;
         ChannelizedNoteGroup emptyNoteGroupData = new(new(new([]), null), []) { Address = 1 };
 
-        Filter AddJump(int targetAddress, bool isEnabled = true)
+        Filter AddJump(int targetAddress)
         {
             var jumpFilter = Filter.Create('U', targetAddress - (currentAddress + 3));
-            songCells.Add(new() { Address = currentAddress, Filters = [jumpFilter], IsEnabled = isEnabled });
+            songCells.Add(new() { Address = currentAddress, Filters = [jumpFilter] });
             currentAddress += 4;
             return jumpFilter;
         }
@@ -111,28 +110,12 @@ public class SongCompilerV2 : ISongCompiler
 
         NoteTuple<long> CreateNoteTuple(IEnumerable<Note> notes) => new([.. notes.Select(EncodeNoteTuple).Order()]);
 
-        var allSongs = playlists.SelectMany(playlist => playlist.Songs).ToList();
-
-        var currentMetadataAddressIndex = 0;
-        var reservedMetadataAddressIndices = allSongs.Where(song => song.AddressIndex != null).Select(song => song.AddressIndex.Value).ToHashSet();
-
-        int AllocateNextMetadataAddress()
-        {
-            while (reservedMetadataAddressIndices.Contains(currentMetadataAddressIndex))
-            {
-                currentMetadataAddressIndex++;
-            }
-
-            return currentMetadataAddressIndex++;
-        }
-
         AddJump(baseNoteAddress);
         var baseNoteGroupAddress = currentAddress;
         currentAddress = baseNoteAddress;
 
         // Add the songs
-        var trackNumber = 0;
-        foreach (var playlist in playlists)
+        foreach (var (playlistIndex, playlist) in playlists.Index())
         {
             var playlistAddress = currentAddress;
 
@@ -141,13 +124,17 @@ public class SongCompilerV2 : ISongCompiler
                 playlistAddresses[playlist.Name] = playlistAddress;
             }
 
-            foreach (var song in playlist.Songs)
+            foreach (var (songIndex, song) in playlist.Songs.Index())
             {
-                var metadataAddress = baseMetadataAddress + (song.AddressIndex ?? AllocateNextMetadataAddress());
-                var songAddress = currentAddress;
+                var metadataAddress = song.MetadataAddress;
                 List<NoteGroupReference> noteGroupReferences = [];
                 string currentLyrics = null;
                 var timeDeficit = 0;
+
+                // Add a pause before each song that can be skipped for gapless playback
+                currentAddress += SongGapTicks;
+
+                var songAddress = currentAddress;
 
                 void StartNewNoteGroupReferenceGroup()
                 {
@@ -155,13 +142,11 @@ public class SongCompilerV2 : ISongCompiler
                     noteGroupReferences = [];
                 }
 
-                trackNumber++;
-
                 // Add the notes for the song
                 foreach (var noteGroup in song.NoteGroups)
                 {
                     // Strip leading silence
-                    if (song.Gapless && noteGroup.Notes.Count == 0)
+                    if (noteGroup.Notes.Count == 0)
                     {
                         continue;
                     }
@@ -323,21 +308,17 @@ public class SongCompilerV2 : ISongCompiler
                 var songLength = currentAddress - songAddress;
                 totalPlayTime += songLength;
 
+                var endOfSongAddress = currentAddress - 1;
+
                 // Add a reference to the song metadata
                 songCells.Add(new()
                 {
-                    AddressRanges = [(songAddress, currentAddress)], // From the beginning of the song to the jump at the end
+                    AddressRanges = [(songAddress - SongGapTicks, endOfSongAddress)],
                     Filters = [Filter.Create('Y', metadataAddress)]
                 });
 
-                // Create a jump back to the beginning of the song
-                AddJump(songAddress, isEnabled: song.Loop);
-
-                // Add a pause between songs
-                if (!song.Gapless)
-                {
-                    currentAddress += SongGapTicks;
-                }
+                // Add a gap at the end of the song to allow time for processing
+                currentAddress += 4;
 
                 // Add song metadata
                 if (song.Name is not null)
@@ -345,12 +326,21 @@ public class SongCompilerV2 : ISongCompiler
                     songMetadataAddresses[song.Name] = metadataAddress;
                 }
 
-                var metadataFilters = new List<Filter>
-                {
+                var nextSongMetadataAddress = song.Loop ? metadataAddress // Same song
+                    : songIndex < playlist.Songs.Count - 1 ? playlist.Songs[songIndex + 1].MetadataAddress // Next song in the playlist
+                    : playlist.Loop ? playlist.Songs[0].MetadataAddress // Beginning of the playlist
+                    : playlistIndex < playlists.Count - 1 ? playlists[playlistIndex + 1].Songs[0].MetadataAddress // Next playlist
+                    : playlists[0].Songs[0].MetadataAddress; // Wrap around to the beginning
+
+                List<Filter> metadataFilters =
+                [
                     Filter.Create('0', songAddress),
-                    Filter.Create('1', trackNumber),
-                    Filter.Create('2', (songLength + 59) / 60 * 60) // Round up to the next second
-                };
+                    Filter.Create('1', metadataAddress), // Use the metadata address as the track number
+                    Filter.Create('2', (songLength + 59) / 60 * 60), // Round up to the next second
+                    Filter.Create(VirtualSignalNames.Output, endOfSongAddress),
+                    Filter.Create(VirtualSignalNames.DownRightArrow, nextSongMetadataAddress),
+                    Filter.Create(VirtualSignalNames.RightArrow, song.Gapless ? 1 : 0),
+                ];
 
                 var displayName = song.DisplayName ?? song.Name;
                 if (displayName is not null)
@@ -370,12 +360,9 @@ public class SongCompilerV2 : ISongCompiler
 
                 metadataCells.Add(new MemoryCell { Address = metadataAddress, Filters = metadataFilters });
             }
-
-            // Create a jump back to the beginning of the playlist
-            AddJump(playlistAddress, isEnabled: playlist.Loop);
         }
 
-        AddJump(nextAddress);
+        AddJump(baseAddress);
 
         // Rebalance note groups, moving note groups from sub-addresses with more note groups to smaller-numbered sub-addresses (which support larger note groups) that have fewer note groups
         while (true)

@@ -10,6 +10,7 @@ public record Song
     public string Album { get; set; }
     public string Artist { get; set; }
     public int? AddressIndex { get; set; }
+    public int MetadataAddress {  get; set; }
     public List<NoteGroup> NoteGroups { get; set; }
     public bool Loop { get; set; }
     public bool Gapless { get; set; }

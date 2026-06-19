@@ -116,6 +116,7 @@ public static class MusicBoxCompiler
                     Loop = playlistConfig.Loop
                 }
             )
+            .Where(playlist => playlist.Songs.Count > 0)
             .ToList();
 
         if (config.IncludeBlankSong)
@@ -138,6 +139,8 @@ public static class MusicBoxCompiler
                 ]
             });
         }
+        
+        PopulateMetadataAddresses(playlists, baseMetadataAddress);
 
         var compiledSongs = songCompiler.CompileSongs(playlists, configuration);
 
@@ -168,6 +171,29 @@ public static class MusicBoxCompiler
         }
 
         return config;
+    }
+
+    private static void PopulateMetadataAddresses(List<Playlist> playlists, int baseMetadataAddress)
+    {
+        var allSongs = playlists.SelectMany(playlist => playlist.Songs).ToList();
+
+        var currentMetadataAddressIndex = 0;
+        var reservedMetadataAddressIndices = allSongs.Where(song => song.AddressIndex is not null).Select(song => song.AddressIndex.Value).ToHashSet();
+
+        int AllocateNextMetadataAddress()
+        {
+            while (reservedMetadataAddressIndices.Contains(currentMetadataAddressIndex))
+            {
+                currentMetadataAddressIndex++;
+            }
+
+            return currentMetadataAddressIndex++;
+        }
+
+        foreach (var song in allSongs)
+        {
+            song.MetadataAddress = baseMetadataAddress + (song.AddressIndex ?? AllocateNextMetadataAddress());
+        }
     }
 
     private static Blueprint CreateBlueprintFromCompiledSongs(CompiledSongs compiledSongs, MusicBoxConfiguration configuration)

@@ -24,7 +24,6 @@ public class SongCompilerV1 : ISongCompiler
     {
         var baseAddress = configuration.BaseAddress ?? 1;
         var baseNoteAddress = configuration.BaseNoteAddress ?? 1 << NoteGroupAddressBits;
-        var baseMetadataAddress = configuration.BaseMetadataAddress ?? 1;
         var nextAddress = configuration.NextAddress ?? baseAddress;
         var volumeLevels = configuration.VolumeLevels ?? 10;
         var minVolume = configuration.MinVolume ?? 0.1;
@@ -75,19 +74,6 @@ public class SongCompilerV1 : ISongCompiler
         }
 
         var allSongs = playlists.SelectMany(playlist => playlist.Songs).ToList();
-
-        var currentMetadataAddressIndex = 0;
-        var reservedMetadataAddressIndices = allSongs.Where(song => song.AddressIndex != null).Select(song => song.AddressIndex.Value).ToHashSet();
-
-        int AllocateNextMetadataAddress()
-        {
-            while (reservedMetadataAddressIndices.Contains(currentMetadataAddressIndex))
-            {
-                currentMetadataAddressIndex++;
-            }
-
-            return currentMetadataAddressIndex++;
-        }
 
         AddJump(baseNoteAddress);
         var currentNoteGroupAddress = currentAddress;
@@ -161,7 +147,7 @@ public class SongCompilerV1 : ISongCompiler
 
             foreach (var song in playlist.Songs)
             {
-                var metadataAddress = baseMetadataAddress + (song.AddressIndex ?? AllocateNextMetadataAddress());
+                var metadataAddress = song.MetadataAddress;
                 var songAddress = currentAddress;
                 var currentFilters = new List<Filter>();
                 var currentTimeOffset = 0;
