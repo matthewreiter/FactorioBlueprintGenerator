@@ -334,12 +334,12 @@ public class SongCompilerV2 : ISongCompiler
 
                 List<Filter> metadataFilters =
                 [
-                    Filter.Create('0', songAddress),
-                    Filter.Create('1', metadataAddress), // Use the metadata address as the track number
-                    Filter.Create('2', (songLength + 59) / 60 * 60), // Round up to the next second
+                    Filter.Create(VirtualSignalNames.Ampersand, songAddress),
+                    Filter.Create(VirtualSignalNames.RightArrow, metadataAddress), // Use the metadata address as the track number
+                    Filter.Create(VirtualSignalNames.LeftRightArrow, (songLength + 59) / 60 * 60), // Round up to the next second
                     Filter.Create(VirtualSignalNames.Output, endOfSongAddress),
                     Filter.Create(VirtualSignalNames.DownRightArrow, nextSongMetadataAddress),
-                    Filter.Create(VirtualSignalNames.RightArrow, song.Gapless ? 1 : 0),
+                    Filter.Create(VirtualSignalNames.RightwardsLeftwardsArrow, song.Gapless ? 1 : 0),
                 ];
 
                 var displayName = song.DisplayName ?? song.Name;
@@ -355,7 +355,7 @@ public class SongCompilerV2 : ISongCompiler
 
                 if (song.Artist is not null)
                 {
-                    metadataFilters.AddRange(FilterUtils.CreateFiltersForString(song.Artist, 24, '3'));
+                    metadataFilters.AddRange(FilterUtils.CreateFiltersForString(song.Artist, 24, '0'));
                 }
 
                 metadataCells.Add(new MemoryCell { Address = metadataAddress, Filters = metadataFilters });
