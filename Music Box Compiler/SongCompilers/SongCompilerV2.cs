@@ -138,6 +138,12 @@ public class SongCompilerV2 : ISongCompiler
 
                 void StartNewNoteGroupReferenceGroup()
                 {
+                    // Fill up the current note group reference group to ensure that all registers in the decoder get loaded instead of being left with the previous values
+                    for (var index = noteGroupReferences.Count; index < MusicBoxSignals.NoteGroupReferenceSignals.Count; index++)
+                    {
+                        noteGroupReferences.Add(new(noteGroupReferences[0].Address + noteGroupReferences.Count - 2 + (1 << MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits), emptyNoteGroupData));
+                    }
+
                     noteGroupReferenceGroups.Add(noteGroupReferences);
                     noteGroupReferences = [];
                 }
@@ -262,12 +268,6 @@ public class SongCompilerV2 : ISongCompiler
                         // Start a new note group reference group if the time offset gets too big to encode
                         if (noteGroupReferences.Count > 0 && currentAddress - noteGroupReferences[0].Address - noteGroupReferences.Count + 1 >= (1 << MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits))
                         {
-                            // Fill up the current note group reference group to ensure that all registers in the decoder get loaded instead of being left with the previous values
-                            for (var index = noteGroupReferences.Count; index < MusicBoxSignals.NoteGroupReferenceSignals.Count; index++)
-                            {
-                                noteGroupReferences.Add(new(noteGroupReferences[0].Address + noteGroupReferences.Count - 2 + (1 << MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits), emptyNoteGroupData));
-                            }
-
                             StartNewNoteGroupReferenceGroup();
                         }
 
