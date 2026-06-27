@@ -364,12 +364,11 @@ public static class MidiReader
         {
             var lastNoteEndTime = noteGroups
                 .SelectMany(noteGroup => noteGroup.Notes)
-                .Max(note => note.StartTime + note.Duration + NoteSongEndSilence);
+                .Aggregate(TimeSpan.Zero, (max, note) => Math.Max(max, note.StartTime + note.Duration + NoteSongEndSilence));
 
-            var noteGroupsWithLyrics = noteGroups.Where(noteGroup => noteGroup.Lyrics is not null).ToList();
-            var lastLyricEndTime = noteGroupsWithLyrics.Count > 0
-                ? noteGroupsWithLyrics.Max(noteGroup => noteGroup.StartTime + LyricSongEndSilence)
-                : TimeSpan.Zero;
+            var lastLyricEndTime = noteGroups
+                .Where(noteGroup => noteGroup.Lyrics is not null)
+                .Aggregate(TimeSpan.Zero, (max, noteGroup) => Math.Max(max, noteGroup.StartTime + LyricSongEndSilence));
 
             // Ensure that the last note and/or lyric has time to finish
             var finalPlayTime = Math.Max(lastNoteEndTime, lastLyricEndTime);
