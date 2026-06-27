@@ -149,10 +149,10 @@ public class SongCompilerV2 : ISongCompiler
                 }
 
                 // Add the notes for the song
-                foreach (var noteGroup in song.NoteGroups)
+                foreach (var (noteGroupIndex, noteGroup) in song.NoteGroups.Index())
                 {
                     // Strip leading silence
-                    if (noteGroup.Notes.Count == 0)
+                    if (noteGroupIndex == 0 && song.NoteGroups.Count > 1 && noteGroup.Notes.Count == 0 && noteGroup.Lyrics is null)
                     {
                         continue;
                     }
