@@ -142,6 +142,8 @@ public static class MidiReader
     private const double MinimumHarmonicMustToCannotRatio = 10; // If the number of notes that must be replaced by harmonics is at least this many times the number of notes that cannot be replaced by harmonics, then prefer harmonics
     private const int UnreasonablyHighOctave = 12; // This is to ensure that we don't have a negative number before calculating the octave, which would throw off the result
     private const double MinimumVolume = 0.01;
+    private static readonly TimeSpan NoteSongEndSilence = TimeSpan.FromMilliseconds(200); // Add silence after the last note so that it doesn't run into the first note of the next song during gapless playback
+    private static readonly TimeSpan LyricSongEndSilence = TimeSpan.FromMilliseconds(2000); // Add silence after the last lyric to give the user time to read it
 
     private static Dictionary<int, Instrument> CreateInstrumentMap(params InstrumentMapping[] mappings)
     {
@@ -360,10 +362,17 @@ public static class MidiReader
 
         if (noteGroups.Count > 0)
         {
-            var endTime = noteGroups
+            var lastNoteEndTime = noteGroups
                 .SelectMany(noteGroup => noteGroup.Notes)
-                .Max(note => note.StartTime + note.Duration);
-            var finalPlayTime = endTime + TimeSpan.FromMilliseconds(200); // Ensure that the last note has time to finish
+                .Max(note => note.StartTime + note.Duration + NoteSongEndSilence);
+
+            var noteGroupsWithLyrics = noteGroups.Where(noteGroup => noteGroup.Lyrics is not null).ToList();
+            var lastLyricEndTime = noteGroupsWithLyrics.Count > 0
+                ? noteGroupsWithLyrics.Max(noteGroup => noteGroup.StartTime + LyricSongEndSilence)
+                : TimeSpan.Zero;
+
+            // Ensure that the last note and/or lyric has time to finish
+            var finalPlayTime = Math.Max(lastNoteEndTime, lastLyricEndTime);
 
             var lastNoteGroup = noteGroups[^1];
             lastNoteGroup.Length = finalPlayTime - lastNoteGroup.StartTime;
