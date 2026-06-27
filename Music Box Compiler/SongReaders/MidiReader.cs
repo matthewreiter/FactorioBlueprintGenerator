@@ -357,7 +357,13 @@ public static class MidiReader
 
         if (currentNotes.Count > 0)
         {
-            noteGroups.Add(new() { Notes = currentNotes, Lyrics = currentLyrics, IsStartOfLine = isStartOfLine });
+            noteGroups.Add(new()
+            {
+                Notes = currentNotes,
+                Lyrics = currentLyrics,
+                IsStartOfLine = isStartOfLine,
+                StartTime = currentTime
+            });
         }
 
         if (noteGroups.Count > 0)
