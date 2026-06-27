@@ -63,7 +63,7 @@ public class SongCompilerV2 : ISongCompiler
         int EncodeDuration(Note note) =>
             Math.Min(
                 Math.Max(
-                    (int)double.Ceiling(note.Duration.TotalSeconds * 60),
+                    ConvertTimeToTicks(note.Duration),
                     Math.Min(AudioClipInfo.GetAudioClipLength(note), MusicBoxV2SpeakerGenerator.NoteTrailOffTicks)),
                 MaximumNoteDuration);
 
@@ -157,7 +157,7 @@ public class SongCompilerV2 : ISongCompiler
                         continue;
                     }
 
-                    var noteGroupLength = (int)Math.Round(noteGroup.Length.TotalSeconds * 60) - timeDeficit;
+                    var noteGroupLength = ConvertTimeToTicks(noteGroup.Length) - timeDeficit;
 
                     // We can't have multiple note groups play too close to each other.
                     // However, to avoid delaying future notes we capture the amount that the length is adjusted
@@ -305,10 +305,10 @@ public class SongCompilerV2 : ISongCompiler
                     StartNewNoteGroupReferenceGroup();
                 }
 
-                var songLength = currentAddress - songAddress;
-                totalPlayTime += songLength;
+                var endOfSongAddress = currentAddress;
 
-                var endOfSongAddress = currentAddress - 1;
+                var songLength = endOfSongAddress - songAddress;
+                totalPlayTime += songLength;
 
                 // Add a reference to the song metadata
                 songCells.Add(new()
@@ -318,7 +318,7 @@ public class SongCompilerV2 : ISongCompiler
                 });
 
                 // Add a gap at the end of the song to allow time for processing
-                currentAddress += 4;
+                currentAddress = endOfSongAddress + 4;
 
                 // Add song metadata
                 if (song.Name is not null)
@@ -462,6 +462,8 @@ public class SongCompilerV2 : ISongCompiler
             SongMetadataAddresses = songMetadataAddresses
         };
     }
+
+    private static int ConvertTimeToTicks(TimeSpan time) => (int)Math.Ceiling(time.TotalSeconds * 60);
 
     private record NoteGroupReference(int Address, ChannelizedNoteGroup NoteGroup);
 
