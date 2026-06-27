@@ -170,7 +170,7 @@ playlists:
         artist: Deep Purple
         source: Music\BitMidi\Smoke-On-The-Water-2.mid
         volume: 120
-      - name: Toumei Elegy
+      - name: ToumeiElegy
         album: Before the Curtain Call is Over
         artist: n-buna
         source: Music\BitMidi\toumei1.mid
