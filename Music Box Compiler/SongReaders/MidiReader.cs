@@ -252,7 +252,14 @@ public static class MidiReader
 
                 if (currentNotes.Count > 0 || currentLyrics is not null || noteGroups.Count == 0)
                 {
-                    noteGroups.Add(new NoteGroup { Notes = currentNotes, Lyrics = currentLyrics, IsStartOfLine = isStartOfLine, Length = length });
+                    noteGroups.Add(new NoteGroup
+                    {
+                        Notes = currentNotes,
+                        Lyrics = currentLyrics,
+                        IsStartOfLine = isStartOfLine,
+                        StartTime = currentTime,
+                        Length = length
+                    });
                     currentNotes = [];
                     currentLyrics = null;
                     isStartOfLine = false;
@@ -355,11 +362,12 @@ public static class MidiReader
         {
             var endTime = noteGroups
                 .SelectMany(noteGroup => noteGroup.Notes)
-                .Concat(currentNotes)
                 .Max(note => note.StartTime + note.Duration);
             var finalPlayTime = endTime + TimeSpan.FromMilliseconds(200); // Ensure that the last note has time to finish
 
-            noteGroups[^1].Length = finalPlayTime - currentTime;
+            var lastNoteGroup = noteGroups[^1];
+            lastNoteGroup.Length = finalPlayTime - lastNoteGroup.StartTime;
+            Debug.Assert(lastNoteGroup.Length > TimeSpan.Zero);
 
             midiEventWriter?.WriteLine($"Final play time: {finalPlayTime}");
         }
