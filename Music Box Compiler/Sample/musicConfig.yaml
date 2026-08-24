@@ -171,6 +171,7 @@ playlists:
         source: Music\BitMidi\Smoke-On-The-Water-2.mid
         volume: 120
       - name: ToumeiElegy
+        displayName: Toumei Elegy
         album: Before the Curtain Call is Over
         artist: n-buna
         source: Music\BitMidi\toumei1.mid
