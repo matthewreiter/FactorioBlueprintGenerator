@@ -68,6 +68,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         var masterVolumeSignal = SignalID.CreateVirtual(VirtualSignalNames.Sun);
         var volumeChangeRateSignal = SignalID.CreateVirtual(VirtualSignalNames.Pick);
         var resetSignal = SignalID.CreateVirtual(VirtualSignalNames.Deny);
+        var externalResetSignal = SignalID.CreateVirtual(VirtualSignalNames.Damage);
 
         (int VolumeAdjustment, string Description, (SignalID TimeSignal, int StartTime, int Rate)? ChangeOverTime, List<DeciderCondition> Conditions)[] volumeAdjustments =
         [
@@ -227,9 +228,9 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                     [
                         new()
                         {
-                            First_signal = SignalID.CreateVirtual(VirtualSignalNames.Check),
-                            Constant = 34817,
-                            Comparator = Comparators.IsEqual
+                            First_signal = externalResetSignal,
+                            Constant = 0,
+                            Comparator = Comparators.IsNotEqual
                         }
                     ],
                     Outputs =
