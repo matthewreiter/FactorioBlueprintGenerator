@@ -175,6 +175,25 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             ([Instrument.Celesta, Instrument.Vibraphone], 36)
         ];
 
+        int AdjustYToAvoidPower(int y)
+        {
+            if (includePower)
+            {
+                var relativeY = (y - yOffset - 2) % 18;
+
+                if (relativeY == 0)
+                {
+                    y--;
+                }
+                else if (relativeY == 1)
+                {
+                    y++;
+                }
+            }
+
+            return y;
+        }
+
         var entities = new List<Entity>();
         var wires = new List<Wire>();
         Entity previousDurationDivider = null;
@@ -257,7 +276,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                 Position = new Position
                 {
                     X = (includePower ? 2 : 0) + xOffset - 1,
-                    Y = yOffset + 28 + volumeLevelIndex * 2 + (volumeLevelIndex >= 3 ? 1 : 0) + (includePower && volumeLevelIndex == 5 ? 1 : 0)
+                    Y = AdjustYToAvoidPower(yOffset + 28 + volumeLevelIndex * 2 + (volumeLevelIndex >= 3 ? 1 : 0))
                 },
                 Direction = Direction.Down,
                 Control_behavior = new ControlBehavior
