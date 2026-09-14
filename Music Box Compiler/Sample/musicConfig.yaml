@@ -564,6 +564,15 @@ playlists:
         album: So Far
         artist: Neil Young
         source: Music\Midis101.com\ohio.mid
+      - name: StairwayToHeaven
+        displayName: Stairway to Heaven
+        album: Led Zeppelin IV
+        artist: Led Zeppelin
+        source: Music\BitMidi\LED ZEPPELIN.Stairway to heaven K.mid
+        volume: 90
+        instruments:
+          celesta:
+            volume: 110
 
       # End with Closing Time
       - name: ClosingTime
