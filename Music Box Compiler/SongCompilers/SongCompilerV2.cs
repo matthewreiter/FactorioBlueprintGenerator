@@ -422,33 +422,45 @@ public class SongCompilerV2 : ISongCompiler
         }
 
         Dictionary<MemoryCellData, MemoryCell> songDataToCells = [];
+        int nextNoteGroupReferenceGroupId = 1;
+        int previousEndAddress = 0;
 
         // Add memory cells for the note group reference groups
         foreach (var currentReferenceGroup in noteGroupReferenceGroups)
         {
-            var address = currentReferenceGroup[0].Address;
+            var startAddress = currentReferenceGroup[0].Address;
             var memoryCellData = new MemoryCellData([
                 .. currentReferenceGroup.Select((reference, index) => new KeyValuePair<string, int>(
                     MusicBoxSignals.NoteGroupReferenceSignals[index],
-                    EncodeNoteGroupReference(reference.NoteGroup.Address, reference.NoteGroup.SubAddress, reference.Address - address - index + 1)))
+                    EncodeNoteGroupReference(reference.NoteGroup.Address, reference.NoteGroup.SubAddress, reference.Address - startAddress - index + 1)))
             ]);
+
+            // The end address indicates the last time that it is possible load the note group reference group and still have any notes left to play
+            var endAddress = currentReferenceGroup.Last(reference => reference.NoteGroup.Address > 1).Address - currentReferenceGroup.Count + 1;
+
+            Debug.Assert(previousEndAddress < startAddress);
 
             if (songDataToCells.TryGetValue(memoryCellData, out var memoryCell))
             {
                 // Reuse an existing memory cell
-                memoryCell.AddressRanges.Add((address, address));
+                memoryCell.AddressRanges.Add((startAddress, endAddress));
             }
             else
             {
                 // Create a new memory cell
                 memoryCell = new MemoryCell
                 {
-                    Address = address,
-                    Filters = memoryCellData.ToFilters()
+                    AddressRanges = [(startAddress, endAddress)],
+                    Filters = [
+                        Filter.Create(MusicBoxSignals.NoteGroupReferenceGroupIdSignal, nextNoteGroupReferenceGroupId++),
+                        .. memoryCellData.ToFilters()
+                    ]
                 };
                 songCells.Add(memoryCell);
                 songDataToCells[memoryCellData] = memoryCell;
             }
+
+            previousEndAddress = endAddress;
         }
 
         songCells.AddRange(noteGroupCells);

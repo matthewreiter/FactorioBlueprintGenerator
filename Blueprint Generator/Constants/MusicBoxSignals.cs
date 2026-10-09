@@ -6,6 +6,9 @@ namespace BlueprintGenerator.Constants;
 
 public static class MusicBoxSignals
 {
+    public static readonly string NoteGroupReferenceGroupIdSignal = VirtualSignalNames.LetterOrDigit('Z');
+    public static readonly string CurrentNoteGroupReferenceGroupIdSignal = VirtualSignalNames.LetterOrDigit('V');
+
     public static readonly List<string> NoteGroupReferenceSignals =
     [
         VirtualSignalNames.NoFuel,

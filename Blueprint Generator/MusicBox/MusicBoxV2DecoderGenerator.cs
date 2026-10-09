@@ -40,6 +40,8 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
         var noteGroupTimeOffsetSignal = SignalID.CreateLetterOrDigit('X');
         var noteGroupSubAddressSignal = SignalID.CreateLetterOrDigit('W');
         var metadataAddressSignal = SignalID.CreateLetterOrDigit('Y');
+        var noteGroupReferenceGroupIdSignal = SignalID.Create(MusicBoxSignals.NoteGroupReferenceGroupIdSignal);
+        var currentNoteGroupReferenceGroupIdSignal = SignalID.Create(MusicBoxSignals.CurrentNoteGroupReferenceGroupIdSignal);
 
         var entities = new List<Entity>();
         var wires = new List<Wire>();
@@ -86,7 +88,18 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
                                 Constant = 0,
                                 Comparator = Comparators.GreaterThan,
                                 Compare_type = CompareTypes.And
-                            }
+                            },
+                            .. column == 0 ? [
+                                new DeciderCondition
+                                {
+                                    First_signal = noteGroupReferenceGroupIdSignal,
+                                    First_signal_networks = new() { Green = true },
+                                    Second_signal = currentNoteGroupReferenceGroupIdSignal,
+                                    Second_signal_networks = new() { Green = true },
+                                    Comparator = Comparators.IsNotEqual,
+                                    Compare_type = CompareTypes.And
+                                }
+                            ] : new List<DeciderCondition>(),
                         ],
                         Outputs =
                         [
@@ -139,6 +152,15 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
                                     First_signal_networks = new() { Green = true },
                                     Constant = 0,
                                     Comparator = Comparators.GreaterThan,
+                                    Compare_type = CompareTypes.And
+                                },
+                                new DeciderCondition
+                                {
+                                    First_signal = noteGroupReferenceGroupIdSignal,
+                                    First_signal_networks = new() { Green = true },
+                                    Second_signal = currentNoteGroupReferenceGroupIdSignal,
+                                    Second_signal_networks = new() { Green = true },
+                                    Comparator = Comparators.IsNotEqual,
                                     Compare_type = CompareTypes.And
                                 },
                                 new DeciderCondition
