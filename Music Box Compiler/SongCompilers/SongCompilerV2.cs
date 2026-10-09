@@ -314,7 +314,7 @@ public class SongCompilerV2 : ISongCompiler
                 songCells.Add(new()
                 {
                     AddressRanges = [(songAddress - SongGapTicks, endOfSongAddress)],
-                    Filters = [Filter.Create('Y', metadataAddress)]
+                    Filters = [Filter.Create(MusicBoxSignals.MetadataAddressSignal, metadataAddress)]
                 });
 
                 // Add a gap at the end of the song to allow time for processing

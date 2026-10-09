@@ -39,7 +39,7 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
         var addressSignal = SignalID.CreateVirtual(VirtualSignalNames.Info);
         var noteGroupTimeOffsetSignal = SignalID.CreateLetterOrDigit('X');
         var noteGroupSubAddressSignal = SignalID.CreateLetterOrDigit('W');
-        var metadataAddressSignal = SignalID.CreateLetterOrDigit('Y');
+        var metadataAddressSignal = SignalID.Create(MusicBoxSignals.MetadataAddressSignal);
         var noteGroupReferenceGroupIdSignal = SignalID.Create(MusicBoxSignals.NoteGroupReferenceGroupIdSignal);
         var currentNoteGroupReferenceGroupIdSignal = SignalID.Create(MusicBoxSignals.CurrentNoteGroupReferenceGroupIdSignal);
 
