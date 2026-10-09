@@ -129,14 +129,24 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
                                 new DeciderCondition
                                 {
                                     First_signal = noteGroupReferenceSignal,
+                                    First_signal_networks = new() { Green = true },
                                     Constant = 0,
                                     Comparator = Comparators.IsNotEqual
                                 },
                                 new DeciderCondition
                                 {
                                     First_signal = metadataAddressSignal,
+                                    First_signal_networks = new() { Green = true },
                                     Constant = 0,
                                     Comparator = Comparators.GreaterThan,
+                                    Compare_type = CompareTypes.And
+                                },
+                                new DeciderCondition
+                                {
+                                    First_signal = SignalID.CreateVirtual(VirtualSignalNames.Damage),
+                                    First_signal_networks = new() { Red = true },
+                                    Constant = 0,
+                                    Comparator = Comparators.IsEqual,
                                     Compare_type = CompareTypes.And
                                 }
                             ],
@@ -145,6 +155,7 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
                                 new DeciderOutput
                                 {
                                     Signal = SignalID.CreateVirtual(VirtualSignalNames.Everything),
+                                    Networks = new() { Green = true },
                                     Copy_count_from_input = true
                                 }
                             ]
