@@ -40,8 +40,8 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
         var noteGroupTimeOffsetSignal = SignalID.CreateLetterOrDigit('X');
         var noteGroupSubAddressSignal = SignalID.CreateLetterOrDigit('W');
         var metadataAddressSignal = SignalID.Create(MusicBoxSignals.MetadataAddressSignal);
-        var noteGroupReferenceGroupIdSignal = SignalID.Create(MusicBoxSignals.NoteGroupReferenceGroupIdSignal);
-        var currentNoteGroupReferenceGroupIdSignal = SignalID.Create(MusicBoxSignals.CurrentNoteGroupReferenceGroupIdSignal);
+        var noteGroupSequenceIdSignal = SignalID.Create(MusicBoxSignals.NoteGroupSequenceIdSignal);
+        var currentNoteGroupSequenceIdSignal = SignalID.Create(MusicBoxSignals.CurrentNoteGroupSequenceIdSignal);
 
         var entities = new List<Entity>();
         var wires = new List<Wire>();
@@ -92,9 +92,9 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
                             .. column == 0 ? [
                                 new DeciderCondition
                                 {
-                                    First_signal = noteGroupReferenceGroupIdSignal,
+                                    First_signal = noteGroupSequenceIdSignal,
                                     First_signal_networks = new() { Green = true },
-                                    Second_signal = currentNoteGroupReferenceGroupIdSignal,
+                                    Second_signal = currentNoteGroupSequenceIdSignal,
                                     Second_signal_networks = new() { Green = true },
                                     Comparator = Comparators.IsNotEqual,
                                     Compare_type = CompareTypes.And
@@ -156,9 +156,9 @@ public class MusicBoxV2DecoderGenerator : IBlueprintGenerator
                                 },
                                 new DeciderCondition
                                 {
-                                    First_signal = noteGroupReferenceGroupIdSignal,
+                                    First_signal = noteGroupSequenceIdSignal,
                                     First_signal_networks = new() { Green = true },
-                                    Second_signal = currentNoteGroupReferenceGroupIdSignal,
+                                    Second_signal = currentNoteGroupSequenceIdSignal,
                                     Second_signal_networks = new() { Green = true },
                                     Comparator = Comparators.IsNotEqual,
                                     Compare_type = CompareTypes.And

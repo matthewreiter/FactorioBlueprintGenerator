@@ -42,7 +42,7 @@ public class SongCompilerV2 : ISongCompiler
 
         List<MemoryCell> songCells = [];
         List<MemoryCell> metadataCells = [];
-        List<List<NoteGroupReference>> noteGroupReferenceGroups = [];
+        List<List<NoteGroupReference>> noteGroupSequences = [];
         Dictionary<NoteGroupKey, List<ChannelizedNoteGroup>> noteGroupsByKey = [];
         Stack<ChannelizedNoteGroup>[] noteGroupsBySubAddress = [.. Enumerable.Range(0, MusicBoxSignals.AllNoteGroupSignals.Count).Select(_ => new Stack<ChannelizedNoteGroup>())];
         var channelRemainingTimes = new int[ChannelCount];
@@ -127,7 +127,7 @@ public class SongCompilerV2 : ISongCompiler
             foreach (var (songIndex, song) in playlist.Songs.Index())
             {
                 var metadataAddress = song.MetadataAddress;
-                List<NoteGroupReference> noteGroupReferences = [];
+                List<NoteGroupReference> noteGroupSequence = [];
                 string currentLyrics = null;
                 var timeDeficit = 0;
 
@@ -138,14 +138,14 @@ public class SongCompilerV2 : ISongCompiler
 
                 void StartNewNoteGroupReferenceGroup()
                 {
-                    // Fill up the current note group reference group to ensure that all registers in the decoder get loaded instead of being left with the previous values
-                    for (var index = noteGroupReferences.Count; index < MusicBoxSignals.NoteGroupReferenceSignals.Count; index++)
+                    // Fill up the current note group sequence to ensure that all registers in the decoder get loaded instead of being left with the previous values
+                    for (var index = noteGroupSequence.Count; index < MusicBoxSignals.NoteGroupReferenceSignals.Count; index++)
                     {
-                        noteGroupReferences.Add(new(noteGroupReferences[0].Address + noteGroupReferences.Count - 2 + (1 << MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits), emptyNoteGroupData));
+                        noteGroupSequence.Add(new(noteGroupSequence[0].Address + noteGroupSequence.Count - 2 + (1 << MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits), emptyNoteGroupData));
                     }
 
-                    noteGroupReferenceGroups.Add(noteGroupReferences);
-                    noteGroupReferences = [];
+                    noteGroupSequences.Add(noteGroupSequence);
+                    noteGroupSequence = [];
                 }
 
                 // Add the notes for the song
@@ -266,19 +266,19 @@ public class SongCompilerV2 : ISongCompiler
                         }
 
                         // Start a new note group reference group if the time offset gets too big to encode
-                        if (noteGroupReferences.Count > 0 && currentAddress - noteGroupReferences[0].Address - noteGroupReferences.Count + 1 >= (1 << MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits))
+                        if (noteGroupSequence.Count > 0 && currentAddress - noteGroupSequence[0].Address - noteGroupSequence.Count + 1 >= (1 << MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits))
                         {
                             StartNewNoteGroupReferenceGroup();
                         }
 
-                        noteGroupReferences.Add(new(currentAddress, channelizedNoteGroup));
+                        noteGroupSequence.Add(new(currentAddress, channelizedNoteGroup));
 
-                        Debug.Assert(noteGroupReferences.Count <= MusicBoxSignals.NoteGroupReferenceSignals.Count);
+                        Debug.Assert(noteGroupSequence.Count <= MusicBoxSignals.NoteGroupReferenceSignals.Count);
 
-                        if (noteGroupReferences.Count == MusicBoxSignals.NoteGroupReferenceSignals.Count)
+                        if (noteGroupSequence.Count == MusicBoxSignals.NoteGroupReferenceSignals.Count)
                         {
                             var minimumCellLength = MusicBoxSignals.NoteGroupReferenceSignals.Count + 1; // The number of cycles required to finish loading all of the note groups
-                            var cellLength = currentAddress + noteGroupLength - noteGroupReferences[0].Address;
+                            var cellLength = currentAddress + noteGroupLength - noteGroupSequence[0].Address;
 
                             if (cellLength < minimumCellLength)
                             {
@@ -300,7 +300,7 @@ public class SongCompilerV2 : ISongCompiler
                     }
                 }
 
-                if (noteGroupReferences.Count > 0)
+                if (noteGroupSequence.Count > 0)
                 {
                     StartNewNoteGroupReferenceGroup();
                 }
@@ -422,21 +422,21 @@ public class SongCompilerV2 : ISongCompiler
         }
 
         Dictionary<MemoryCellData, MemoryCell> songDataToCells = [];
-        int nextNoteGroupReferenceGroupId = 1;
+        int nextNoteGroupSequenceId = 1;
         int previousEndAddress = 0;
 
-        // Add memory cells for the note group reference groups
-        foreach (var currentReferenceGroup in noteGroupReferenceGroups)
+        // Add memory cells for the note group sequences
+        foreach (var currentSequence in noteGroupSequences)
         {
-            var startAddress = currentReferenceGroup[0].Address;
+            var startAddress = currentSequence[0].Address;
             var memoryCellData = new MemoryCellData([
-                .. currentReferenceGroup.Select((reference, index) => new KeyValuePair<string, int>(
+                .. currentSequence.Select((reference, index) => new KeyValuePair<string, int>(
                     MusicBoxSignals.NoteGroupReferenceSignals[index],
                     EncodeNoteGroupReference(reference.NoteGroup.Address, reference.NoteGroup.SubAddress, reference.Address - startAddress - index + 1)))
             ]);
 
-            // The end address indicates the last time that it is possible load the note group reference group and still have any notes left to play
-            var endAddress = currentReferenceGroup.Last(reference => reference.NoteGroup.Address > 1).Address - currentReferenceGroup.Count + 1;
+            // The end address indicates the last time that it is possible load the note group sequence and still have any notes left to play
+            var endAddress = currentSequence.Last(reference => reference.NoteGroup.Address > 1).Address - currentSequence.Count + 1;
 
             Debug.Assert(previousEndAddress < startAddress);
 
@@ -452,7 +452,7 @@ public class SongCompilerV2 : ISongCompiler
                 {
                     AddressRanges = [(startAddress, endAddress)],
                     Filters = [
-                        Filter.Create(MusicBoxSignals.NoteGroupReferenceGroupIdSignal, nextNoteGroupReferenceGroupId++),
+                        Filter.Create(MusicBoxSignals.NoteGroupSequenceIdSignal, nextNoteGroupSequenceId++),
                         .. memoryCellData.ToFilters()
                     ]
                 };
