@@ -67,6 +67,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         var volumeSignal = SignalID.CreateVirtual(VirtualSignalNames.Alarm);
         var volumeAdjustmentSignal = SignalID.CreateVirtual(VirtualSignalNames.Moon);
         var masterVolumeSignal = SignalID.CreateVirtual(VirtualSignalNames.Sun);
+        var externalMasterVolumeSignal = SignalID.CreateVirtual(VirtualSignalNames.Alarm);
         var volumeChangeRateSignal = SignalID.CreateVirtual(VirtualSignalNames.Pick);
         var resetSignal = SignalID.CreateVirtual(VirtualSignalNames.Deny);
         var externalResetSignal = SignalID.CreateVirtual(VirtualSignalNames.Damage);
@@ -292,22 +293,28 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             }
         }
 
-        var masterVolumeProvider = new Entity
+        var masterVolumeConverter = new Entity
         {
-            Player_description = "Master volume provider",
-            Name = ItemNames.ConstantCombinator,
+            Player_description = "Master volume converter",
+            Name = ItemNames.ArithmeticCombinator,
             Position = new Position
             {
                 X = leftColumnX,
-                Y = AdjustYToAvoidPower(volumeAdjustmentProviderY + 4)
+                Y = volumeAdjustmentProviderY + 2.5
             },
             Direction = Direction.Down,
             Control_behavior = new ControlBehavior
             {
-                Sections = Sections.Create([Filter.Create(masterVolumeSignal, 100)])
+                Arithmetic_conditions = new()
+                {
+                    First_signal = externalMasterVolumeSignal,
+                    Second_constant = 1,
+                    Operation = ArithmeticOperations.Multiplication,
+                    Output_signal = masterVolumeSignal
+                }
             }
         };
-        entities.Add(masterVolumeProvider);
+        entities.Add(masterVolumeConverter);
 
         var pitchOffsetProvider = new Entity
         {
@@ -1029,7 +1036,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
             entities.Add(masterVolumeMultiplier);
 
             wires.Add(new((masterVolumeMultiplier, ConnectionType.Green1), (volumeAdjustmentEntities[^1].Picker, ConnectionType.Green1)));
-            wires.Add(new((masterVolumeMultiplier, ConnectionType.Red1), voiceIndex == 0 ? (masterVolumeProvider, ConnectionType.Red1) : (previousMasterVolumeMultiplier, ConnectionType.Red1)));
+            wires.Add(new((masterVolumeMultiplier, ConnectionType.Red1), voiceIndex == 0 ? (masterVolumeConverter, ConnectionType.Red2) : (previousMasterVolumeMultiplier, ConnectionType.Red1)));
 
             previousMasterVolumeMultiplier = masterVolumeMultiplier;
 
