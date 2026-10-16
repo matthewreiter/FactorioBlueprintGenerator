@@ -7,8 +7,8 @@ namespace BlueprintGenerator.Constants;
 public static class MusicBoxSignals
 {
     public static readonly string MetadataAddressSignal = VirtualSignalNames.LetterOrDigit('Y');
-    public static readonly string NoteGroupSequenceIdSignal = VirtualSignalNames.LetterOrDigit('Z');
-    public static readonly string CurrentNoteGroupSequenceIdSignal = VirtualSignalNames.LetterOrDigit('V');
+    public static readonly string NoteGroupSequenceStartAddressSignal = VirtualSignalNames.LetterOrDigit('Z');
+    public static readonly string CurrentNoteGroupSequenceStartAddressSignal = VirtualSignalNames.LetterOrDigit('V');
 
     public static readonly List<string> NoteGroupReferenceSignals =
     [
