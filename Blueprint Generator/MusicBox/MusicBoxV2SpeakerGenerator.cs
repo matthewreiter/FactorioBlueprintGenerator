@@ -28,6 +28,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         var includePower = configuration.IncludePower ?? true;
         var isHorizontal = configuration.IsHorizontal ?? false;
 
+        const int instrumentOffset = 2; // The first two instruments aren't used
         const int maxInstruments = 10;
         const int maxPitches = 48;
         const int maxVolumes = 100;
@@ -772,6 +773,14 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                                 Constant = NoteTrailOffTicks,
                                 Comparator = Comparators.GreaterThan,
                                 Compare_type = CompareTypes.And
+                            },
+                            new() // Exclude the drumkit from repetition since it doesn't support sustained notes
+                            {
+                                First_signal = instrumentSignal,
+                                First_signal_networks = new() { Green = true },
+                                Constant = (int)Instrument.Drumkit - instrumentOffset,
+                                Comparator = Comparators.IsNotEqual,
+                                Compare_type = CompareTypes.And
                             }
                         ],
                         Outputs =
@@ -1082,7 +1091,7 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
 
             for (int instrumentIndex = 0; instrumentIndex < instrumentCount; instrumentIndex++)
             {
-                var instrument = (Instrument)(instrumentIndex + 3);
+                var instrument = (Instrument)(instrumentIndex + instrumentOffset + 1);
 
                 var speakerController = new Entity
                 {

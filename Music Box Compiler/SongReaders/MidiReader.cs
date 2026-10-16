@@ -945,6 +945,11 @@ public static class MidiReader
         // Remove zero-length notes
         notes = [.. notes.Where(note => note.EndTime != note.StartTime)];
 
+        foreach (var midiNote in notes)
+        {
+            FixNoteDuration(midiNote);
+        }
+
         var totalPlayTime = notes.Max(note => note.EndTime) ?? TimeSpan.Zero;
 
         return new MidiData
@@ -955,6 +960,15 @@ public static class MidiReader
             Text = text.Count > 0 ? string.Join("", text) : null,
             Copyright = copyright.Count > 0 ? string.Join(", ", copyright) : null
         };
+    }
+
+    private static void FixNoteDuration(MidiNote note)
+    {
+        // For drumkit notes, always use the actual length the audio clip since they should play exactly once to completion
+        if (note.Instrument == Instrument.Drumkit)
+        {
+            note.EndTime = note.StartTime + TickDuration * AudioClipInfo.GetDrumkitAudioClipLength((Drum)note.RelativeNoteNumber);
+        }
     }
 
     private record InstrumentInfo(int BaseNoteOffset, int NoteCount, double BaseVolume = 1, Instrument LowFallback = DefaultLowFallbackInstrument, Instrument HighFallback = DefaultHighFallbackInstrument);
