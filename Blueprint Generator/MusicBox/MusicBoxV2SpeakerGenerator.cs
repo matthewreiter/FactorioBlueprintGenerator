@@ -788,6 +788,14 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                                 Constant = (int)Instrument.Drumkit - instrumentOffset,
                                 Comparator = Comparators.IsNotEqual,
                                 Compare_type = CompareTypes.And
+                            },
+                            new() // Exclude plucked strings from repetition since it doesn't work well with sustained notes
+                            {
+                                First_signal = instrumentSignal,
+                                First_signal_networks = new() { Green = true },
+                                Constant = (int)Instrument.PluckedStrings - instrumentOffset,
+                                Comparator = Comparators.IsNotEqual,
+                                Compare_type = CompareTypes.And
                             }
                         ],
                         Outputs =

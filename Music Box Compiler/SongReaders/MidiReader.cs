@@ -36,9 +36,11 @@ public static class MidiReader
         new InstrumentMapping { Instrument = Instrument.Piano, RangeStart = GMInst.DrawbarOrgan, RangeEnd = GMInst.TangoAccordion },
         new InstrumentMapping { Instrument = Instrument.LeadGuitar, RangeStart = GMInst.AcousticGuitarNylon, RangeEnd = GMInst.Guitarharmonics },
         new InstrumentMapping { Instrument = Instrument.BassGuitar, RangeStart = GMInst.AcousticBass, RangeEnd = GMInst.SynthBass2 },
-        new InstrumentMapping { Instrument = Instrument.PluckedStrings, RangeStart = GMInst.Violin, RangeEnd = GMInst.Cello },
+        new InstrumentMapping { Instrument = Instrument.LeadGuitar, RangeStart = GMInst.Violin, RangeEnd = GMInst.Cello },
         new InstrumentMapping { Instrument = Instrument.BassGuitar, RangeStart = GMInst.Contrabass, RangeEnd = GMInst.Contrabass },
-        new InstrumentMapping { Instrument = Instrument.PluckedStrings, RangeStart = GMInst.TremoloStrings, RangeEnd = GMInst.SynthStrings2 },
+        new InstrumentMapping { Instrument = Instrument.LeadGuitar, RangeStart = GMInst.TremoloStrings, RangeEnd = GMInst.TremoloStrings },
+        new InstrumentMapping { Instrument = Instrument.PluckedStrings, RangeStart = GMInst.PizzicatoStrings, RangeEnd = GMInst.PizzicatoStrings },
+        new InstrumentMapping { Instrument = Instrument.LeadGuitar, RangeStart = GMInst.OrchestralHarp, RangeEnd = GMInst.SynthStrings2 },
         new InstrumentMapping { Instrument = Instrument.Celesta, RangeStart = GMInst.ChoirAahs, RangeEnd = GMInst.SynthVoice },
         new InstrumentMapping { Instrument = Instrument.PluckedStrings, RangeStart = GMInst.OrchestraHit, RangeEnd = GMInst.OrchestraHit },
         new InstrumentMapping { Instrument = Instrument.LeadGuitar, RangeStart = GMInst.Trumpet, RangeEnd = GMInst.SynthBrass2 },
@@ -134,7 +136,6 @@ public static class MidiReader
     };
     private const Instrument DefaultLowFallbackInstrument = Instrument.LeadGuitar;
     private const Instrument DefaultHighFallbackInstrument = Instrument.Celesta;
-    private static readonly TimeSpan TickDuration = TimeSpan.FromMilliseconds(1000d / 60); // 1000ms / 60fps (approximately 17 ms per tick)
     private const double PressureExponent = 2;
     private static readonly int[] HarmonicOffsets = [12, 19, 24];
     private const double HarmonicVelocityMultiplier = 0.6; // Reduce the volume of the harmonics so that the combined volume is closer to the original note
@@ -144,6 +145,8 @@ public static class MidiReader
     private const double MinimumVolume = 0.01;
     private static readonly TimeSpan NoteSongEndSilence = TimeSpan.FromMilliseconds(200); // Add silence after the last note so that it doesn't run into the first note of the next song during gapless playback
     private static readonly TimeSpan LyricSongEndSilence = TimeSpan.FromMilliseconds(2000); // Add silence after the last lyric to give the user time to read it
+    private static readonly TimeSpan TickDuration = TimeSpan.FromMilliseconds(1000d / 60); // 1000ms / 60fps (approximately 17 ms per tick)
+    private static TimeSpan PluckedStringsAudioClipDuration = TickDuration * AudioClipInfo.GetAudioClipLength(new Note { Instrument = Instrument.PluckedStrings, Number = 0 });
 
     private static Dictionary<int, Instrument> CreateInstrumentMap(params InstrumentMapping[] mappings)
     {
@@ -964,10 +967,18 @@ public static class MidiReader
 
     private static void FixNoteDuration(MidiNote note)
     {
-        // For drumkit notes, always use the actual length the audio clip since they should play exactly once to completion
-        if (note.Instrument == Instrument.Drumkit)
+        switch (note.Instrument)
         {
-            note.EndTime = note.StartTime + TickDuration * AudioClipInfo.GetDrumkitAudioClipLength((Drum)note.RelativeNoteNumber);
+            case Instrument.Drumkit: // For drumkit notes, always use the actual length the audio clip since they should play exactly once to completion
+                note.EndTime = note.StartTime + TickDuration * AudioClipInfo.GetDrumkitAudioClipLength((Drum)note.RelativeNoteNumber);
+                break;
+            case Instrument.PluckedStrings: // For plucked strings, limit the length to the actual length of the audio clip since sustained notes are disabled for that instrument
+                if (note.EndTime - note.StartTime > PluckedStringsAudioClipDuration)
+                {
+                    note.EndTime = note.StartTime + PluckedStringsAudioClipDuration;
+                }
+
+                break;
         }
     }
 
