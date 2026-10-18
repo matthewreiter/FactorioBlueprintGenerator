@@ -18,6 +18,8 @@ public static class SpreadsheetReader
     private static readonly Regex InstrumentOffsetRegex = new Regex(@"^(.+?): (-?\d+)$");
     private static readonly Regex VolumeLevelRegex = new Regex(@"^(?:(.+?): )?(-?\d+(?:\.\d+)?)$");
     private const double NoteDurationMultiplier = 0.9;
+    private static readonly TimeSpan TickDuration = TimeSpan.FromMilliseconds(1000d / 60); // 1000ms / 60fps (approximately 17 ms per tick)
+    private static readonly TimeSpan PluckedStringsAudioClipDuration = TickDuration * AudioClipInfo.GetAudioClipLength(new Note { Instrument = Instrument.PluckedStrings, Number = 0 });
 
     static SpreadsheetReader()
     {
@@ -265,6 +267,7 @@ public static class SpreadsheetReader
                                 else
                                 {
                                     note.Duration = TimeSpan.FromMinutes(4 / note.InverseLength / beatsPerMinute * NoteDurationMultiplier);
+                                    FixNoteDuration(note);
                                     notes.Add(note);
                                 }
                             }
@@ -276,6 +279,23 @@ public static class SpreadsheetReader
             }
 
             currentLines.Clear();
+        }
+    }
+
+    private static void FixNoteDuration(Note note)
+    {
+        switch (note.Instrument)
+        {
+            case Instrument.Drumkit: // For drumkit notes, always use the actual length the audio clip since they should play exactly once to completion
+                note.Duration = TickDuration * AudioClipInfo.GetAudioClipLength(note);
+                break;
+            case Instrument.PluckedStrings: // For plucked strings, limit the length to the actual length of the audio clip since sustained notes are disabled for that instrument
+                if (note.Duration > PluckedStringsAudioClipDuration)
+                {
+                    note.Duration = PluckedStringsAudioClipDuration;
+                }
+
+                break;
         }
     }
 

@@ -146,7 +146,7 @@ public static class MidiReader
     private static readonly TimeSpan NoteSongEndSilence = TimeSpan.FromMilliseconds(200); // Add silence after the last note so that it doesn't run into the first note of the next song during gapless playback
     private static readonly TimeSpan LyricSongEndSilence = TimeSpan.FromMilliseconds(2000); // Add silence after the last lyric to give the user time to read it
     private static readonly TimeSpan TickDuration = TimeSpan.FromMilliseconds(1000d / 60); // 1000ms / 60fps (approximately 17 ms per tick)
-    private static TimeSpan PluckedStringsAudioClipDuration = TickDuration * AudioClipInfo.GetAudioClipLength(new Note { Instrument = Instrument.PluckedStrings, Number = 0 });
+    private static readonly TimeSpan PluckedStringsAudioClipDuration = TickDuration * AudioClipInfo.GetAudioClipLength(new Note { Instrument = Instrument.PluckedStrings, Number = 0 });
 
     private static Dictionary<int, Instrument> CreateInstrumentMap(params InstrumentMapping[] mappings)
     {
