@@ -136,7 +136,7 @@ public class SongCompilerV2 : ISongCompiler
 
                 var songAddress = currentAddress;
 
-                void StartNewNoteGroupReferenceGroup()
+                void StartNewNoteGroupSequence()
                 {
                     // Fill up the current note group sequence to ensure that all registers in the decoder get loaded instead of being left with the previous values
                     for (var index = noteGroupSequence.Count; index < MusicBoxSignals.NoteGroupReferenceSignals.Count; index++)
@@ -268,7 +268,7 @@ public class SongCompilerV2 : ISongCompiler
                         // Start a new note group reference group if the time offset gets too big to encode
                         if (noteGroupSequence.Count > 0 && currentAddress - noteGroupSequence[0].Address - noteGroupSequence.Count + 1 >= (1 << MusicBoxV2DecoderGenerator.NoteGroupTimeOffsetBits))
                         {
-                            StartNewNoteGroupReferenceGroup();
+                            StartNewNoteGroupSequence();
                         }
 
                         noteGroupSequence.Add(new(currentAddress, channelizedNoteGroup));
@@ -287,7 +287,7 @@ public class SongCompilerV2 : ISongCompiler
                                 timeDeficit += extension;
                             }
 
-                            StartNewNoteGroupReferenceGroup();
+                            StartNewNoteGroupSequence();
                         }
                     }
 
@@ -302,7 +302,7 @@ public class SongCompilerV2 : ISongCompiler
 
                 if (noteGroupSequence.Count > 0)
                 {
-                    StartNewNoteGroupReferenceGroup();
+                    StartNewNoteGroupSequence();
                 }
 
                 var endOfSongAddress = currentAddress;
