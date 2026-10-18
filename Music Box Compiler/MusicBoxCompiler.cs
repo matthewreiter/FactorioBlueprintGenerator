@@ -80,8 +80,7 @@ public static class MusicBoxCompiler
                                         {
                                             Name = $"{songConfig.Name}Part{index + 1}",
                                             DisplayName = songConfig.DisplayName != null ? $"{songConfig.DisplayName} (Part {index + 1})" : null,
-                                            Source = source,
-                                            Gapless = songConfig.Gapless
+                                            Source = source
                                         });
                                 }
                             }
