@@ -429,9 +429,11 @@ public class SongCompilerV2 : ISongCompiler
             var startAddress = currentSequence[0].Address;
 
             // The end address indicates the last time that it is possible load the note group sequence and still have any notes left to play
-            var endAddress = currentSequence.Last(reference => reference.NoteGroup.Address > 1).Address - currentSequence.Count + 1;
+            var lastIndex = currentSequence.FindLastIndex(reference => reference.NoteGroup.Address > 1);
+            var endAddress = currentSequence[lastIndex].Address - lastIndex;
 
             Debug.Assert(previousEndAddress < startAddress);
+            Debug.Assert(endAddress >= startAddress);
 
             var memoryCell = new MemoryCell
             {
