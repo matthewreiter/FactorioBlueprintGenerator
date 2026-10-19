@@ -11,12 +11,24 @@ using System.Text.RegularExpressions;
 
 namespace MusicBoxCompiler.SongReaders;
 
-public static class SpreadsheetReader
+public static partial class SpreadsheetReader
 {
-    private static readonly Regex SpreadsheetNoteRegex = new Regex(@"^((?:\d|[.])+)([#b]?)([BR]?)$");
-    private static readonly Regex InstrumentMappingRegex = new Regex(@"^(.+?): (\d+)-(\d+)$");
-    private static readonly Regex InstrumentOffsetRegex = new Regex(@"^(.+?): (-?\d+)$");
-    private static readonly Regex VolumeLevelRegex = new Regex(@"^(?:(.+?): )?(-?\d+(?:\.\d+)?)$");
+    [GeneratedRegex(@"^((?:\d|[.])+)([#b]?)([BR]?)$")]
+    private static partial Regex CreateSpreadsheetNoteRegex();
+    private static readonly Regex SpreadsheetNoteRegex = CreateSpreadsheetNoteRegex();
+
+    [GeneratedRegex(@"^(.+?): (\d+)-(\d+)$")]
+    private static partial Regex CreateInstrumentMappingRegex();
+    private static readonly Regex InstrumentMappingRegex = CreateInstrumentMappingRegex();
+
+    [GeneratedRegex(@"^(.+?): (-?\d+)$")]
+    private static partial Regex CreateInstrumentOffsetRegex();
+    private static readonly Regex InstrumentOffsetRegex = CreateInstrumentOffsetRegex();
+
+    [GeneratedRegex(@"^(?:(.+?): )?(-?\d+(?:\.\d+)?)$")]
+    private static partial Regex CreateVolumeLevelRegex();
+    private static readonly Regex VolumeLevelRegex = CreateVolumeLevelRegex();
+
     private const double NoteDurationMultiplier = 0.9;
     private static readonly TimeSpan TickDuration = TimeSpan.FromMilliseconds(1000d / 60); // 1000ms / 60fps (approximately 17 ms per tick)
     private static readonly TimeSpan PluckedStringsAudioClipDuration = TickDuration * AudioClipInfo.GetAudioClipLength(new Note { Instrument = Instrument.PluckedStrings, Number = 0 });
@@ -58,13 +70,15 @@ public static class SpreadsheetReader
     private static Song ReadSongFromSpreadsheetTab(IExcelDataReader reader)
     {
         var row = 0;
-        var currentLines = new List<List<List<List<Note>>>>();
+        var currentLines = new List<List<List<List<SpreadsheetNote>>>>();
         var noteGroups = new List<NoteGroup>();
         var instrumentMappings = new List<InstrumentMapping>();
         var instrumentOffsets = new Dictionary<Instrument, int>();
         var instrumentVolumes = new Dictionary<Instrument, double>();
         var masterVolume = 1d;
         var beatsPerMinute = 60d;
+        var isStartOfLine = true;
+        var insertSpace = false;
 
         while (reader.Read())
         {
@@ -75,60 +89,79 @@ public static class SpreadsheetReader
                 var noteNumber = (int)reader.GetDouble(0);
                 var noteName = reader.GetString(1);
                 var isDrum = Constants.Drums.Contains(noteName);
+                List<List<List<SpreadsheetNote>>> notes;
 
-                var notes = Enumerable.Range(2, reader.FieldCount - 2)
-                    .Select(column => StringUtils.SplitString(Convert.ToString(reader.GetValue(column)), '_')
-                        .Select(rawNotes => rawNotes.Split(", ")
-                            .Select(rawNote =>
-                            {
-                                var noteMatch = SpreadsheetNoteRegex.Match(rawNote);
-                                if (noteMatch.Success)
-                                {
-                                    var length = double.Parse(noteMatch.Groups[1].Value);
-                                    var sharpOrFlat = noteMatch.Groups[2].Value;
-                                    var instrumentIndicator = noteMatch.Groups[3].Value;
-
-                                    var effectiveNoteNumber = sharpOrFlat switch { "#" => noteNumber + 1, "b" => noteNumber - 1, _ => noteNumber };
-                                    var instrument = isDrum
-                                        ? Instrument.Drumkit
-                                        : instrumentIndicator switch
-                                        {
-                                            "P" => Instrument.Piano,
-                                            "B" => Instrument.BassGuitar,
-                                            "L" => Instrument.LeadGuitar,
-                                            "W" => Instrument.Sawtooth,
-                                            "Q" => Instrument.Square,
-                                            "R" => Instrument.Celesta,
-                                            "V" => Instrument.Vibraphone,
-                                            "T" => Instrument.PluckedStrings,
-                                            "S" => Instrument.SteelDrum,
-                                            _ => instrumentMappings.FirstOrDefault(mapping => mapping.RangeStart <= effectiveNoteNumber && effectiveNoteNumber <= mapping.RangeEnd)?.Instrument ?? Instrument.Piano
-                                        };
-                                    var noteOffset = instrumentOffsets.TryGetValue(instrument, out var offsetValue) ? offsetValue : 0;
-                                    var instrumentVolume = instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
-
-                                    return new Note
+                if (noteName == "Lyrics")
+                {
+                    notes = [.. Enumerable.Range(2, reader.FieldCount - 2)
+                        .Select(column => StringUtils.SplitString(Convert.ToString(reader.GetValue(column)), '_')
+                            .Select<string, List<SpreadsheetNote>>(lyric => !string.IsNullOrWhiteSpace(lyric) ?
+                                [
+                                    new()
                                     {
-                                        Instrument = instrument,
-                                        Number = effectiveNoteNumber + noteOffset,
-                                        Name = isDrum ? noteName : $"{noteName[0]}{sharpOrFlat}{noteName.Substring(1)}",
-                                        Volume = instrumentVolume * masterVolume,
-                                        InverseLength = length
-                                    };
-                                }
-                                else
+                                        Name = "Lyrics",
+                                        Lyric = lyric
+                                    }
+                                ] : []
+                            ).ToList()
+                        )];
+                }
+                else
+                {
+                    notes = [.. Enumerable.Range(2, reader.FieldCount - 2)
+                        .Select(column => StringUtils.SplitString(Convert.ToString(reader.GetValue(column)), '_')
+                            .Select(rawNotes => rawNotes.Split(", ")
+                                .Select(rawNote =>
                                 {
-                                    return null;
-                                }
-                            }).ToList()
-                        ).ToList()
-                    ).ToList();
+                                    var noteMatch = SpreadsheetNoteRegex.Match(rawNote);
+                                    if (noteMatch.Success)
+                                    {
+                                        var length = double.Parse(noteMatch.Groups[1].Value);
+                                        var sharpOrFlat = noteMatch.Groups[2].Value;
+                                        var instrumentIndicator = noteMatch.Groups[3].Value;
+
+                                        var effectiveNoteNumber = sharpOrFlat switch { "#" => noteNumber + 1, "b" => noteNumber - 1, _ => noteNumber };
+                                        var instrument = isDrum
+                                            ? Instrument.Drumkit
+                                            : instrumentIndicator switch
+                                            {
+                                                "P" => Instrument.Piano,
+                                                "B" => Instrument.BassGuitar,
+                                                "L" => Instrument.LeadGuitar,
+                                                "W" => Instrument.Sawtooth,
+                                                "Q" => Instrument.Square,
+                                                "R" => Instrument.Celesta,
+                                                "V" => Instrument.Vibraphone,
+                                                "T" => Instrument.PluckedStrings,
+                                                "S" => Instrument.SteelDrum,
+                                                _ => instrumentMappings.FirstOrDefault(mapping => mapping.RangeStart <= effectiveNoteNumber && effectiveNoteNumber <= mapping.RangeEnd)?.Instrument ?? Instrument.Piano
+                                            };
+                                        var noteOffset = instrumentOffsets.TryGetValue(instrument, out var offsetValue) ? offsetValue : 0;
+                                        var instrumentVolume = instrumentVolumes.TryGetValue(instrument, out var instrumentVolumeValue) ? instrumentVolumeValue : 1;
+
+                                        return new SpreadsheetNote
+                                        {
+                                            Instrument = instrument,
+                                            Number = effectiveNoteNumber + noteOffset,
+                                            Name = isDrum ? noteName : $"{noteName[0]}{sharpOrFlat}{noteName.Substring(1)}",
+                                            Volume = instrumentVolume * masterVolume,
+                                            InverseLength = length
+                                        };
+                                    }
+                                    else
+                                    {
+                                        return null;
+                                    }
+                                }).ToList()
+                            ).ToList()
+                        )];
+                }
 
                 currentLines.Add(notes);
             }
             else
             {
-                ProcessSpreadsheetLines(currentLines, noteGroups, ref beatsPerMinute);
+                ProcessSpreadsheetLines(currentLines, noteGroups, ref beatsPerMinute, ref isStartOfLine, ref insertSpace);
 
                 if (!reader.IsDBNull(0) && reader.GetFieldType(0) == typeof(string))
                 {
@@ -225,7 +258,7 @@ public static class SpreadsheetReader
         }
 
         // Process any remaining lines
-        ProcessSpreadsheetLines(currentLines, noteGroups, ref beatsPerMinute);
+        ProcessSpreadsheetLines(currentLines, noteGroups, ref beatsPerMinute, ref isStartOfLine, ref insertSpace);
 
         return new Song
         {
@@ -233,7 +266,7 @@ public static class SpreadsheetReader
         };
     }
 
-    private static void ProcessSpreadsheetLines(List<List<List<List<Note>>>> currentLines, List<NoteGroup> noteGroups, ref double beatsPerMinute)
+    private static void ProcessSpreadsheetLines(List<List<List<List<SpreadsheetNote>>>> currentLines, List<NoteGroup> noteGroups, ref double beatsPerMinute, ref bool isStartOfLine, ref bool insertSpace)
     {
         if (currentLines.Count > 0)
         {
@@ -253,20 +286,31 @@ public static class SpreadsheetReader
                 for (int noteListIndex = 0; noteListIndex < noteListCount; noteListIndex++)
                 {
                     var notes = new List<Note>();
+                    string lyric = null;
 
                     foreach (var line in currentLines)
                     {
-                        foreach (var note in line.ElementAtOrDefault(columnIndex)?.ElementAtOrDefault(noteListIndex) ?? [])
+                        foreach (var spreadsheetNote in line.ElementAtOrDefault(columnIndex)?.ElementAtOrDefault(noteListIndex) ?? [])
                         {
-                            if (note != null)
+                            if (spreadsheetNote != null)
                             {
-                                if (note.Name == "Tempo")
+                                if (spreadsheetNote.Name == "Tempo")
                                 {
-                                    beatsPerMinute = (int)note.InverseLength;
+                                    beatsPerMinute = (int)spreadsheetNote.InverseLength;
+                                }
+                                else if (spreadsheetNote.Name == "Lyrics")
+                                {
+                                    lyric = spreadsheetNote.Lyric;
                                 }
                                 else
                                 {
-                                    note.Duration = TimeSpan.FromMinutes(4 / note.InverseLength / beatsPerMinute * NoteDurationMultiplier);
+                                    Note note = new()
+                                    {
+                                        Instrument = spreadsheetNote.Instrument,
+                                        Number = spreadsheetNote.Number,
+                                        Volume = spreadsheetNote.Volume,
+                                        Duration = TimeSpan.FromMinutes(4 / spreadsheetNote.InverseLength / beatsPerMinute * NoteDurationMultiplier),
+                                    };
                                     FixNoteDuration(note);
                                     notes.Add(note);
                                 }
@@ -274,7 +318,34 @@ public static class SpreadsheetReader
                         }
                     }
 
-                    noteGroups.Add(new NoteGroup { Notes = notes, Length = TimeSpan.FromMinutes(4 / inverseLength / beatsPerMinute) });
+                    bool nextIsStartOfLine = false;
+
+                    if (lyric is not null)
+                    {
+                        isStartOfLine |= lyric.StartsWith('|');
+                        nextIsStartOfLine = lyric.EndsWith('|');
+
+                        lyric = lyric.Trim('|');
+
+                        if (insertSpace && !isStartOfLine)
+                        {
+                            lyric = " " + lyric;
+                            insertSpace = false;
+                        }
+
+                        insertSpace = lyric.EndsWith(' ');
+                        lyric = lyric.TrimEnd(' ');
+                    }
+
+                    if (inverseLength > 0)
+                    {
+                        noteGroups.Add(new NoteGroup { Notes = notes, Length = TimeSpan.FromMinutes(4 / inverseLength / beatsPerMinute), Lyrics = lyric, IsStartOfLine = lyric is not null && isStartOfLine });
+                    }
+
+                    if (lyric is not null)
+                    {
+                        isStartOfLine = nextIsStartOfLine;
+                    }
                 }
             }
 
@@ -302,5 +373,32 @@ public static class SpreadsheetReader
     private static Instrument ParseInstrument(string text)
     {
         return Enum.TryParse(typeof(Instrument), text.Replace(" ", ""), true, out var instrumentValue) ? (Instrument)instrumentValue : throw new Exception($"Unknown instrument: {text}");
+    }
+
+    private class SpreadsheetNote
+    {
+        public Instrument Instrument { get; set; }
+
+        /// <summary>
+        /// Indicates the pitch of the note, from 1 to 48 (36 for some instruments).
+        /// </summary>
+        public int Number { get; set; }
+
+        /// <summary>
+        /// The name of the note. Also supports the special values "Tempo" and "Lyrics".
+        /// </summary>
+        public string Name { get; set; }
+
+        /// <summary>
+        /// The volume of the note, from 0.0 to 1.0.
+        /// </summary>
+        public double Volume { get; set; }
+
+        /// <summary>
+        /// 1 for a whole note, 2 for a half note, 4 for a quarter note, etc.
+        /// </summary>
+        public double InverseLength { get; set; }
+
+        public string Lyric { get; set; }
     }
 }
