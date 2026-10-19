@@ -72,6 +72,26 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
         var resetSignal = SignalID.CreateVirtual(VirtualSignalNames.Deny);
         var externalResetSignal = SignalID.CreateVirtual(VirtualSignalNames.Damage);
 
+        List<DeciderCondition> isInstrumentSustainableConditions =
+        [
+            new()
+            {
+                First_signal = instrumentSignal,
+                First_signal_networks = new() { Green = true },
+                Constant = (int)Instrument.Drumkit - instrumentOffset,
+                Comparator = Comparators.IsNotEqual,
+                Compare_type = CompareTypes.And
+            },
+            new()
+            {
+                First_signal = instrumentSignal,
+                First_signal_networks = new() { Green = true },
+                Constant = (int)Instrument.PluckedStrings - instrumentOffset,
+                Comparator = Comparators.IsNotEqual,
+                Compare_type = CompareTypes.And
+            }
+        ];
+
         (int VolumeAdjustment, string Description, (SignalID TimeSignal, int StartTime, int Rate)? ChangeOverTime, List<DeciderCondition> Conditions)[] volumeAdjustments =
         [
             (100, "Attack volume adjustment", null,
@@ -79,14 +99,49 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                 new()
                 {
                     First_signal = elapsedTimeSignal,
+                    First_signal_networks = new() { Green = true },
                     Constant = 0,
-                    Comparator = Comparators.GreaterThan
+                    Comparator = Comparators.GreaterThan,
                 },
                 new()
                 {
                     First_signal = elapsedTimeSignal,
+                    First_signal_networks = new() { Green = true },
                     Constant = attackTicks,
                     Comparator = Comparators.LessThan,
+                    Compare_type = CompareTypes.And
+                },
+                .. isInstrumentSustainableConditions,
+                new()
+                {
+                    First_signal = elapsedTimeSignal,
+                    First_signal_networks = new() { Green = true },
+                    Constant = 0,
+                    Comparator = Comparators.GreaterThan,
+                    Compare_type = CompareTypes.Or
+                },
+                new()
+                {
+                    First_signal = instrumentSignal,
+                    First_signal_networks = new() { Green = true },
+                    Constant = (int)Instrument.Drumkit - instrumentOffset,
+                    Comparator = Comparators.IsEqual,
+                    Compare_type = CompareTypes.And
+                },
+                new()
+                {
+                    First_signal = elapsedTimeSignal,
+                    First_signal_networks = new() { Green = true },
+                    Constant = 0,
+                    Comparator = Comparators.GreaterThan,
+                    Compare_type = CompareTypes.Or
+                },
+                new()
+                {
+                    First_signal = instrumentSignal,
+                    First_signal_networks = new() { Green = true },
+                    Constant = (int)Instrument.PluckedStrings - instrumentOffset,
+                    Comparator = Comparators.IsEqual,
                     Compare_type = CompareTypes.And
                 }
             ]),
@@ -95,12 +150,14 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                 new()
                 {
                     First_signal = elapsedTimeSignal,
+                    First_signal_networks = new() { Green = true },
                     Constant = attackTicks,
                     Comparator = Comparators.GreaterThanOrEqualTo
                 },
                 new()
                 {
                     First_signal = elapsedTimeSignal,
+                    First_signal_networks = new() { Green = true },
                     Constant = attackTicks + decayTicks,
                     Comparator = Comparators.LessThan,
                     Compare_type = CompareTypes.And
@@ -108,42 +165,50 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                 new()
                 {
                     First_signal = remainingTimeSignal,
+                    First_signal_networks = new() { Green = true },
                     Constant = releaseTicks,
                     Comparator = Comparators.GreaterThan,
                     Compare_type = CompareTypes.And
-                }
+                },
+                .. isInstrumentSustainableConditions
             ]),
             (30, "Sustain volume adjustment", null,
             [
                 new()
                 {
                     First_signal = elapsedTimeSignal,
+                    First_signal_networks = new() { Green = true },
                     Constant = attackTicks + decayTicks,
                     Comparator = Comparators.GreaterThanOrEqualTo
                 },
                 new()
                 {
                     First_signal = remainingTimeSignal,
+                    First_signal_networks = new() { Green = true },
                     Constant = releaseTicks,
                     Comparator = Comparators.GreaterThan,
                     Compare_type = CompareTypes.And
-                }
+                },
+                .. isInstrumentSustainableConditions
             ]),
             (20, "Release volume adjustment", (remainingTimeSignal, releaseTicks + 1, releaseRate),
             [
                 new()
                 {
                     First_signal = elapsedTimeSignal,
+                    First_signal_networks = new() { Green = true },
                     Constant = attackTicks,
                     Comparator = Comparators.GreaterThanOrEqualTo
                 },
                 new()
                 {
                     First_signal = remainingTimeSignal,
+                    First_signal_networks = new() { Green = true },
                     Constant = releaseTicks,
                     Comparator = Comparators.LessThanOrEqualTo,
                     Compare_type = CompareTypes.And
-                }
+                },
+                .. isInstrumentSustainableConditions
             ])
         ];
 
@@ -936,7 +1001,8 @@ public class MusicBoxV2SpeakerGenerator : IBlueprintGenerator
                                 new()
                                 {
                                     Signal = volumeAdjustmentSignal,
-                                    Copy_count_from_input = true
+                                    Copy_count_from_input = true,
+                                    Networks = new() { Red = true }
                                 }
                             ]
                         }
