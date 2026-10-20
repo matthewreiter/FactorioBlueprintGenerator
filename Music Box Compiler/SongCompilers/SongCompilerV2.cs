@@ -6,7 +6,6 @@ using BlueprintGenerator.MusicBox;
 using MusicBoxCompiler.Models;
 using MusicBoxCompiler.Utils;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -477,31 +476,4 @@ public class SongCompilerV2 : ISongCompiler
     private record LyricInfo(string Lyrics = null, int LyricOffset = 0, bool IsStartOfLine = false);
 
     private record ChannelNote(int Channel, int Note);
-
-    private class MemoryCellData(List<KeyValuePair<string, int>> signals) : IEnumerable<KeyValuePair<string, int>>
-    {
-        public IEnumerator<KeyValuePair<string, int>> GetEnumerator() => signals.GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator() => signals.GetEnumerator();
-
-        public List<Filter> ToFilters() => [.. signals.Select(entry => Filter.Create(entry.Key, entry.Value))];
-
-        public override bool Equals(object obj)
-        {
-            return obj is MemoryCellData other && signals.SequenceEqual(other);
-        }
-
-        public override int GetHashCode()
-        {
-            var hash = new HashCode();
-
-            foreach (var entry in signals)
-            {
-                hash.Add(entry.Key);
-                hash.Add(entry.Value);
-            }
-
-            return hash.ToHashCode();
-        }
-    }
 }
