@@ -43,7 +43,6 @@
         public const string Gray = "signal-grey";
         public const string Black = "signal-black";
 
-        public const string NoFuel = "no-fuel";
         public const string Check = "signal-check";
         public const string Deny = "signal-deny";
         public const string NoEntry = "signal-no-entry";

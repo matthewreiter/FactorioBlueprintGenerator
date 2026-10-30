@@ -139,7 +139,7 @@ namespace BlueprintCommon.Models
 
         public static string GetSignalType(string name)
         {
-            return name.StartsWith("signal-") || name.StartsWith("shape-") || name.EndsWith("-arrow") || name == VirtualSignalNames.NoFuel ? SignalTypes.Virtual : SignalTypes.Item;
+            return name.StartsWith("signal-") || name.StartsWith("shape-") || name.EndsWith("-arrow") ? SignalTypes.Virtual : SignalTypes.Item;
         }
     }
 

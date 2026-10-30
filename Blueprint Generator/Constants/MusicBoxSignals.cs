@@ -12,7 +12,6 @@ public static class MusicBoxSignals
 
     public static readonly List<string> NoteGroupReferenceSignals =
     [
-        VirtualSignalNames.NoFuel,
         VirtualSignalNames.NoEntry,
         VirtualSignalNames.Heart,
         VirtualSignalNames.Alert,
@@ -76,6 +75,7 @@ public static class MusicBoxSignals
         VirtualSignalNames.LessThanOrEqualTo,
         VirtualSignalNames.GreaterThanOrEqualTo,
         VirtualSignalNames.LeftParenthesis,
+        VirtualSignalNames.RightParenthesis,
     ];
 
     public static readonly List<string> SpeakerChannelSignals =
@@ -309,88 +309,88 @@ public static class MusicBoxSignals
     public static readonly List<List<string>> AdditionalLyricSignals =
     [
         [
-            VirtualSignalNames.NoFuel,
             VirtualSignalNames.NoEntry,
             VirtualSignalNames.Heart,
             VirtualSignalNames.Alert,
             VirtualSignalNames.Star,
+            VirtualSignalNames.Vertical,
         ],
         [
-            VirtualSignalNames.Vertical,
             VirtualSignalNames.Horizontal,
             VirtualSignalNames.Diagonal,
             VirtualSignalNames.Diagonal2,
             VirtualSignalNames.Curve,
+            VirtualSignalNames.Curve2,
         ],
         [
-            VirtualSignalNames.Curve2,
             VirtualSignalNames.Curve3,
             VirtualSignalNames.Curve4,
             VirtualSignalNames.Cross,
             VirtualSignalNames.DiagonalCross,
+            VirtualSignalNames.Corner,
         ],
         [
-            VirtualSignalNames.Corner,
             VirtualSignalNames.Corner2,
             VirtualSignalNames.Corner3,
             VirtualSignalNames.Corner4,
             VirtualSignalNames.TCross,
+            VirtualSignalNames.TCross2,
         ],
         [
-            VirtualSignalNames.TCross2,
             VirtualSignalNames.TCross3,
             VirtualSignalNames.TCross4,
             VirtualSignalNames.Circle,
             VirtualSignalNames.UpArrow,
+            VirtualSignalNames.UpRightArrow,
         ],
         [
-            VirtualSignalNames.UpRightArrow,
             VirtualSignalNames.RightArrow,
             VirtualSignalNames.DownRightArrow,
             VirtualSignalNames.DownArrow,
             VirtualSignalNames.DownLeftArrow,
+            VirtualSignalNames.LeftArrow,
         ],
         [
-            VirtualSignalNames.LeftArrow,
             VirtualSignalNames.UpLeftArrow,
             VirtualSignalNames.RightwardsLeftwardsArrow,
             VirtualSignalNames.UpwardsDownwardsArrow,
             VirtualSignalNames.Shuffle,
+            VirtualSignalNames.LeftRightArrow,
         ],
         [
-            VirtualSignalNames.LeftRightArrow,
             VirtualSignalNames.UpDownArrow,
             VirtualSignalNames.ClockwiseCircleArrow,
             VirtualSignalNames.CounterclockwiseCircleArrow,
             VirtualSignalNames.Input,
+            VirtualSignalNames.Output,
         ],
         [
-            VirtualSignalNames.Output,
             VirtualSignalNames.Comma,
             VirtualSignalNames.Period,
             VirtualSignalNames.ExclamationMark,
             VirtualSignalNames.QuestionMark,
+            VirtualSignalNames.Colon,
         ],
         [
-            VirtualSignalNames.Colon,
             VirtualSignalNames.Slash,
             VirtualSignalNames.Apostrophe,
             VirtualSignalNames.QuotationMark,
             VirtualSignalNames.Ampersand,
+            VirtualSignalNames.Caret,
         ],
         [
-            VirtualSignalNames.Caret,
             VirtualSignalNames.Pound,
             VirtualSignalNames.Percent,
             VirtualSignalNames.Plus,
             VirtualSignalNames.Minus,
+            VirtualSignalNames.Multiplication,
         ],
         [
-            VirtualSignalNames.Multiplication,
             VirtualSignalNames.Division,
             VirtualSignalNames.Equal,
             VirtualSignalNames.NotEqual,
             VirtualSignalNames.LessThan,
+            VirtualSignalNames.GreaterThan,
         ],
     ];
 
