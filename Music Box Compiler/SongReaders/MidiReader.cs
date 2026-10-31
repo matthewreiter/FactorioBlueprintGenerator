@@ -969,7 +969,7 @@ public static class MidiReader
     {
         switch (note.Instrument)
         {
-            case Instrument.Drumkit: // For drumkit notes, always use the actual length the audio clip since they should play exactly once to completion
+            case Instrument.Drumkit: // For drumkit notes, always use the actual length of the audio clip since they should play exactly once to completion
                 note.EndTime = note.StartTime + TickDuration * AudioClipInfo.GetDrumkitAudioClipLength((Drum)note.RelativeNoteNumber);
                 break;
             case Instrument.PluckedStrings: // For plucked strings, limit the length to the actual length of the audio clip since sustained notes are disabled for that instrument
